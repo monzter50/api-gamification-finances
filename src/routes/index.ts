@@ -1,0 +1,67 @@
+import express from 'express';
+import type { Request, Response } from 'express';
+
+const router = express.Router();
+
+// API version prefix
+const API_VERSION = process.env.API_VERSION || 'v1';
+
+// Health check route
+router.get('/health', (req: Request, res: Response) => {
+  res.status(200).json({
+    success: true,
+    message: 'API de Gamificación de Finanzas funcionando correctamente',
+    version: API_VERSION,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// API documentation route
+router.get('/docs', (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    message: 'Documentación de la API de Gamificación de Finanzas',
+    version: API_VERSION,
+    endpoints: {
+      auth: {
+        'POST /auth/register': 'Registrar nuevo usuario',
+        'POST /auth/login': 'Iniciar sesión',
+        'POST /auth/logout': 'Cerrar sesión',
+        'GET /auth/me': 'Obtener perfil del usuario actual'
+      },
+      users: {
+        'GET /users/profile': 'Obtener perfil del usuario',
+        'PUT /users/profile': 'Actualizar perfil del usuario',
+        'GET /users/stats': 'Obtener estadísticas del usuario'
+      },
+      transactions: {
+        'GET /transactions': 'Obtener todas las transacciones del usuario',
+        'POST /transactions': 'Crear nueva transacción',
+        'GET /transactions/:id': 'Obtener transacción específica',
+        'PUT /transactions/:id': 'Actualizar transacción',
+        'DELETE /transactions/:id': 'Eliminar transacción',
+        'GET /transactions/summary': 'Obtener resumen financiero',
+        'GET /transactions/monthly/:year/:month': 'Obtener resumen mensual'
+      },
+      achievements: {
+        'GET /achievements': 'Obtener todos los logros',
+        'GET /achievements/user': 'Obtener logros del usuario',
+        'POST /achievements/:id/unlock': 'Desbloquear logro'
+      },
+      gamification: {
+        'GET /gamification/profile': 'Obtener perfil de gamificación',
+        'POST /gamification/level-up': 'Subir de nivel',
+        'GET /gamification/leaderboard': 'Obtener tabla de clasificación'
+      }
+    }
+  });
+});
+
+// TODO: Mount route modules when they are created
+// router.use('/auth', authRoutes);
+// router.use('/users', userRoutes);
+// router.use('/transactions', transactionRoutes);
+// router.use('/achievements', achievementRoutes);
+// router.use('/gamification', gamificationRoutes);
+
+export { router as routes }; 
