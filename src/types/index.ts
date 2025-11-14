@@ -78,8 +78,16 @@ export interface IAchievement extends Document {
 }
 
 // Request types
+export interface JWTPayload {
+  id: string;
+  email: string;
+  name: string;
+  iat: number;
+  exp: number;
+}
+
 export interface AuthenticatedRequest extends Request {
-  user?: IUser;
+  user?: JWTPayload;
 }
 
 // API Response types

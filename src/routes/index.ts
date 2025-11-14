@@ -1,5 +1,10 @@
 import express from 'express';
 import type { Request, Response } from 'express';
+import { authRoutes } from './auth';
+import { userRoutes } from './users';
+import { transactionRoutes } from './transactions';
+import { achievementRoutes } from './achievements';
+import { gamificationRoutes } from './gamification';
 
 const router = express.Router();
 
@@ -46,22 +51,25 @@ router.get('/docs', (req: Request, res: Response) => {
       achievements: {
         'GET /achievements': 'Obtener todos los logros',
         'GET /achievements/user': 'Obtener logros del usuario',
-        'POST /achievements/:id/unlock': 'Desbloquear logro'
+        'POST /achievements/:id/unlock': 'Desbloquear logro',
+        'GET /achievements/:id/progress': 'Obtener progreso del logro'
       },
       gamification: {
         'GET /gamification/profile': 'Obtener perfil de gamificación',
         'POST /gamification/level-up': 'Subir de nivel',
-        'GET /gamification/leaderboard': 'Obtener tabla de clasificación'
+        'GET /gamification/leaderboard': 'Obtener tabla de clasificación',
+        'GET /gamification/progress': 'Obtener estadísticas de progreso',
+        'POST /gamification/add-coins': 'Añadir monedas (testing)'
       }
     }
   });
 });
 
-// TODO: Mount route modules when they are created
-// router.use('/auth', authRoutes);
-// router.use('/users', userRoutes);
-// router.use('/transactions', transactionRoutes);
-// router.use('/achievements', achievementRoutes);
-// router.use('/gamification', gamificationRoutes);
+// Mount route modules
+router.use('/auth', authRoutes);
+router.use('/users', userRoutes);
+router.use('/transactions', transactionRoutes);
+router.use('/achievements', achievementRoutes);
+router.use('/gamification', gamificationRoutes);
 
 export { router as routes }; 

@@ -1,8 +1,5 @@
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
 import { Achievement } from '../models/Achievement';
-
-dotenv.config();
 
 interface AchievementData {
   name: string;

@@ -4,19 +4,18 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
-import dotenv from 'dotenv';
 
 import { connectDB } from './config/database';
 import { errorHandler } from './middleware/errorHandler';
 import { routes } from './routes/index';
 
-dotenv.config();
-
 const app: Application = express();
 const PORT: number = parseInt(process.env.PORT || '3000', 10);
 
-// Connect to database
-await connectDB();
+// Connect to database based on environment
+const environment = (process.env.NODE_ENV as 'development' | 'test' | 'production') || 'development';
+console.log(`🔍 Entorno: ${environment}`);
+await connectDB(environment);
 
 // Security middleware
 app.use(helmet());

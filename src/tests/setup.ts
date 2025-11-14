@@ -1,8 +1,6 @@
 // Test setup file for Vitest
-import dotenv from 'dotenv';
 import { vi } from 'vitest';
 
-dotenv.config({ path: '.env.test' });
 
 // Mock console methods to reduce noise in tests
 global.console = {
