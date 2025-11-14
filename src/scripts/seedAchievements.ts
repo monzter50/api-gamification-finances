@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { Achievement } from '../models/Achievement';
+import { logger } from '../config/logger';
 
 interface AchievementData {
   name: string;
@@ -219,26 +220,26 @@ const seedAchievements = async (): Promise<void> => {
     // Connect to MongoDB
     await mongoose.connect(process.env.MONGODB_URI!);
 
-    console.log('📦 Conectado a MongoDB');
+    logger.info('📦 Conectado a MongoDB');
 
     // Clear existing achievements
     await Achievement.deleteMany({});
-    console.log('🗑️ Logros existentes eliminados');
+    logger.info('🗑️ Logros existentes eliminados');
 
     // Insert new achievements
     const createdAchievements = await Achievement.insertMany(achievements);
-    console.log(`✅ ${createdAchievements.length} logros creados exitosamente`);
+    logger.info(`✅ ${createdAchievements.length} logros creados exitosamente`);
 
     // Display created achievements
-    console.log('\n📋 Logros creados:');
+    logger.info('\n📋 Logros creados:');
     createdAchievements.forEach((achievement: any) => {
-      console.log(`- ${achievement.icon} ${achievement.name} (${achievement.rarity})`);
+      logger.info(`- ${achievement.icon} ${achievement.name} (${achievement.rarity})`);
     });
 
-    console.log('\n🎉 Base de datos poblada exitosamente');
+    logger.info('\n🎉 Base de datos poblada exitosamente');
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error poblando la base de datos:', error);
+    logger.error('❌ Error poblando la base de datos:', error);
     process.exit(1);
   }
 };

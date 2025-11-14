@@ -115,7 +115,7 @@ const userSchema = new Schema<IUser>({
 });
 
 // Indexes
-userSchema.index({ email: 1 });
+// Note: email index is already created via unique: true in schema definition
 userSchema.index({ level: -1, experience: -1 });
 userSchema.index({ coins: -1 });
 userSchema.index({ totalSavings: -1 });

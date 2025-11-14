@@ -1,19 +1,20 @@
 import { connectDB, getCurrentDatabase } from '../config/database';
 import { Achievement } from '../models/Achievement';
+import { logger } from '../config/logger';
 
 async function testMongoDBConnection() {
   try {
-    console.log('🔍 Testing MongoDB Atlas connection...\n');
+    logger.info('🔍 Testing MongoDB Atlas connection...\n');
     
     // Test development database connection
-    console.log('📡 Connecting to development database...');
+    logger.info('📡 Connecting to development database...');
     await connectDB('development');
     
     const dbName = getCurrentDatabase();
-    console.log(`✅ Successfully connected to: ${dbName}\n`);
+    logger.info(`✅ Successfully connected to: ${dbName}\n`);
     
     // Test creating a sample document
-    console.log('📝 Testing document creation...');
+    logger.info('📝 Testing document creation...');
     const testAchievement = new Achievement({
       name: 'Connection Test',
       description: 'Test achievement to verify database connection',
@@ -32,22 +33,22 @@ async function testMongoDBConnection() {
     });
     
     await testAchievement.save();
-    console.log('✅ Document created successfully!\n');
+    logger.info('✅ Document created successfully!\n');
     
     // Test reading the document
-    console.log('📖 Testing document retrieval...');
+    logger.info('📖 Testing document retrieval...');
     const foundAchievement = await Achievement.findOne({ name: 'Connection Test' });
-    console.log(`✅ Document retrieved: ${foundAchievement?.name}\n`);
+    logger.info(`✅ Document retrieved: ${foundAchievement?.name}\n`);
     
     // Clean up test document
-    console.log('🧹 Cleaning up test document...');
+    logger.info('🧹 Cleaning up test document...');
     await Achievement.deleteOne({ name: 'Connection Test' });
-    console.log('✅ Test document removed\n');
+    logger.info('✅ Test document removed\n');
     
-    console.log('🎉 All tests passed! MongoDB Atlas connection is working correctly.');
+    logger.info('🎉 All tests passed! MongoDB Atlas connection is working correctly.');
     
   } catch (error) {
-    console.error('❌ Connection test failed:', error);
+    logger.error('❌ Connection test failed:', error);
     process.exit(1);
   } finally {
     process.exit(0);

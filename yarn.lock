@@ -2,6 +2,11 @@
 # yarn lockfile v1
 
 
+"@aglaya/logger@^0.1.0":
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/@aglaya/logger/-/logger-0.1.0.tgz#7c24e015cbdb6671e9866b0152fb9fdf4689e729"
+  integrity sha512-sGmUP2ASu09CzolhZg1TjcT95teYoj2fTnUrr8FVb73bIuEPN55mPOZCR9/mRdPkHNLGLwObSZrJ5Uod1KBHBw==
+
 "@ampproject/remapping@^2.2.1":
   version "2.3.0"
   resolved "https://registry.yarnpkg.com/@ampproject/remapping/-/remapping-2.3.0.tgz#ed441b6fa600072520ce18b43d2c8cc8caecc7f4"

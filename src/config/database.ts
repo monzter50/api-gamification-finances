@@ -1,10 +1,11 @@
 import mongoose from 'mongoose';
+import { logger } from './logger';
 
 // Database configurations for different environments
-console.log('🔍 Variables de entorno cargadas:');
-console.log('  - MONGODB_URI_DEV:', process.env.MONGODB_URI_DEV ? '✅ Configurado' : '❌ No configurado');
-console.log('  - MONGODB_URI:', process.env.MONGODB_URI ? '✅ Configurado' : '❌ No configurado');
-console.log('  - NODE_ENV:', process.env.NODE_ENV || 'development');
+logger.debug('🔍 Variables de entorno cargadas:');
+logger.debug('  - MONGODB_URI_DEV:', process.env.MONGODB_URI_DEV ? '✅ Configurado' : '❌ No configurado');
+logger.debug('  - MONGODB_URI:', process.env.MONGODB_URI ? '✅ Configurado' : '❌ No configurado');
+logger.debug('  - NODE_ENV:', process.env.NODE_ENV || 'development');
 
 const databaseConfigs = {
   development: {
@@ -24,30 +25,30 @@ const databaseConfigs = {
 export const connectDB = async (environment: 'development' | 'test' | 'production' = 'development'): Promise<void> => {
   try {
     const config = databaseConfigs[environment];
-    console.log(`🔍 Configuración de la base de datos: ${config.uri}`);
+    logger.info(`🔍 Configuración de la base de datos: ${config.uri}`);
     const conn = await mongoose.connect(config.uri);
 
-    console.log(`📦 MongoDB conectado: ${conn.connection.host}`);
-    console.log(`🗄️  Base de datos: ${config.name}`);
-    
+    logger.info(`📦 MongoDB conectado: ${conn.connection.host}`);
+    logger.info(`🗄️  Base de datos: ${config.name}`);
+
     // Handle connection events
     mongoose.connection.on('error', (err: Error) => {
-      console.error('❌ Error de conexión a MongoDB:', err);
+      logger.error('❌ Error de conexión a MongoDB:', err);
     });
 
     mongoose.connection.on('disconnected', () => {
-      console.log('🔌 MongoDB desconectado');
+      logger.warn('🔌 MongoDB desconectado');
     });
 
     // Graceful shutdown
     process.on('SIGINT', async () => {
       await mongoose.connection.close();
-      console.log('📦 Conexión a MongoDB cerrada por terminación de la aplicación');
+      logger.info('📦 Conexión a MongoDB cerrada por terminación de la aplicación');
       process.exit(0);
     });
 
   } catch (error) {
-    console.error('❌ Error al conectar a MongoDB:', (error as Error).message);
+    logger.error('❌ Error al conectar a MongoDB:', (error as Error).message);
     process.exit(1);
   }
 };
@@ -67,5 +68,5 @@ export const switchDatabase = async (databaseName: string): Promise<void> => {
   const newUri = `${baseUri}/${databaseName}`;
   
   await mongoose.connect(newUri);
-  console.log(`🔄 Cambiado a base de datos: ${databaseName}`);
+  logger.info(`🔄 Cambiado a base de datos: ${databaseName}`);
 }; 

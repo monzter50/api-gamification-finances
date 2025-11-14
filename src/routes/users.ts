@@ -3,6 +3,7 @@ import type { Response } from 'express';
 import { User } from '../models/User';
 import { AuthenticatedRequest } from '../types';
 import { authenticateJWT } from './auth';
+import { logger } from '../config/logger';
 
 const router = express.Router();
 
@@ -38,7 +39,7 @@ router.get('/profile', authenticateJWT, async (req: AuthenticatedRequest, res: R
       }
     });
   } catch (error) {
-    console.error('Error getting user profile:', error);
+    logger.error('Error getting user profile:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener el perfil del usuario'
@@ -102,7 +103,7 @@ router.put('/profile', authenticateJWT, async (req: AuthenticatedRequest, res: R
       }
     });
   } catch (error) {
-    console.error('Error updating user profile:', error);
+    logger.error('Error updating user profile:', error);
     res.status(500).json({
       success: false,
       message: 'Error al actualizar el perfil del usuario'
@@ -165,7 +166,7 @@ router.get('/stats', authenticateJWT, async (req: AuthenticatedRequest, res: Res
       }
     });
   } catch (error) {
-    console.error('Error getting user stats:', error);
+    logger.error('Error getting user stats:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener las estadísticas del usuario'

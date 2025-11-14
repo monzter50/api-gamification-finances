@@ -8,13 +8,14 @@ import rateLimit from 'express-rate-limit';
 import { connectDB } from './config/database';
 import { errorHandler } from './middleware/errorHandler';
 import { routes } from './routes/index';
+import { logger } from './config/logger';
 
 const app: Application = express();
 const PORT: number = parseInt(process.env.PORT || '3000', 10);
 
 // Connect to database based on environment
 const environment = (process.env.NODE_ENV as 'development' | 'test' | 'production') || 'development';
-console.log(`🔍 Entorno: ${environment}`);
+logger.info(`🔍 Entorno: ${environment}`);
 await connectDB(environment);
 
 // Security middleware
@@ -75,10 +76,10 @@ app.use(errorHandler);
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-  console.log(`📊 Ambiente: ${process.env.NODE_ENV}`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-  console.log(`📚 API docs: http://localhost:${PORT}/api/docs`);
+  logger.info(`🚀 Servidor corriendo en puerto ${PORT}`);
+  logger.info(`📊 Ambiente: ${process.env.NODE_ENV}`);
+  logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
+  logger.info(`📚 API docs: http://localhost:${PORT}/api/docs`);
 });
 
 export default app; 

@@ -28,8 +28,8 @@ const blacklistedTokenSchema = new Schema<IBlacklistedToken>({
   },
   expiresAt: {
     type: Date,
-    required: [true, 'Expiration date is required'],
-    index: true
+    required: [true, 'Expiration date is required']
+    // Note: index is created separately below with TTL configuration
   }
 }, {
   timestamps: true

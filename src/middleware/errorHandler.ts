@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { logger } from '../config/logger';
 
 interface CustomError extends Error {
   statusCode?: number;
@@ -15,7 +16,7 @@ export const errorHandler = (
   error.message = err.message;
 
   // Log error for debugging
-  console.error('❌ Error:', {
+  logger.error('❌ Error:', {
     message: err.message,
     stack: err.stack,
     url: req.url,

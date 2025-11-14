@@ -3,6 +3,7 @@ import type { Response } from 'express';
 import { User } from '../models/User';
 import { AuthenticatedRequest } from '../types';
 import { authenticateJWT } from './auth';
+import { logger } from '../config/logger';
 
 const router = express.Router();
 
@@ -52,7 +53,7 @@ router.get('/profile', authenticateJWT, async (req: AuthenticatedRequest, res: R
       data: gamificationProfile
     });
   } catch (error) {
-    console.error('Error getting gamification profile:', error);
+    logger.error('Error getting gamification profile:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener el perfil de gamificación'
@@ -98,7 +99,7 @@ router.post('/level-up', authenticateJWT, async (req: AuthenticatedRequest, res:
       }
     });
   } catch (error) {
-    console.error('Error leveling up:', error);
+    logger.error('Error leveling up:', error);
     res.status(500).json({
       success: false,
       message: 'Error al subir de nivel'
@@ -190,7 +191,7 @@ router.get('/leaderboard', authenticateJWT, async (req: AuthenticatedRequest, re
       }
     });
   } catch (error) {
-    console.error('Error getting leaderboard:', error);
+    logger.error('Error getting leaderboard:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener la tabla de clasificación'
@@ -237,7 +238,7 @@ router.get('/progress', authenticateJWT, async (req: AuthenticatedRequest, res: 
       data: progressStats
     });
   } catch (error) {
-    console.error('Error getting progress stats:', error);
+    logger.error('Error getting progress stats:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener las estadísticas de progreso'
@@ -282,7 +283,7 @@ router.post('/add-coins', authenticateJWT, async (req: AuthenticatedRequest, res
       }
     });
   } catch (error) {
-    console.error('Error adding coins:', error);
+    logger.error('Error adding coins:', error);
     res.status(500).json({
       success: false,
       message: 'Error al añadir monedas'

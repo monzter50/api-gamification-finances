@@ -1,5 +1,6 @@
 import { connectDB, getCurrentDatabase, switchDatabase } from '../config/database';
 import { Achievement } from '../models/Achievement';
+import { logger } from '../config/logger';
 
 /**
  * Database utility functions for managing different databases
@@ -8,31 +9,31 @@ import { Achievement } from '../models/Achievement';
 // Example: Connect to development database
 export const connectToDevDB = async () => {
   await connectDB('development');
-  console.log(`✅ Conectado a base de datos de desarrollo: ${getCurrentDatabase()}`);
+  logger.info(`✅ Conectado a base de datos de desarrollo: ${getCurrentDatabase()}`);
 };
 
 // Example: Connect to test database
 export const connectToTestDB = async () => {
   await connectDB('test');
-  console.log(`✅ Conectado a base de datos de pruebas: ${getCurrentDatabase()}`);
+  logger.info(`✅ Conectado a base de datos de pruebas: ${getCurrentDatabase()}`);
 };
 
 // Example: Connect to production database
 export const connectToProdDB = async () => {
   await connectDB('production');
-  console.log(`✅ Conectado a base de datos de producción: ${getCurrentDatabase()}`);
+  logger.info(`✅ Conectado a base de datos de producción: ${getCurrentDatabase()}`);
 };
 
 // Example: Switch to a specific database (useful for testing)
 export const switchToDatabase = async (databaseName: string) => {
   await switchDatabase(databaseName);
-  console.log(`✅ Cambiado a base de datos: ${databaseName}`);
+  logger.info(`✅ Cambiado a base de datos: ${databaseName}`);
 };
 
 // Example: Get current database information
 export const getDatabaseInfo = () => {
   const dbName = getCurrentDatabase();
-  console.log(`📊 Base de datos actual: ${dbName}`);
+  logger.info(`📊 Base de datos actual: ${dbName}`);
   return dbName;
 };
 
@@ -60,16 +61,16 @@ export const createModelsInDatabase = async (databaseName: string) => {
   });
   
   await achievement.save();
-  console.log(`✅ Modelo creado en base de datos: ${databaseName}`);
+  logger.info(`✅ Modelo creado en base de datos: ${databaseName}`);
 };
 
 // Example: List all collections in current database
 export const listCollections = async () => {
   const db = require('mongoose').connection.db;
   const collections = await db.listCollections().toArray();
-  console.log('📚 Colecciones en la base de datos actual:');
+  logger.info('📚 Colecciones en la base de datos actual:');
   collections.forEach((collection: any) => {
-    console.log(`  - ${collection.name}`);
+    logger.info(`  - ${collection.name}`);
   });
   return collections;
 }; 

@@ -6,6 +6,7 @@ import { User } from '../models/User';
 import { BlacklistedToken } from '../models/BlacklistedToken';
 import { blacklistToken, isTokenBlacklisted } from '../utils/tokenUtils';
 import { AuthenticatedRequest } from '../types';
+import { logger } from '../config/logger';
 
 const router = express.Router();
 
@@ -116,10 +117,10 @@ router.post('/logout', authenticateJWT, async (req: AuthenticatedRequest, res: R
     
     // Add token to blacklist
     await blacklistToken(token, req.user!.id);
-    
+
     // Log the logout action (optional)
-    console.log(`User ${req.user?.email} logged out`);
-    
+    logger.info(`User ${req.user?.email} logged out`);
+
     res.status(200).json({
       success: true,
       message: 'Logged out successfully'

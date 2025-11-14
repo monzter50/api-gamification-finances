@@ -3,6 +3,7 @@ import type { Response } from 'express';
 import { User } from '../models/User';
 import { AuthenticatedRequest } from '../types';
 import { authenticateJWT } from './auth';
+import { logger } from '../config/logger';
 
 const router = express.Router();
 
@@ -16,7 +17,7 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
       data: []
     });
   } catch (error) {
-    console.error('Error getting transactions:', error);
+    logger.error('Error getting transactions:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener las transacciones'
@@ -68,7 +69,7 @@ router.post('/', authenticateJWT, async (req: AuthenticatedRequest, res: Respons
       }
     });
   } catch (error) {
-    console.error('Error creating transaction:', error);
+    logger.error('Error creating transaction:', error);
     res.status(500).json({
       success: false,
       message: 'Error al crear la transacción'
@@ -95,7 +96,7 @@ router.get('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Respo
       }
     });
   } catch (error) {
-    console.error('Error getting transaction:', error);
+    logger.error('Error getting transaction:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener la transacción'
@@ -123,7 +124,7 @@ router.put('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Respo
       }
     });
   } catch (error) {
-    console.error('Error updating transaction:', error);
+    logger.error('Error updating transaction:', error);
     res.status(500).json({
       success: false,
       message: 'Error al actualizar la transacción'
@@ -143,7 +144,7 @@ router.delete('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Re
       data: { id }
     });
   } catch (error) {
-    console.error('Error deleting transaction:', error);
+    logger.error('Error deleting transaction:', error);
     res.status(500).json({
       success: false,
       message: 'Error al eliminar la transacción'
@@ -195,7 +196,7 @@ router.get('/summary', authenticateJWT, async (req: AuthenticatedRequest, res: R
       data: summary
     });
   } catch (error) {
-    console.error('Error getting financial summary:', error);
+    logger.error('Error getting financial summary:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener el resumen financiero'
@@ -249,7 +250,7 @@ router.get('/monthly/:year/:month', authenticateJWT, async (req: AuthenticatedRe
       data: monthlySummary
     });
   } catch (error) {
-    console.error('Error getting monthly summary:', error);
+    logger.error('Error getting monthly summary:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener el resumen mensual'

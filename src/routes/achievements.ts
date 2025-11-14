@@ -4,6 +4,7 @@ import { User } from '../models/User';
 import { Achievement } from '../models/Achievement';
 import { AuthenticatedRequest } from '../types';
 import { authenticateJWT } from './auth';
+import { logger } from '../config/logger';
 
 const router = express.Router();
 
@@ -28,7 +29,7 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
       }))
     });
   } catch (error) {
-    console.error('Error getting achievements:', error);
+    logger.error('Error getting achievements:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener los logros'
@@ -82,7 +83,7 @@ router.get('/user', authenticateJWT, async (req: AuthenticatedRequest, res: Resp
       }
     });
   } catch (error) {
-    console.error('Error getting user achievements:', error);
+    logger.error('Error getting user achievements:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener los logros del usuario'
@@ -169,7 +170,7 @@ router.post('/:id/unlock', authenticateJWT, async (req: AuthenticatedRequest, re
       }
     });
   } catch (error) {
-    console.error('Error unlocking achievement:', error);
+    logger.error('Error unlocking achievement:', error);
     res.status(500).json({
       success: false,
       message: 'Error al desbloquear el logro'
@@ -221,7 +222,7 @@ router.get('/:id/progress', authenticateJWT, async (req: AuthenticatedRequest, r
       }
     });
   } catch (error) {
-    console.error('Error getting achievement progress:', error);
+    logger.error('Error getting achievement progress:', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener el progreso del logro'
