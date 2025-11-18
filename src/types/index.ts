@@ -3,36 +3,14 @@ import { Document, Types } from 'mongoose';
 
 // User types
 export interface IUser extends Document {
-  username: string;
   email: string;
   password: string;
-  firstName: string;
-  lastName: string;
+  name: string;
   role: 'user' | 'admin';
-  level: number;
-  experience: number;
-  coins: number;
-  achievements: Types.ObjectId[];
-  badges: Types.ObjectId[];
-  totalSavings: number;
-  totalExpenses: number;
-  savingsGoal: number;
   isActive: boolean;
   lastLogin: Date;
   createdAt: Date;
   updatedAt: Date;
-  fullName: string;
-  experienceToNextLevel: number;
-  levelProgress: number;
-  comparePassword(candidatePassword: string): Promise<boolean>;
-  addExperience(amount: number): {
-    leveledUp: boolean;
-    newLevel?: number;
-    experienceGained: number;
-  };
-  addCoins(amount: number): number;
-  canAfford(cost: number): boolean;
-  spendCoins(amount: number): number;
 }
 
 // Transaction types
