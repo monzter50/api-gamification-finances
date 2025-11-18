@@ -1,50 +1,51 @@
 import express from 'express';
 import type { Response } from 'express';
-import { User } from '../models/User';
 import { AuthenticatedRequest } from '../types';
 import { authenticateJWT } from './auth';
 import { logger } from '../config/logger';
+import { userService } from '../services/user.service';
+import { userWalletRepository } from '../repositories/userWallet.repository';
+import { userProgressRepository } from '../repositories/userProgress.repository';
 
 const router = express.Router();
 
 // Get gamification profile
 router.get('/profile', authenticateJWT, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const user = await User.findById(req.user?.id);
-    
-    if (!user) {
-      res.status(404).json({
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({
         success: false,
-        message: 'Usuario no encontrado'
+        message: 'Unauthorized'
       });
       return;
     }
 
+    const profile = await userService.getUserProfile(userId);
+
     const gamificationProfile = {
-      level: user.level,
-      experience: user.experience,
-      experienceToNextLevel: user.experienceToNextLevel || 0,
-      levelProgress: user.levelProgress || 0,
-      coins: user.coins,
-      totalSavings: user.totalSavings,
-      totalExpenses: user.totalExpenses,
-      savingsGoal: user.savingsGoal,
-      savingsProgress: user.savingsGoal > 0 
-        ? Math.min((user.totalSavings / user.savingsGoal) * 100, 100)
-        : 0,
+      level: profile.level,
+      experience: profile.experience,
+      experienceToNextLevel: profile.experienceToNextLevel,
+      levelProgress: profile.levelProgress,
+      coins: profile.coins,
+      totalSavings: profile.totalSavings,
+      totalExpenses: profile.totalExpenses,
+      savingsGoal: profile.savingsGoal,
+      savingsProgress: profile.savingsProgress,
       achievements: {
-        total: user.achievements?.length || 0,
-        unlocked: user.achievements?.length || 0,
+        total: profile.achievements.length,
+        unlocked: profile.achievements.length,
         completionPercentage: 0 // TODO: Calculate based on total achievements
       },
       badges: {
-        total: user.badges?.length || 0,
-        unlocked: user.badges?.length || 0
+        total: profile.badges.length,
+        unlocked: profile.badges.length
       },
       stats: {
-        daysActive: Math.floor((Date.now() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
-        lastLogin: user.lastLogin,
-        isActive: user.isActive
+        daysActive: Math.floor((Date.now() - profile.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
+        lastLogin: profile.lastLogin,
+        isActive: profile.isActive
       }
     };
 
@@ -56,7 +57,7 @@ router.get('/profile', authenticateJWT, async (req: AuthenticatedRequest, res: R
     logger.error('Error getting gamification profile:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al obtener el perfil de gamificación'
+      message: 'Error getting gamification profile'
     });
   }
 });
@@ -64,45 +65,46 @@ router.get('/profile', authenticateJWT, async (req: AuthenticatedRequest, res: R
 // Level up (manual trigger for testing)
 router.post('/level-up', authenticateJWT, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const user = await User.findById(req.user?.id);
-    
-    if (!user) {
-      res.status(404).json({
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({
         success: false,
-        message: 'Usuario no encontrado'
+        message: 'Unauthorized'
       });
       return;
     }
 
-    const oldLevel = user.level;
-    const oldExperience = user.experience;
-    
+    const profileBefore = await userService.getUserProfile(userId);
+    const oldLevel = profileBefore.level;
+    const oldExperience = profileBefore.experience;
+
     // Add experience and check for level up
     const experienceToAdd = 100; // For testing
-    const result = user.addExperience(experienceToAdd);
-    
-    await user.save();
+    const result = await userService.addExperience(userId, experienceToAdd);
+
+    const profileAfter = await userService.getUserProfile(userId);
 
     res.status(200).json({
       success: true,
-      message: result.leveledUp ? `¡Subiste al nivel ${result.newLevel}!` : 'Experiencia añadida',
+      message: result.leveledUp ? `Level up to ${result.newLevel}!` : 'Experience added',
       data: {
         oldLevel,
-        newLevel: user.level,
-        oldExperience: oldExperience,
-        newExperience: user.experience,
+        newLevel: profileAfter.level,
+        oldExperience,
+        newExperience: profileAfter.experience,
         experienceGained: result.experienceGained,
         leveledUp: result.leveledUp,
-        levelProgress: user.levelProgress,
-        experienceToNextLevel: user.experienceToNextLevel,
-        coins: user.coins
+        levelProgress: profileAfter.levelProgress,
+        experienceToNextLevel: profileAfter.experienceToNextLevel,
+        coins: profileAfter.coins,
+        rewardCoins: result.rewardCoins
       }
     });
   } catch (error) {
     logger.error('Error leveling up:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al subir de nivel'
+      message: 'Error leveling up'
     });
   }
 });
@@ -110,42 +112,13 @@ router.post('/level-up', authenticateJWT, async (req: AuthenticatedRequest, res:
 // Get leaderboard
 router.get('/leaderboard', authenticateJWT, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { type = 'level', limit = 10 } = req.query;
-    
-    let sortCriteria: any = {};
-    let projection: any = {
-      name: 1,
-      level: 1,
-      experience: 1,
-      coins: 1,
-      totalSavings: 1,
-      totalExpenses: 1
-    };
+    const { limit = 10 } = req.query;
+    const userId = req.user?.id;
 
-    switch (type) {
-      case 'level':
-        sortCriteria = { level: -1, experience: -1 };
-        break;
-      case 'coins':
-        sortCriteria = { coins: -1 };
-        break;
-      case 'savings':
-        sortCriteria = { totalSavings: -1 };
-        break;
-      case 'experience':
-        sortCriteria = { experience: -1 };
-        break;
-      default:
-        sortCriteria = { level: -1, experience: -1 };
-    }
+    // Get leaderboard (sorted by level and experience)
+    const leaderboard = await userService.getLeaderboard(parseInt(limit as string));
 
-    const leaderboard = await User.find({ isActive: true })
-      .select(projection)
-      .sort(sortCriteria)
-      .limit(parseInt(limit as string))
-      .lean();
-
-    // Add position and format data
+    // Format leaderboard
     const formattedLeaderboard = leaderboard.map((user, index) => ({
       position: index + 1,
       name: user.name,
@@ -157,44 +130,38 @@ router.get('/leaderboard', authenticateJWT, async (req: AuthenticatedRequest, re
     }));
 
     // Get current user's position
-    const currentUser = await User.findById(req.user?.id).select(projection);
     let userPosition = null;
-    
-    if (currentUser) {
-      const userCount = await User.countDocuments({
-        isActive: true,
-        [type === 'level' ? 'level' : type === 'coins' ? 'coins' : type === 'savings' ? 'totalSavings' : 'experience']: {
-          $gt: type === 'level' ? currentUser.level : 
-               type === 'coins' ? currentUser.coins :
-               type === 'savings' ? currentUser.totalSavings :
-               currentUser.experience
-        }
-      });
-      userPosition = userCount + 1;
+    let userStats = null;
+
+    if (userId) {
+      const currentProfile = await userService.getUserProfile(userId);
+      const userRank = await userProgressRepository.getUserRank(userId);
+      userPosition = userRank;
+      userStats = {
+        name: currentProfile.name,
+        level: currentProfile.level,
+        experience: currentProfile.experience,
+        coins: currentProfile.coins,
+        totalSavings: currentProfile.totalSavings,
+        totalExpenses: currentProfile.totalExpenses
+      };
     }
 
     res.status(200).json({
       success: true,
       data: {
         leaderboard: formattedLeaderboard,
-        type,
+        type: 'level',
         limit: parseInt(limit as string),
         userPosition,
-        userStats: currentUser ? {
-          name: currentUser.name,
-          level: currentUser.level,
-          experience: currentUser.experience,
-          coins: currentUser.coins,
-          totalSavings: currentUser.totalSavings,
-          totalExpenses: currentUser.totalExpenses
-        } : null
+        userStats
       }
     });
   } catch (error) {
     logger.error('Error getting leaderboard:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al obtener la tabla de clasificación'
+      message: 'Error getting leaderboard'
     });
   }
 });
@@ -202,15 +169,16 @@ router.get('/leaderboard', authenticateJWT, async (req: AuthenticatedRequest, re
 // Get user progress stats
 router.get('/progress', authenticateJWT, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const user = await User.findById(req.user?.id);
-    
-    if (!user) {
-      res.status(404).json({
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({
         success: false,
-        message: 'Usuario no encontrado'
+        message: 'Unauthorized'
       });
       return;
     }
+
+    const profile = await userService.getUserProfile(userId);
 
     // TODO: Calculate actual progress from transactions
     const progressStats = {
@@ -225,11 +193,11 @@ router.get('/progress', authenticateJWT, async (req: AuthenticatedRequest, res: 
         transactions: 0
       },
       allTime: {
-        experience: user.experience,
-        coins: user.coins,
+        experience: profile.experience,
+        coins: profile.coins,
         transactions: 0,
-        level: user.level,
-        achievements: user.achievements?.length || 0
+        level: profile.level,
+        achievements: profile.achievements.length
       }
     };
 
@@ -241,7 +209,7 @@ router.get('/progress', authenticateJWT, async (req: AuthenticatedRequest, res: 
     logger.error('Error getting progress stats:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al obtener las estadísticas de progreso'
+      message: 'Error getting progress stats'
     });
   }
 });
@@ -250,12 +218,12 @@ router.get('/progress', authenticateJWT, async (req: AuthenticatedRequest, res: 
 router.post('/add-coins', authenticateJWT, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { amount } = req.body;
-    const user = await User.findById(req.user?.id);
-    
-    if (!user) {
-      res.status(404).json({
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({
         success: false,
-        message: 'Usuario no encontrado'
+        message: 'Unauthorized'
       });
       return;
     }
@@ -263,19 +231,22 @@ router.post('/add-coins', authenticateJWT, async (req: AuthenticatedRequest, res
     if (!amount || typeof amount !== 'number' || amount <= 0) {
       res.status(400).json({
         success: false,
-        message: 'Cantidad inválida'
+        message: 'Invalid amount'
       });
       return;
     }
 
-    const oldCoins = user.coins;
-    const newCoins = user.addCoins(amount);
-    
-    await user.save();
+    const walletBefore = await userWalletRepository.findByUserId(userId);
+    const oldCoins = walletBefore?.coins || 0;
+
+    await userWalletRepository.addCoins(userId, amount, 'Manual addition for testing');
+
+    const walletAfter = await userWalletRepository.findByUserId(userId);
+    const newCoins = walletAfter?.coins || 0;
 
     res.status(200).json({
       success: true,
-      message: `Se añadieron ${amount} monedas`,
+      message: `Added ${amount} coins`,
       data: {
         oldCoins,
         newCoins,
@@ -286,7 +257,7 @@ router.post('/add-coins', authenticateJWT, async (req: AuthenticatedRequest, res
     logger.error('Error adding coins:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al añadir monedas'
+      message: 'Error adding coins'
     });
   }
 });

@@ -1,32 +1,14 @@
-import mongoose, { Schema, Document, Types } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IUser extends Document {
   email: string;
   password: string;
   name: string;
   role: 'user' | 'admin';
-  level: number;
-  experience: number;
-  coins: number;
-  achievements: Types.ObjectId[];
-  badges: Types.ObjectId[];
-  totalSavings: number;
-  totalExpenses: number;
-  savingsGoal: number;
   isActive: boolean;
   lastLogin: Date;
-  experienceToNextLevel: number;
-  levelProgress: number;
   createdAt: Date;
   updatedAt: Date;
-  addExperience(amount: number): {
-    leveledUp: boolean;
-    newLevel?: number;
-    experienceGained: number;
-  };
-  addCoins(amount: number): number;
-  canAfford(cost: number): boolean;
-  spendCoins(amount: number): number;
 }
 
 const userSchema = new Schema<IUser>({
@@ -54,44 +36,6 @@ const userSchema = new Schema<IUser>({
     enum: ['user', 'admin'],
     default: 'user'
   },
-  level: {
-    type: Number,
-    default: 1,
-    min: 1
-  },
-  experience: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
-  coins: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
-  achievements: [{
-    type: Schema.Types.ObjectId,
-    ref: 'Achievement'
-  }],
-  badges: [{
-    type: Schema.Types.ObjectId,
-    ref: 'Badge'
-  }],
-  totalSavings: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
-  totalExpenses: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
-  savingsGoal: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
   isActive: {
     type: Boolean,
     default: true
@@ -99,16 +43,6 @@ const userSchema = new Schema<IUser>({
   lastLogin: {
     type: Date,
     default: Date.now
-  },
-  experienceToNextLevel: {
-    type: Number,
-    default: 100
-  },
-  levelProgress: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 100
   }
 }, {
   timestamps: true
@@ -116,9 +50,7 @@ const userSchema = new Schema<IUser>({
 
 // Indexes
 // Note: email index is already created via unique: true in schema definition
-userSchema.index({ level: -1, experience: -1 });
-userSchema.index({ coins: -1 });
-userSchema.index({ totalSavings: -1 });
+userSchema.index({ isActive: 1, lastLogin: -1 });
 
 // Static method to find user by email
 userSchema.statics.findByEmail = function(email: string) {
@@ -128,55 +60,6 @@ userSchema.statics.findByEmail = function(email: string) {
 // Static method to check if user exists
 userSchema.statics.userExists = function(email: string) {
   return this.exists({ email: email.toLowerCase() });
-};
-
-// Instance method to add experience and check for level up
-userSchema.methods.addExperience = function(amount: number) {
-  const oldLevel = this.level;
-  this.experience += amount;
-  
-  // Calculate experience needed for next level (simple formula)
-  const experienceForNextLevel = this.level * 100;
-  
-  if (this.experience >= experienceForNextLevel) {
-    this.level += 1;
-    this.experienceToNextLevel = (this.level + 1) * 100;
-    this.levelProgress = 0;
-    
-    return {
-      leveledUp: true,
-      newLevel: this.level,
-      experienceGained: amount
-    };
-  } else {
-    this.experienceToNextLevel = experienceForNextLevel;
-    this.levelProgress = Math.round((this.experience / experienceForNextLevel) * 100);
-    
-    return {
-      leveledUp: false,
-      experienceGained: amount
-    };
-  }
-};
-
-// Instance method to add coins
-userSchema.methods.addCoins = function(amount: number): number {
-  this.coins += amount;
-  return this.coins;
-};
-
-// Instance method to check if user can afford something
-userSchema.methods.canAfford = function(cost: number): boolean {
-  return this.coins >= cost;
-};
-
-// Instance method to spend coins
-userSchema.methods.spendCoins = function(amount: number): number {
-  if (this.canAfford(amount)) {
-    this.coins -= amount;
-    return this.coins;
-  }
-  throw new Error('Insufficient coins');
 };
 
 export const User = mongoose.model<IUser>('User', userSchema); 

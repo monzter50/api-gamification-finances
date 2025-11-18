@@ -1,9 +1,9 @@
 import express from 'express';
 import type { Response } from 'express';
-import { User } from '../models/User';
 import { AuthenticatedRequest } from '../types';
 import { authenticateJWT } from './auth';
 import { logger } from '../config/logger';
+import { userProfileRepository } from '../repositories/userProfile.repository';
 
 const router = express.Router();
 
@@ -155,15 +155,17 @@ router.delete('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Re
 // Get financial summary
 router.get('/summary', authenticateJWT, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const user = await User.findById(req.user?.id);
-    
-    if (!user) {
-      res.status(404).json({
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({
         success: false,
-        message: 'Usuario no encontrado'
+        message: 'Unauthorized'
       });
       return;
     }
+
+    const profile = await userProfileRepository.findByUserId(userId);
 
     // TODO: Calculate from actual transactions when model is created
     const summary = {
@@ -174,20 +176,20 @@ router.get('/summary', authenticateJWT, async (req: AuthenticatedRequest, res: R
         coins: 0
       },
       expense: {
-        total: user.totalExpenses,
+        total: profile?.totalExpenses || 0,
         count: 0,
         experience: 0,
         coins: 0
       },
       savings: {
-        total: user.totalSavings,
+        total: profile?.totalSavings || 0,
         count: 0,
         experience: 0,
         coins: 0
       },
-      netWorth: user.totalSavings - user.totalExpenses,
-      savingsProgress: user.savingsGoal > 0 
-        ? Math.min((user.totalSavings / user.savingsGoal) * 100, 100)
+      netWorth: (profile?.totalSavings || 0) - (profile?.totalExpenses || 0),
+      savingsProgress: profile && profile.savingsGoal > 0
+        ? Math.min((profile.totalSavings / profile.savingsGoal) * 100, 100)
         : 0
     };
 
@@ -199,7 +201,7 @@ router.get('/summary', authenticateJWT, async (req: AuthenticatedRequest, res: R
     logger.error('Error getting financial summary:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al obtener el resumen financiero'
+      message: 'Error getting financial summary'
     });
   }
 });

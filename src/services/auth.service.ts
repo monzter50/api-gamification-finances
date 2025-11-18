@@ -1,6 +1,9 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { userRepository } from '../repositories/user.repository';
+import { userWalletRepository } from '../repositories/userWallet.repository';
+import { userProgressRepository } from '../repositories/userProgress.repository';
+import { userProfileRepository } from '../repositories/userProfile.repository';
 import { RegisterRequestDto, LoginRequestDto } from '../dto/request/auth.dto';
 import { AuthResponseDto, LogoutResponseDto } from '../dto/response/auth.dto';
 import { blacklistToken, isTokenBlacklisted } from '../utils/tokenUtils';
@@ -34,21 +37,36 @@ export class AuthService {
       role: 'user'
     } as any);
 
+    const userId = (user._id as any).toString();
+
+    // Create associated records for the new user
+    await Promise.all([
+      userWalletRepository.createForUser(userId, 0), // Start with 0 coins
+      userProgressRepository.createForUser(userId), // Level 1, 0 XP
+      userProfileRepository.createForUser(userId, 0) // 0 savings goal
+    ]);
+
+    // Fetch the created records
+    const [wallet, progress] = await Promise.all([
+      userWalletRepository.findByUserId(userId),
+      userProgressRepository.findByUserId(userId)
+    ]);
+
     // Generate JWT token
-    const token = this.generateToken((user._id as any).toString(), user.email);
+    const token = this.generateToken(userId, user.email);
 
     logger.info(`New user registered: ${user.email}`);
 
     return {
       token,
       user: {
-        id: (user._id as any).toString(),
+        id: userId,
         email: user.email,
         name: user.name,
         role: user.role,
-        level: user.level,
-        experience: user.experience,
-        coins: user.coins
+        level: progress?.level || 1,
+        experience: progress?.experience || 0,
+        coins: wallet?.coins || 0
       }
     };
   }
@@ -76,24 +94,32 @@ export class AuthService {
       throw new Error('Account is deactivated. Please contact support.');
     }
 
+    const userId = (user._id as any).toString();
+
     // Update last login
-    await userRepository.updateLastLogin((user._id as any).toString());
+    await userRepository.updateLastLogin(userId);
+
+    // Fetch associated records
+    const [wallet, progress] = await Promise.all([
+      userWalletRepository.findByUserId(userId),
+      userProgressRepository.findByUserId(userId)
+    ]);
 
     // Generate JWT token
-    const token = this.generateToken((user._id as any).toString(), user.email);
+    const token = this.generateToken(userId, user.email);
 
     logger.info(`User logged in: ${user.email}`);
 
     return {
       token,
       user: {
-        id: (user._id as any).toString(),
+        id: userId,
         email: user.email,
         name: user.name,
         role: user.role,
-        level: user.level,
-        experience: user.experience,
-        coins: user.coins
+        level: progress?.level || 1,
+        experience: progress?.experience || 0,
+        coins: wallet?.coins || 0
       }
     };
   }

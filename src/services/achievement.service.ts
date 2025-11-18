@@ -1,5 +1,8 @@
 import { achievementRepository } from '../repositories/achievement.repository';
 import { userRepository } from '../repositories/user.repository';
+import { userProgressRepository } from '../repositories/userProgress.repository';
+import { userWalletRepository } from '../repositories/userWallet.repository';
+import { userProfileRepository } from '../repositories/userProfile.repository';
 import {
   AchievementResponseDto,
   UserAchievementResponseDto,
@@ -43,10 +46,9 @@ export class AchievementService {
       throw new Error('User not found');
     }
 
-    await user.populate('achievements');
-
+    const progress = await userProgressRepository.findByUserId(userId);
     const allAchievements = await achievementRepository.findActiveAchievements();
-    const userAchievementIds = user.achievements?.map(a => a.toString()) || [];
+    const userAchievementIds = progress?.achievements?.map((a: any) => a.toString()) || [];
 
     const achievementsWithStatus: UserAchievementResponseDto[] = allAchievements.map(achievement => {
       const isUnlocked = userAchievementIds.includes((achievement._id as any)?.toString() || '');
@@ -97,23 +99,30 @@ export class AchievementService {
     }
 
     // Check if user already has this achievement
-    const userAchievementIds = user.achievements?.map(a => a.toString()) || [];
-    if (userAchievementIds.includes((achievement._id as any)?.toString() || '')) {
+    const hasAchievement = await userProgressRepository.hasAchievement(
+      userId,
+      achievement._id as any
+    );
+    if (hasAchievement) {
       throw new Error('Achievement already unlocked');
     }
 
     // TODO: Check if user meets criteria before unlocking
     // For now, we'll allow manual unlocking for testing
 
-    // Add achievement to user
-    user.achievements = user.achievements || [];
-    user.achievements.push(achievement._id as any);
+    // Add achievement to user progress
+    await userProgressRepository.unlockAchievement(userId, achievement._id as any);
 
     // Add rewards
-    const experienceResult = user.addExperience(achievement.reward.experience);
-    user.addCoins(achievement.reward.coins);
-
-    await user.save();
+    const { progress } = await userProgressRepository.addExperience(
+      userId,
+      achievement.reward.experience
+    );
+    const wallet = await userWalletRepository.addCoins(
+      userId,
+      achievement.reward.coins,
+      `Achievement: ${achievement.name}`
+    );
 
     logger.info(`Achievement unlocked: ${achievement.name} by user ${userId}`);
 
@@ -131,10 +140,10 @@ export class AchievementService {
         coins: achievement.reward.coins
       },
       userStats: {
-        level: user.level,
-        experience: user.experience,
-        coins: user.coins,
-        totalAchievements: user.achievements.length
+        level: progress.level,
+        experience: progress.experience,
+        coins: wallet.coins,
+        totalAchievements: progress.achievements.length
       }
     };
   }
@@ -182,16 +191,22 @@ export class AchievementService {
       throw new Error('User not found');
     }
 
+    // Fetch data from separate models
+    const [progress, profile] = await Promise.all([
+      userProgressRepository.findByUserId(userId),
+      userProfileRepository.findByUserId(userId)
+    ]);
+
     const userStats = {
       transactionCount: 0, // TODO: Get from transaction count
-      totalAmount: user.totalSavings + user.totalExpenses,
-      totalSavings: user.totalSavings,
+      totalAmount: (profile?.totalSavings || 0) + (profile?.totalExpenses || 0),
+      totalSavings: profile?.totalSavings || 0,
       streakDays: 0, // TODO: Calculate streak
-      level: user.level
+      level: progress?.level || 1
     };
 
     const allAchievements = await achievementRepository.findActiveAchievements();
-    const userAchievementIds = user.achievements?.map(a => a.toString()) || [];
+    const userAchievementIds = progress?.achievements?.map((a: any) => a.toString()) || [];
     const unlockedAchievements: UnlockAchievementResponseDto[] = [];
 
     for (const achievement of allAchievements) {
