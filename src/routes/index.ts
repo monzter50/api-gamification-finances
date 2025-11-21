@@ -5,6 +5,7 @@ import { userRoutes } from './users';
 import { transactionRoutes } from './transactions';
 import { achievementRoutes } from './achievements';
 import { gamificationRoutes } from './gamification';
+import { badgeRoutes } from './badges';
 
 const router = express.Router();
 
@@ -60,6 +61,19 @@ router.get('/docs', (req: Request, res: Response) => {
         'GET /gamification/leaderboard': 'Obtener tabla de clasificación',
         'GET /gamification/progress': 'Obtener estadísticas de progreso',
         'POST /gamification/add-coins': 'Añadir monedas (testing)'
+      },
+      badges: {
+        'GET /badges/active': 'Get all active badges',
+        'GET /badges/available': 'Get all available badges',
+        'GET /badges/user': 'Get user badges',
+        'GET /badges/stats': 'Get badge statistics',
+        'POST /badges/check-unlock': 'Check and award unlockable badges',
+        'GET /badges/category/:category': 'Get badges by category',
+        'GET /badges/rarity/:rarity': 'Get badges by rarity',
+        'GET /badges/:badgeId': 'Get badge by ID',
+        'POST /badges': 'Create new badge (admin)',
+        'PUT /badges/:badgeId': 'Update badge (admin)',
+        'DELETE /badges/:badgeId': 'Delete badge (admin)'
       }
     }
   });
@@ -71,5 +85,6 @@ router.use('/users', userRoutes);
 router.use('/transactions', transactionRoutes);
 router.use('/achievements', achievementRoutes);
 router.use('/gamification', gamificationRoutes);
+router.use('/badges', badgeRoutes);
 
 export { router as routes }; 

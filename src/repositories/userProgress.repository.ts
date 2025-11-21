@@ -83,6 +83,45 @@ export class UserProgressRepository extends BaseRepository<IUserProgress> {
   }
 
   /**
+   * Add badge to user's progress
+   */
+  async addBadge(userId: string | Types.ObjectId, badgeId: string | Types.ObjectId): Promise<IUserProgress> {
+    const progress = await this.findByUserId(userId);
+    if (!progress) {
+      throw new Error('User progress not found');
+    }
+
+    // Convert badgeId to ObjectId if it's a string
+    const badgeObjectId = typeof badgeId === 'string' ? new Types.ObjectId(badgeId) : badgeId;
+
+    // Check if badge already exists
+    if (progress.badges?.some((b: any) => b.toString() === badgeObjectId.toString())) {
+      throw new Error('User already has this badge');
+    }
+
+    // Add badge
+    if (!progress.badges) {
+      progress.badges = [];
+    }
+    progress.badges.push(badgeObjectId as any);
+
+    return progress.save();
+  }
+
+  /**
+   * Check if user has badge
+   */
+  async hasBadge(userId: string | Types.ObjectId, badgeId: string | Types.ObjectId): Promise<boolean> {
+    const progress = await this.findByUserId(userId);
+    if (!progress) {
+      return false;
+    }
+
+    const badgeObjectId = typeof badgeId === 'string' ? new Types.ObjectId(badgeId) : badgeId;
+    return progress.badges?.some((b: any) => b.toString() === badgeObjectId.toString()) || false;
+  }
+
+  /**
    * Get leaderboard by level and experience
    */
   async getLeaderboard(limit: number = 10, skip: number = 0): Promise<IUserProgress[]> {
