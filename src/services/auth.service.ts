@@ -53,12 +53,13 @@ export class AuthService {
     ]);
 
     // Generate JWT token
-    const token = this.generateToken(userId, user.email);
+    const { token, expiresIn } = this.generateToken(userId, user.email);
 
     logger.info(`New user registered: ${user.email}`);
 
     return {
       token,
+      expiresIn,
       user: {
         id: userId,
         email: user.email,
@@ -99,28 +100,16 @@ export class AuthService {
     // Update last login
     await userRepository.updateLastLogin(userId);
 
-    // Fetch associated records
-    const [wallet, progress] = await Promise.all([
-      userWalletRepository.findByUserId(userId),
-      userProgressRepository.findByUserId(userId)
-    ]);
+
 
     // Generate JWT token
-    const token = this.generateToken(userId, user.email);
+    const { token, expiresIn } = this.generateToken(userId, user.email);
 
     logger.info(`User logged in: ${user.email}`);
 
     return {
       token,
-      user: {
-        id: userId,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        level: progress?.level || 1,
-        experience: progress?.experience || 0,
-        coins: wallet?.coins || 0
-      }
+      expiresIn
     };
   }
 
@@ -179,7 +168,10 @@ export class AuthService {
   /**
    * Generate JWT token
    */
-  private generateToken(userId: string, email: string): string {
+  /**
+   * Generate JWT token
+   */
+  private generateToken(userId: string, email: string): { token: string; expiresIn: number } {
     const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
     const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '7d';
 
@@ -189,7 +181,11 @@ export class AuthService {
       { expiresIn: jwtExpiresIn } as jwt.SignOptions
     );
 
-    return token;
+    // Decode to get expiration time
+    const decoded = jwt.decode(token) as { exp: number; iat: number };
+    const expiresIn = decoded.exp - decoded.iat;
+
+    return { token, expiresIn };
   }
 }
 

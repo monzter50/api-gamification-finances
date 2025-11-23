@@ -5,7 +5,8 @@
 
 export interface AuthResponseDto {
   token: string;
-  user: UserBasicInfoDto;
+  expiresIn: number;
+  user?: UserBasicInfoDto;
 }
 
 export interface UserBasicInfoDto {
