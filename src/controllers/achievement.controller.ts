@@ -17,7 +17,7 @@ export class AchievementController {
 
       res.status(200).json({
         success: true,
-        data: achievements
+        ...achievements
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error al obtener los logros';
@@ -40,7 +40,7 @@ export class AchievementController {
 
       res.status(200).json({
         success: true,
-        data
+        ...data
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error al obtener los logros del usuario';
@@ -75,7 +75,7 @@ export class AchievementController {
       res.status(200).json({
         success: true,
         message: `¡Logro desbloqueado: ${result.achievement.name}!`,
-        data: result
+        ...result
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error al desbloquear el logro';
@@ -115,7 +115,7 @@ export class AchievementController {
 
       res.status(200).json({
         success: true,
-        data
+        ...data
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error al obtener el progreso del logro';

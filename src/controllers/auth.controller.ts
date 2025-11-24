@@ -20,7 +20,7 @@ export class AuthController {
       res.status(201).json({
         success: true,
         message: 'User registered successfully',
-        data: result
+        ...result
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error registering user';
@@ -45,7 +45,7 @@ export class AuthController {
       res.status(200).json({
         success: true,
         message: 'Login successful',
-        data: result
+        ...result
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error logging in';
@@ -95,7 +95,7 @@ export class AuthController {
 
       res.status(200).json({
         success: true,
-        data: profile
+        ...profile
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error getting profile';
