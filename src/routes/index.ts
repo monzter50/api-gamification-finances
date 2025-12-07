@@ -6,6 +6,7 @@ import { transactionRoutes } from './transactions';
 import { achievementRoutes } from './achievements';
 import { gamificationRoutes } from './gamification';
 import { badgeRoutes } from './badges';
+import { budgetRoutes } from './budgets';
 
 const router = express.Router();
 
@@ -74,6 +75,18 @@ router.get('/docs', (req: Request, res: Response) => {
         'POST /badges': 'Create new badge (admin)',
         'PUT /badges/:badgeId': 'Update badge (admin)',
         'DELETE /badges/:badgeId': 'Delete badge (admin)'
+      },
+      budgets: {
+        'GET /budgets': 'Get all budgets (with optional year/month filters)',
+        'GET /budgets/stats': 'Get budget statistics',
+        'GET /budgets/:id': 'Get budget by ID',
+        'POST /budgets': 'Create new budget',
+        'PUT /budgets/:id': 'Update budget',
+        'DELETE /budgets/:id': 'Delete budget',
+        'PATCH /budgets/:id/income': 'Update income items',
+        'DELETE /budgets/:id/income/:itemId': 'Delete income item',
+        'PATCH /budgets/:id/expense': 'Update expense items',
+        'DELETE /budgets/:id/expense/:itemId': 'Delete expense item'
       }
     }
   });
@@ -86,5 +99,6 @@ router.use('/transactions', transactionRoutes);
 router.use('/achievements', achievementRoutes);
 router.use('/gamification', gamificationRoutes);
 router.use('/badges', badgeRoutes);
+router.use('/budgets', budgetRoutes);
 
 export { router as routes }; 

@@ -8,6 +8,13 @@ import { RegisterRequestDto, LoginRequestDto } from '../dto/request/auth.dto';
 import { AuthResponseDto, LogoutResponseDto } from '../dto/response/auth.dto';
 import { blacklistToken, isTokenBlacklisted } from '../utils/tokenUtils';
 import { logger } from '../config/logger';
+import {
+  InvalidCredentialsError,
+  AccountDeactivatedError,
+  UserNotFoundError,
+  UserAlreadyExistsError,
+  TokenBlacklistedError
+} from '../errors/AuthErrors';
 
 /**
  * Authentication Service
@@ -23,7 +30,7 @@ export class AuthService {
     // Check if user already exists
     const existingUser = await userRepository.findByEmail(email);
     if (existingUser) {
-      throw new Error('User with this email already exists');
+      throw new UserAlreadyExistsError();
     }
 
     // Hash password
@@ -81,18 +88,18 @@ export class AuthService {
     // Find user by email
     const user = await userRepository.findByEmail(email);
     if (!user) {
-      throw new Error('Invalid email or password');
+      throw new InvalidCredentialsError();
     }
 
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      throw new Error('Invalid email or password');
+      throw new InvalidCredentialsError();
     }
 
     // Check if user is active
     if (!user.isActive) {
-      throw new Error('Account is deactivated. Please contact support.');
+      throw new AccountDeactivatedError();
     }
 
     const userId = (user._id as any).toString();
@@ -120,7 +127,7 @@ export class AuthService {
     // Check if token is already blacklisted
     const isBlacklisted = await isTokenBlacklisted(token);
     if (isBlacklisted) {
-      throw new Error('Token is already invalidated');
+      throw new TokenBlacklistedError('Token is already invalidated');
     }
 
     // Blacklist the token (tokenUtils will handle expiration extraction)
@@ -141,7 +148,7 @@ export class AuthService {
     // Check if token is blacklisted
     const isBlacklisted = await isTokenBlacklisted(token);
     if (isBlacklisted) {
-      throw new Error('Token has been invalidated');
+      throw new TokenBlacklistedError();
     }
 
     // Verify JWT
@@ -151,11 +158,11 @@ export class AuthService {
     // Get user from database
     const user = await userRepository.findByIdWithoutPassword(decoded.userId);
     if (!user) {
-      throw new Error('User not found');
+      throw new UserNotFoundError();
     }
 
     if (!user.isActive) {
-      throw new Error('User account is deactivated');
+      throw new AccountDeactivatedError('User account is deactivated');
     }
 
     return {

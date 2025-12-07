@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { authService } from '../services/auth.service';
 import { userService } from '../services/user.service';
 import { AuthenticatedRequest } from '../types';
+import { AuthError } from '../errors/AuthErrors';
 
 /**
  * Auth Controller
@@ -23,13 +24,19 @@ export class AuthController {
         ...result
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error registering user';
-      const statusCode = message.includes('already exists') ? 409 : 500;
-
-      res.status(statusCode).json({
-        success: false,
-        message
-      });
+      if (error instanceof AuthError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+          errorCode: error.errorCode
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: error instanceof Error ? error.message : 'Error registering user',
+          errorCode: 'INTERNAL_ERROR'
+        });
+      }
     }
   }
 
@@ -48,13 +55,19 @@ export class AuthController {
         ...result
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error logging in';
-      const statusCode = message.includes('Invalid') || message.includes('deactivated') ? 401 : 500;
-
-      res.status(statusCode).json({
-        success: false,
-        message
-      });
+      if (error instanceof AuthError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+          errorCode: error.errorCode
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: error instanceof Error ? error.message : 'Error logging in',
+          errorCode: 'INTERNAL_ERROR'
+        });
+      }
     }
   }
 
@@ -75,12 +88,19 @@ export class AuthController {
         message: result.message
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error during logout';
-
-      res.status(500).json({
-        success: false,
-        message
-      });
+      if (error instanceof AuthError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+          errorCode: error.errorCode
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: error instanceof Error ? error.message : 'Error during logout',
+          errorCode: 'INTERNAL_ERROR'
+        });
+      }
     }
   }
 
@@ -98,13 +118,22 @@ export class AuthController {
         ...profile
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error getting profile';
-      const statusCode = message.includes('not found') ? 404 : 500;
+      if (error instanceof AuthError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+          errorCode: error.errorCode
+        });
+      } else {
+        const message = error instanceof Error ? error.message : 'Error getting profile';
+        const statusCode = message.includes('not found') ? 404 : 500;
 
-      res.status(statusCode).json({
-        success: false,
-        message
-      });
+        res.status(statusCode).json({
+          success: false,
+          message,
+          errorCode: statusCode === 404 ? 'USER_NOT_FOUND' : 'INTERNAL_ERROR'
+        });
+      }
     }
   }
 }
