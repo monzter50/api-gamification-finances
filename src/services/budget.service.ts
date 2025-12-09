@@ -1,5 +1,5 @@
 import { budgetRepository } from '../repositories/budget.repository';
-import { IBudget, IIncomeItem, IExpenseItem } from '../models/Budget';
+import { IBudget, IIncomeItem, IExpenseItem, IncomeType, INCOME_TYPES } from '../models/Budget';
 import { Types } from 'mongoose';
 import { logger } from '../config/logger';
 
@@ -332,6 +332,17 @@ export class BudgetService {
 
     if (item.amount < 0) {
       throw new Error(`${type} amount must be positive`);
+    }
+
+    // Validate income type if it's an income item
+    if (type === 'income' && 'type' in item) {
+      const incomeItem = item as IIncomeItem;
+      if (!incomeItem.type) {
+        throw new Error('Income type is required');
+      }
+      if (!INCOME_TYPES.includes(incomeItem.type)) {
+        throw new Error(`Invalid income type. Must be one of: ${INCOME_TYPES.join(', ')}`);
+      }
     }
   }
 

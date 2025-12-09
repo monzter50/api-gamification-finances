@@ -9,7 +9,9 @@ import {
   updateExpenseItemsValidation,
   budgetIdValidation,
   itemIdValidation,
-  budgetQueryValidation
+  budgetQueryValidation,
+  addIncomeItemValidation,
+  addExpenseItemValidation
 } from '../validators/budget.validator';
 
 const router = express.Router();
@@ -76,6 +78,15 @@ router.delete(
  * Base URL: /api/budgets/:id/income
  */
 
+// Add a single income item
+router.post(
+  '/:id/income',
+  authenticateJWT,
+  addIncomeItemValidation,
+  validate,
+  budgetController.addIncomeItem.bind(budgetController)
+);
+
 // Update/replace all income items
 router.patch(
   '/:id/income',
@@ -98,6 +109,15 @@ router.delete(
  * Nested Expense Routes
  * Base URL: /api/budgets/:id/expense
  */
+
+// Add a single expense item
+router.post(
+  '/:id/expense',
+  authenticateJWT,
+  addExpenseItemValidation,
+  validate,
+  budgetController.addExpenseItem.bind(budgetController)
+);
 
 // Update/replace all expense items
 router.patch(

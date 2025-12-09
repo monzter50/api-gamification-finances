@@ -460,6 +460,124 @@ export class BudgetController {
   }
 
   /**
+   * POST /api/budgets/:id/income
+   * Add a single income item
+   */
+  async addIncomeItem(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      // Validate request
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({
+          success: false,
+          error: 'Validation error',
+          errors: errors.array(),
+          statusCode: 400
+        });
+        return;
+      }
+
+      const { id } = req.params;
+      const userId = req.user!.userId;
+      const { description, amount, type } = req.body;
+
+      const budget = await budgetService.addIncomeItem(id, userId, { description, amount, type });
+
+      res.status(201).json({
+        success: true,
+        data: budget,
+        message: 'Income item added successfully'
+      });
+    } catch (error) {
+      logger.error('Error adding income item:', error);
+
+      const errorMessage = (error as Error).message;
+      if (errorMessage === 'Budget not found') {
+        res.status(404).json({
+          success: false,
+          error: 'Budget not found',
+          statusCode: 404
+        });
+        return;
+      }
+
+      if (errorMessage === 'Unauthorized access to budget') {
+        res.status(403).json({
+          success: false,
+          error: 'Unauthorized access to budget',
+          statusCode: 403
+        });
+        return;
+      }
+
+      res.status(400).json({
+        success: false,
+        error: errorMessage,
+        statusCode: 400
+      });
+    }
+  }
+
+  /**
+   * POST /api/budgets/:id/expense
+   * Add a single expense item
+   */
+  async addExpenseItem(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      // Validate request
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({
+          success: false,
+          error: 'Validation error',
+          errors: errors.array(),
+          statusCode: 400
+        });
+        return;
+      }
+
+      const { id } = req.params;
+      const userId = req.user!.userId;
+      const { description, amount } = req.body;
+
+      const budget = await budgetService.addExpenseItem(id, userId, { description, amount });
+
+      res.status(201).json({
+        success: true,
+        data: budget,
+        message: 'Expense item added successfully'
+      });
+    } catch (error) {
+      logger.error('Error adding expense item:', error);
+
+      const errorMessage = (error as Error).message;
+      if (errorMessage === 'Budget not found') {
+        res.status(404).json({
+          success: false,
+          error: 'Budget not found',
+          statusCode: 404
+        });
+        return;
+      }
+
+      if (errorMessage === 'Unauthorized access to budget') {
+        res.status(403).json({
+          success: false,
+          error: 'Unauthorized access to budget',
+          statusCode: 403
+        });
+        return;
+      }
+
+      res.status(400).json({
+        success: false,
+        error: errorMessage,
+        statusCode: 400
+      });
+    }
+  }
+
+  /**
    * GET /api/budgets/stats
    * Get budget statistics for user
    */

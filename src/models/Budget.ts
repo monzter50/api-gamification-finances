@@ -1,12 +1,20 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 /**
+ * Income Type Enum
+ */
+export type IncomeType = 'Debit Card' | 'Credit Card' | 'Cash' | 'Vales' | 'Transfer' | 'Check' | 'Other';
+
+export const INCOME_TYPES: IncomeType[] = ['Debit Card', 'Credit Card', 'Cash', 'Vales', 'Transfer', 'Check', 'Other'];
+
+/**
  * Income Item Interface
  */
 export interface IIncomeItem {
   _id?: mongoose.Types.ObjectId;
   description: string;
   amount: number;
+  type: IncomeType;
 }
 
 /**
@@ -48,6 +56,15 @@ const incomeItemSchema = new Schema<IIncomeItem>({
     type: Number,
     required: [true, 'Income amount is required'],
     min: [0, 'Amount must be positive']
+  },
+  type: {
+    type: String,
+    required: [true, 'Income type is required'],
+    enum: {
+      values: INCOME_TYPES,
+      message: 'Invalid income type. Must be one of: Debit Card, Credit Card, Cash, Vales, Transfer, Check, Other'
+    },
+    default: 'Other'
   }
 }, { _id: true });
 
@@ -126,10 +143,10 @@ budgetSchema.virtual('savingsRate').get(function() {
 // Ensure virtuals are included in JSON responses
 budgetSchema.set('toJSON', {
   virtuals: true,
-  transform: function(doc, ret) {
+  transform: function(_doc, ret) {
     // Remove internal fields
-    delete ret.__v;
-    return ret;
+    const { __v, ...rest } = ret;
+    return rest;
   }
 });
 
@@ -163,13 +180,13 @@ budgetSchema.statics.findByUser = function(
 };
 
 // Instance method to add income item
-budgetSchema.methods.addIncomeItem = function(description: string, amount: number) {
-  this.incomeItems.push({ description, amount });
+budgetSchema.methods.addIncomeItem = function(description: string, amount: number, type: IncomeType) {
+  this.incomeItems.push({ description, amount, type });
   return this.save();
 };
 
 // Instance method to update income item
-budgetSchema.methods.updateIncomeItem = function(itemId: string, description: string, amount: number) {
+budgetSchema.methods.updateIncomeItem = function(itemId: string, description: string, amount: number, type: IncomeType) {
   const item = this.incomeItems.id(itemId);
   if (!item) {
     throw new Error('Income item not found');
@@ -177,6 +194,7 @@ budgetSchema.methods.updateIncomeItem = function(itemId: string, description: st
 
   item.description = description;
   item.amount = amount;
+  item.type = type;
   return this.save();
 };
 
@@ -218,6 +236,22 @@ budgetSchema.methods.removeExpenseItem = function(itemId: string) {
 
   item.deleteOne();
   return this.save();
+};
+
+// Instance method to get income items by type
+budgetSchema.methods.getIncomeByType = function(type: IncomeType) {
+  return this.incomeItems.filter((item: IIncomeItem) => item.type === type);
+};
+
+// Instance method to calculate totals by income type
+budgetSchema.methods.getIncomeTotalsByType = function(): Record<IncomeType, number> {
+  const totals: Record<string, number> = {};
+
+  this.incomeItems.forEach((item: IIncomeItem) => {
+    totals[item.type] = (totals[item.type] || 0) + item.amount;
+  });
+
+  return totals as Record<IncomeType, number>;
 };
 
 export const Budget = mongoose.model<IBudget>('Budget', budgetSchema);

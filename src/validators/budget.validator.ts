@@ -1,4 +1,5 @@
 import { body, param, query } from 'express-validator';
+import { INCOME_TYPES } from '../models/Budget';
 
 /**
  * Validation schemas for budget endpoints
@@ -27,6 +28,10 @@ export const createBudgetValidation = [
     .optional()
     .isFloat({ min: 0 })
     .withMessage('Income item amount must be a positive number'),
+  body('incomeItems.*.type')
+    .optional()
+    .isIn(INCOME_TYPES)
+    .withMessage('Invalid income type. Must be one of: Debit Card, Credit Card, Cash, Vales, Transfer, Check, Other'),
   body('expenseItems')
     .optional()
     .isArray()
@@ -70,6 +75,10 @@ export const updateBudgetValidation = [
     .optional()
     .isFloat({ min: 0 })
     .withMessage('Income item amount must be a positive number'),
+  body('incomeItems.*.type')
+    .optional()
+    .isIn(INCOME_TYPES)
+    .withMessage('Invalid income type. Must be one of: Debit Card, Credit Card, Cash, Vales, Transfer, Check, Other'),
   body('expenseItems')
     .optional()
     .isArray()
@@ -101,7 +110,10 @@ export const updateIncomeItemsValidation = [
     .withMessage('Income item description is required'),
   body('incomeItems.*.amount')
     .isFloat({ min: 0 })
-    .withMessage('Income item amount must be a positive number')
+    .withMessage('Income item amount must be a positive number'),
+  body('incomeItems.*.type')
+    .isIn(INCOME_TYPES)
+    .withMessage('Invalid income type. Must be one of: Debit Card, Credit Card, Cash, Vales, Transfer, Check, Other')
 ];
 
 /**
@@ -156,4 +168,39 @@ export const budgetQueryValidation = [
     .optional()
     .isInt({ min: 0, max: 11 })
     .withMessage('Month must be between 0 and 11')
+];
+
+/**
+ * Validation for adding a single income item
+ */
+export const addIncomeItemValidation = [
+  param('id')
+    .isMongoId()
+    .withMessage('Invalid budget ID'),
+  body('description')
+    .trim()
+    .notEmpty()
+    .withMessage('Description is required'),
+  body('amount')
+    .isFloat({ min: 0 })
+    .withMessage('Amount must be a positive number'),
+  body('type')
+    .isIn(INCOME_TYPES)
+    .withMessage('Invalid income type. Must be one of: Debit Card, Credit Card, Cash, Vales, Transfer, Check, Other')
+];
+
+/**
+ * Validation for adding a single expense item
+ */
+export const addExpenseItemValidation = [
+  param('id')
+    .isMongoId()
+    .withMessage('Invalid budget ID'),
+  body('description')
+    .trim()
+    .notEmpty()
+    .withMessage('Description is required'),
+  body('amount')
+    .isFloat({ min: 0 })
+    .withMessage('Amount must be a positive number')
 ];
