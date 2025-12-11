@@ -58,6 +58,7 @@ export interface IAchievement extends Document {
 // Request types
 export interface JWTPayload {
   id: string;
+  userId: string; // Added for consistency
   email: string;
   name: string;
   iat: number;

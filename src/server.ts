@@ -13,6 +13,11 @@ import { logger } from './config/logger';
 const app: Application = express();
 const PORT: number = parseInt(process.env.PORT || '3000', 10);
 
+// Disable ETag in development to prevent 304 responses
+if (process.env.NODE_ENV === 'development') {
+  app.set('etag', false);
+}
+
 // Connect to database based on environment
 const environment = (process.env.NODE_ENV as 'development' | 'test' | 'production') || 'development';
 logger.info(`🔍 Entorno: ${environment}`);

@@ -1,5 +1,13 @@
 import type { Response } from 'express';
-import { AuthenticatedRequest } from '../types';
+import {
+  BudgetRequest,
+  CreateBudgetBody,
+  UpdateBudgetBody,
+  AddIncomeItemBody,
+  AddExpenseItemBody,
+  UpdateIncomeItemsBody,
+  UpdateExpenseItemsBody
+} from '../types/budget.types';
 import { budgetService } from '../services/budget.service';
 import { logger } from '../config/logger';
 import { validationResult } from 'express-validator';
@@ -13,7 +21,7 @@ export class BudgetController {
    * GET /api/budgets
    * Get all budgets for authenticated user
    */
-  async getAllBudgets(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async getAllBudgets(req: BudgetRequest, res: Response): Promise<void> {
     try {
       const userId = req.user!.userId;
       const year = req.query.year ? parseInt(req.query.year as string) : undefined;
@@ -44,11 +52,19 @@ export class BudgetController {
    * GET /api/budgets/:id
    * Get budget by ID
    */
-  async getBudgetById(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async getBudgetById(req: BudgetRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = req.user!.userId;
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          error: 'Budget ID is required',
+          statusCode: 400
+        });
+        return;
+      }
 
+      const userId = req.user!.userId;
       const budget = await budgetService.getBudgetById(id, userId);
 
       res.status(200).json({
@@ -89,7 +105,7 @@ export class BudgetController {
    * POST /api/budgets
    * Create new budget
    */
-  async createBudget(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async createBudget(req: BudgetRequest<CreateBudgetBody>, res: Response): Promise<void> {
     try {
       // Validate request
       const errors = validationResult(req);
@@ -144,7 +160,7 @@ export class BudgetController {
    * PUT /api/budgets/:id
    * Update entire budget
    */
-  async updateBudget(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async updateBudget(req: BudgetRequest<UpdateBudgetBody>, res: Response): Promise<void> {
     try {
       // Validate request
       const errors = validationResult(req);
@@ -159,14 +175,23 @@ export class BudgetController {
       }
 
       const { id } = req.params;
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          error: 'Budget ID is required',
+          statusCode: 400
+        });
+        return;
+      }
+
       const userId = req.user!.userId;
       const { year, month, incomeItems, expenseItems } = req.body;
 
       const budget = await budgetService.updateBudget(id, userId, {
         year,
         month,
-        incomeItems,
-        expenseItems
+        ...(incomeItems && { incomeItems }),
+        ...(expenseItems && { expenseItems })
       });
 
       res.status(200).json({
@@ -208,11 +233,19 @@ export class BudgetController {
    * DELETE /api/budgets/:id
    * Delete budget
    */
-  async deleteBudget(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async deleteBudget(req: BudgetRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = req.user!.userId;
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          error: 'Budget ID is required',
+          statusCode: 400
+        });
+        return;
+      }
 
+      const userId = req.user!.userId;
       await budgetService.deleteBudget(id, userId);
 
       res.status(200).json({
@@ -253,7 +286,7 @@ export class BudgetController {
    * PATCH /api/budgets/:id/income
    * Update income items
    */
-  async updateIncomeItems(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async updateIncomeItems(req: BudgetRequest<UpdateIncomeItemsBody>, res: Response): Promise<void> {
     try {
       // Validate request
       const errors = validationResult(req);
@@ -268,6 +301,15 @@ export class BudgetController {
       }
 
       const { id } = req.params;
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          error: 'Budget ID is required',
+          statusCode: 400
+        });
+        return;
+      }
+
       const userId = req.user!.userId;
       const { incomeItems } = req.body;
 
@@ -312,7 +354,7 @@ export class BudgetController {
    * PATCH /api/budgets/:id/expense
    * Update expense items
    */
-  async updateExpenseItems(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async updateExpenseItems(req: BudgetRequest<UpdateExpenseItemsBody>, res: Response): Promise<void> {
     try {
       // Validate request
       const errors = validationResult(req);
@@ -327,6 +369,15 @@ export class BudgetController {
       }
 
       const { id } = req.params;
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          error: 'Budget ID is required',
+          statusCode: 400
+        });
+        return;
+      }
+
       const userId = req.user!.userId;
       const { expenseItems } = req.body;
 
@@ -371,11 +422,27 @@ export class BudgetController {
    * DELETE /api/budgets/:id/income/:itemId
    * Delete income item
    */
-  async deleteIncomeItem(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async deleteIncomeItem(req: BudgetRequest, res: Response): Promise<void> {
     try {
       const { id, itemId } = req.params;
-      const userId = req.user!.userId;
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          error: 'Budget ID is required',
+          statusCode: 400
+        });
+        return;
+      }
+      if (!itemId) {
+        res.status(400).json({
+          success: false,
+          error: 'Item ID is required',
+          statusCode: 400
+        });
+        return;
+      }
 
+      const userId = req.user!.userId;
       const budget = await budgetService.removeIncomeItem(id, userId, itemId);
 
       res.status(200).json({
@@ -417,11 +484,27 @@ export class BudgetController {
    * DELETE /api/budgets/:id/expense/:itemId
    * Delete expense item
    */
-  async deleteExpenseItem(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async deleteExpenseItem(req: BudgetRequest, res: Response): Promise<void> {
     try {
       const { id, itemId } = req.params;
-      const userId = req.user!.userId;
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          error: 'Budget ID is required',
+          statusCode: 400
+        });
+        return;
+      }
+      if (!itemId) {
+        res.status(400).json({
+          success: false,
+          error: 'Item ID is required',
+          statusCode: 400
+        });
+        return;
+      }
 
+      const userId = req.user!.userId;
       const budget = await budgetService.removeExpenseItem(id, userId, itemId);
 
       res.status(200).json({
@@ -463,7 +546,7 @@ export class BudgetController {
    * POST /api/budgets/:id/income
    * Add a single income item
    */
-  async addIncomeItem(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async addIncomeItem(req: BudgetRequest<AddIncomeItemBody>, res: Response): Promise<void> {
     try {
       // Validate request
       const errors = validationResult(req);
@@ -478,6 +561,15 @@ export class BudgetController {
       }
 
       const { id } = req.params;
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          error: 'Budget ID is required',
+          statusCode: 400
+        });
+        return;
+      }
+
       const userId = req.user!.userId;
       const { description, amount, type } = req.body;
 
@@ -522,7 +614,7 @@ export class BudgetController {
    * POST /api/budgets/:id/expense
    * Add a single expense item
    */
-  async addExpenseItem(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async addExpenseItem(req: BudgetRequest<AddExpenseItemBody>, res: Response): Promise<void> {
     try {
       // Validate request
       const errors = validationResult(req);
@@ -537,6 +629,15 @@ export class BudgetController {
       }
 
       const { id } = req.params;
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          error: 'Budget ID is required',
+          statusCode: 400
+        });
+        return;
+      }
+
       const userId = req.user!.userId;
       const { description, amount } = req.body;
 
@@ -581,7 +682,7 @@ export class BudgetController {
    * GET /api/budgets/stats
    * Get budget statistics for user
    */
-  async getUserStats(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async getUserStats(req: BudgetRequest, res: Response): Promise<void> {
     try {
       const userId = req.user!.userId;
       const stats = await budgetService.getUserBudgetStats(userId);
