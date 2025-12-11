@@ -18,11 +18,6 @@ if (process.env.NODE_ENV === 'development') {
   app.set('etag', false);
 }
 
-// Connect to database based on environment
-const environment = (process.env.NODE_ENV as 'development' | 'test' | 'production') || 'development';
-logger.info(`🔍 Entorno: ${environment}`);
-await connectDB(environment);
-
 // Security middleware
 app.use(helmet());
 
@@ -84,12 +79,28 @@ app.use('*', (req: Request, res: Response) => {
 // Error handling middleware
 app.use(errorHandler);
 
-// Start server
-app.listen(PORT, () => {
-  logger.info(`🚀 Servidor corriendo en puerto ${PORT}`);
-  logger.info(`📊 Ambiente: ${process.env.NODE_ENV}`);
-  logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
-  logger.info(`📚 API docs: http://localhost:${PORT}/api/docs`);
-});
+// Start server function
+async function startServer() {
+  try {
+    // Connect to database based on environment
+    const environment = (process.env.NODE_ENV as 'development' | 'test' | 'production') || 'development';
+    logger.info(`🔍 Entorno: ${environment}`);
+    await connectDB(environment);
+
+    // Start server
+    app.listen(PORT, () => {
+      logger.info(`🚀 Servidor corriendo en puerto ${PORT}`);
+      logger.info(`📊 Ambiente: ${process.env.NODE_ENV}`);
+      logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
+      logger.info(`📚 API docs: http://localhost:${PORT}/api/docs`);
+    });
+  } catch (error) {
+    logger.error('Error al iniciar el servidor:', error);
+    process.exit(1);
+  }
+}
+
+// Initialize server
+startServer();
 
 export default app; 

@@ -2,7 +2,6 @@
   "name": "api-gamification-finances",
   "version": "1.0.0",
   "description": "API para aplicación de gamificación de finanzas",
-  "type": "module",
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
