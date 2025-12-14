@@ -63,10 +63,10 @@ export const switchDatabase = async (databaseName: string): Promise<void> => {
   if (mongoose.connection.readyState === 1) {
     await mongoose.connection.close();
   }
-  
+
   const baseUri = process.env.MONGODB_URI?.split('/').slice(0, -1).join('/') || 'mongodb://localhost:27017';
   const newUri = `${baseUri}/${databaseName}`;
-  
+
   await mongoose.connect(newUri);
   logger.info(`🔄 Cambiado a base de datos: ${databaseName}`);
 }; 
