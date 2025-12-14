@@ -639,9 +639,9 @@ export class BudgetController {
       }
 
       const userId = req.user!.userId;
-      const { description, amount } = req.body;
+      const { description, amount, type } = req.body;
 
-      const budget = await budgetService.addExpenseItem(id, userId, { description, amount });
+      const budget = await budgetService.addExpenseItem(id, userId, { description, amount, type });
 
       res.status(201).json({
         success: true,

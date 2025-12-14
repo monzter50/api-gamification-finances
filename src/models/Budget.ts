@@ -8,6 +8,13 @@ export type IncomeType = 'Debit Card' | 'Credit Card' | 'Cash' | 'Vales' | 'Tran
 export const INCOME_TYPES: IncomeType[] = ['Debit Card', 'Credit Card', 'Cash', 'Vales', 'Transfer', 'Check', 'Other'];
 
 /**
+ * Expense Type Enum
+ */
+export type ExpenseType = 'Fixed' | 'Variable';
+
+export const EXPENSE_TYPES: ExpenseType[] = ['Fixed', 'Variable'];
+
+/**
  * Income Item Interface
  */
 export interface IIncomeItem {
@@ -24,6 +31,7 @@ export interface IExpenseItem {
   _id?: mongoose.Types.ObjectId;
   description: string;
   amount: number;
+  type: ExpenseType;
 }
 
 /**
@@ -79,6 +87,15 @@ const expenseItemSchema = new Schema<IExpenseItem>({
     type: Number,
     required: [true, 'Expense amount is required'],
     min: [0, 'Amount must be positive']
+  },
+  type: {
+    type: String,
+    required: [true, 'Expense type is required'],
+    enum: {
+      values: EXPENSE_TYPES,
+      message: 'Invalid expense type. Must be one of: Fixed, Variable'
+    },
+    default: 'Variable'
   }
 }, { _id: true });
 
@@ -210,13 +227,13 @@ budgetSchema.methods.removeIncomeItem = function(itemId: string) {
 };
 
 // Instance method to add expense item
-budgetSchema.methods.addExpenseItem = function(description: string, amount: number) {
-  this.expenseItems.push({ description, amount });
+budgetSchema.methods.addExpenseItem = function(description: string, amount: number, type: ExpenseType) {
+  this.expenseItems.push({ description, amount, type });
   return this.save();
 };
 
 // Instance method to update expense item
-budgetSchema.methods.updateExpenseItem = function(itemId: string, description: string, amount: number) {
+budgetSchema.methods.updateExpenseItem = function(itemId: string, description: string, amount: number, type: ExpenseType) {
   const item = this.expenseItems.id(itemId);
   if (!item) {
     throw new Error('Expense item not found');
@@ -224,6 +241,7 @@ budgetSchema.methods.updateExpenseItem = function(itemId: string, description: s
 
   item.description = description;
   item.amount = amount;
+  item.type = type;
   return this.save();
 };
 
@@ -252,6 +270,22 @@ budgetSchema.methods.getIncomeTotalsByType = function(): Record<IncomeType, numb
   });
 
   return totals as Record<IncomeType, number>;
+};
+
+// Instance method to get expense items by type
+budgetSchema.methods.getExpenseByType = function(type: ExpenseType) {
+  return this.expenseItems.filter((item: IExpenseItem) => item.type === type);
+};
+
+// Instance method to calculate totals by expense type
+budgetSchema.methods.getExpenseTotalsByType = function(): Record<ExpenseType, number> {
+  const totals: Record<string, number> = {};
+
+  this.expenseItems.forEach((item: IExpenseItem) => {
+    totals[item.type] = (totals[item.type] || 0) + item.amount;
+  });
+
+  return totals as Record<ExpenseType, number>;
 };
 
 export const Budget = mongoose.model<IBudget>('Budget', budgetSchema);

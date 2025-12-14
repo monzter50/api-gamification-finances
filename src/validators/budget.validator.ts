@@ -1,5 +1,5 @@
 import { body, param, query } from 'express-validator';
-import { INCOME_TYPES } from '../models/Budget';
+import { INCOME_TYPES, EXPENSE_TYPES } from '../models/Budget';
 
 /**
  * Validation schemas for budget endpoints
@@ -44,7 +44,11 @@ export const createBudgetValidation = [
   body('expenseItems.*.amount')
     .optional()
     .isFloat({ min: 0 })
-    .withMessage('Expense item amount must be a positive number')
+    .withMessage('Expense item amount must be a positive number'),
+  body('expenseItems.*.type')
+    .optional()
+    .isIn(EXPENSE_TYPES)
+    .withMessage('Invalid expense type. Must be one of: Fixed, Variable')
 ];
 
 /**
@@ -91,7 +95,11 @@ export const updateBudgetValidation = [
   body('expenseItems.*.amount')
     .optional()
     .isFloat({ min: 0 })
-    .withMessage('Expense item amount must be a positive number')
+    .withMessage('Expense item amount must be a positive number'),
+  body('expenseItems.*.type')
+    .optional()
+    .isIn(EXPENSE_TYPES)
+    .withMessage('Invalid expense type. Must be one of: Fixed, Variable')
 ];
 
 /**
@@ -132,7 +140,10 @@ export const updateExpenseItemsValidation = [
     .withMessage('Expense item description is required'),
   body('expenseItems.*.amount')
     .isFloat({ min: 0 })
-    .withMessage('Expense item amount must be a positive number')
+    .withMessage('Expense item amount must be a positive number'),
+  body('expenseItems.*.type')
+    .isIn(EXPENSE_TYPES)
+    .withMessage('Invalid expense type. Must be one of: Fixed, Variable')
 ];
 
 /**
@@ -202,5 +213,8 @@ export const addExpenseItemValidation = [
     .withMessage('Description is required'),
   body('amount')
     .isFloat({ min: 0 })
-    .withMessage('Amount must be a positive number')
+    .withMessage('Amount must be a positive number'),
+  body('type')
+    .isIn(EXPENSE_TYPES)
+    .withMessage('Invalid expense type. Must be one of: Fixed, Variable')
 ];

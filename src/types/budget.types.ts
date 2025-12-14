@@ -1,6 +1,6 @@
 import { Request } from 'express';
 import { JWTPayload } from './index';
-import { IncomeType } from '../models/Budget';
+import { IncomeType, ExpenseType } from '../models/Budget';
 
 /**
  * Budget Request Type
@@ -26,6 +26,7 @@ export interface CreateBudgetBody {
   expenseItems?: Array<{
     description: string;
     amount: number;
+    type: ExpenseType;
   }>;
 }
 
@@ -43,6 +44,7 @@ export interface UpdateBudgetBody {
   expenseItems?: Array<{
     description: string;
     amount: number;
+    type: ExpenseType;
   }>;
 }
 
@@ -61,6 +63,7 @@ export interface AddIncomeItemBody {
 export interface AddExpenseItemBody {
   description: string;
   amount: number;
+  type: ExpenseType;
 }
 
 /**
@@ -81,5 +84,6 @@ export interface UpdateExpenseItemsBody {
   expenseItems: Array<{
     description: string;
     amount: number;
+    type: ExpenseType;
   }>;
 }
