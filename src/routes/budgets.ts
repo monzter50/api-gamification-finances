@@ -8,10 +8,13 @@ import {
   updateIncomeItemsValidation,
   updateExpenseItemsValidation,
   budgetIdValidation,
-  itemIdValidation,
   budgetQueryValidation,
   addIncomeItemValidation,
-  addExpenseItemValidation
+  addExpenseItemValidation,
+  updateIncomeItemValidation,
+  updateExpenseItemValidation,
+  deleteIncomeItemValidation,
+  deleteExpenseItemValidation
 } from '../validators/budget.validator';
 
 const router = express.Router();
@@ -78,6 +81,15 @@ router.delete(
  * Base URL: /api/budgets/:id/income
  */
 
+// Get income items (with pagination)
+router.get(
+  '/:id/income',
+  authenticateJWT,
+  budgetIdValidation,
+  validate,
+  budgetController.getIncomeItems.bind(budgetController)
+);
+
 // Add a single income item
 router.post(
   '/:id/income',
@@ -96,11 +108,20 @@ router.patch(
   budgetController.updateIncomeItems.bind(budgetController)
 );
 
+// Update specific income item
+router.put(
+  '/:id/income/:incomeId',
+  authenticateJWT,
+  updateIncomeItemValidation,
+  validate,
+  budgetController.updateIncomeItem.bind(budgetController)
+);
+
 // Delete specific income item
 router.delete(
-  '/:id/income/:itemId',
+  '/:id/income/:incomeId',
   authenticateJWT,
-  itemIdValidation,
+  deleteIncomeItemValidation,
   validate,
   budgetController.deleteIncomeItem.bind(budgetController)
 );
@@ -109,6 +130,15 @@ router.delete(
  * Nested Expense Routes
  * Base URL: /api/budgets/:id/expense
  */
+
+// Get expense items (with pagination)
+router.get(
+  '/:id/expense',
+  authenticateJWT,
+  budgetIdValidation,
+  validate,
+  budgetController.getExpenseItems.bind(budgetController)
+);
 
 // Add a single expense item
 router.post(
@@ -128,11 +158,20 @@ router.patch(
   budgetController.updateExpenseItems.bind(budgetController)
 );
 
+// Update specific expense item
+router.put(
+  '/:id/expense/:expenseId',
+  authenticateJWT,
+  updateExpenseItemValidation,
+  validate,
+  budgetController.updateExpenseItem.bind(budgetController)
+);
+
 // Delete specific expense item
 router.delete(
-  '/:id/expense/:itemId',
+  '/:id/expense/:expenseId',
   authenticateJWT,
-  itemIdValidation,
+  deleteExpenseItemValidation,
   validate,
   budgetController.deleteExpenseItem.bind(budgetController)
 );

@@ -248,6 +248,158 @@ export class BudgetRepository extends BaseRepository<IBudget> {
       averageSavingsRate
     };
   }
+
+  /**
+   * Get paginated income items from a budget
+   */
+  async getPaginatedIncomeItems(
+    budgetId: string,
+    userId: Types.ObjectId | string,
+    page: number = 1,
+    limit: number = 10
+  ): Promise<{
+    items: IIncomeItem[];
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  }> {
+    const budget = await this.model.findOne({ _id: budgetId, userId }).exec();
+
+    if (!budget) {
+      throw new Error('Budget not found');
+    }
+
+    const total = budget.incomeItems.length;
+    const pages = Math.ceil(total / limit);
+    const skip = (page - 1) * limit;
+
+    const items = budget.incomeItems.slice(skip, skip + limit);
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      pages
+    };
+  }
+
+  /**
+   * Get paginated expense items from a budget
+   */
+  async getPaginatedExpenseItems(
+    budgetId: string,
+    userId: Types.ObjectId | string,
+    page: number = 1,
+    limit: number = 10
+  ): Promise<{
+    items: IExpenseItem[];
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  }> {
+    const budget = await this.model.findOne({ _id: budgetId, userId }).exec();
+
+    if (!budget) {
+      throw new Error('Budget not found');
+    }
+
+    const total = budget.expenseItems.length;
+    const pages = Math.ceil(total / limit);
+    const skip = (page - 1) * limit;
+
+    const items = budget.expenseItems.slice(skip, skip + limit);
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      pages
+    };
+  }
+
+  /**
+   * Update a single income item
+   */
+  async updateIncomeItem(
+    budgetId: string,
+    userId: Types.ObjectId | string,
+    incomeId: string,
+    incomeItem: IIncomeItem
+  ): Promise<IBudget | null> {
+    // First verify the item exists
+    const budget = await this.model.findOne({
+      _id: budgetId,
+      userId,
+      'incomeItems._id': incomeId
+    }).exec();
+
+    if (!budget) {
+      throw new Error('Budget not found or income item not found');
+    }
+
+    // Update the specific income item using positional operator $
+    return this.model
+      .findOneAndUpdate(
+        {
+          _id: budgetId,
+          userId,
+          'incomeItems._id': incomeId
+        },
+        {
+          $set: {
+            'incomeItems.$.description': incomeItem.description,
+            'incomeItems.$.amount': incomeItem.amount,
+            'incomeItems.$.type': incomeItem.type
+          }
+        },
+        { new: true, runValidators: true }
+      )
+      .exec();
+  }
+
+  /**
+   * Update a single expense item
+   */
+  async updateExpenseItem(
+    budgetId: string,
+    userId: Types.ObjectId | string,
+    expenseId: string,
+    expenseItem: IExpenseItem
+  ): Promise<IBudget | null> {
+    // First verify the item exists
+    const budget = await this.model.findOne({
+      _id: budgetId,
+      userId,
+      'expenseItems._id': expenseId
+    }).exec();
+
+    if (!budget) {
+      throw new Error('Budget not found or expense item not found');
+    }
+
+    // Update the specific expense item using positional operator $
+    return this.model
+      .findOneAndUpdate(
+        {
+          _id: budgetId,
+          userId,
+          'expenseItems._id': expenseId
+        },
+        {
+          $set: {
+            'expenseItems.$.description': expenseItem.description,
+            'expenseItems.$.amount': expenseItem.amount,
+            'expenseItems.$.type': expenseItem.type
+          }
+        },
+        { new: true, runValidators: true }
+      )
+      .exec();
+  }
 }
 
 // Export singleton instance

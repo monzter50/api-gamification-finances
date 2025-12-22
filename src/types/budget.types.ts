@@ -87,3 +87,21 @@ export interface UpdateExpenseItemsBody {
     type: ExpenseType;
   }>;
 }
+
+/**
+ * Update Single Income Item Request Body
+ */
+export interface UpdateIncomeItemBody {
+  description: string;
+  amount: number;
+  type: IncomeType;
+}
+
+/**
+ * Update Single Expense Item Request Body
+ */
+export interface UpdateExpenseItemBody {
+  description: string;
+  amount: number;
+  type: ExpenseType;
+}
