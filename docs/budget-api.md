@@ -1,7 +1,7 @@
 # Budget Management API Documentation
 
 ## Overview
-Complete RESTful API for budget management with nested routes for income and expense items. Income items now include a `type` field to categorize different payment methods.
+Complete RESTful API for budget management with nested routes for income and expense items. Both income and expense items now include a `type` field to categorize different payment methods and expense categories.
 
 **Base URL:** `/api/budgets`
 
@@ -58,7 +58,10 @@ interface ExpenseItem {
   _id: string;
   description: string;
   amount: number;         // Must be >= 0
+  type: ExpenseType;      // Required: Fixed or Variable
 }
+
+type ExpenseType = 'Fixed' | 'Variable';
 ```
 
 ---
@@ -81,6 +84,19 @@ The `type` field for income items accepts the following values:
 
 ---
 
+## Expense Type Enum
+
+The `type` field for expense items accepts the following values:
+
+| Type | Description | Use Case |
+|------|-------------|----------|
+| `Fixed` | Fixed expenses | Rent, mortgage, subscriptions, insurance |
+| `Variable` | Variable expenses | Groceries, entertainment, utilities |
+
+**Default Value:** `'Variable'`
+
+---
+
 ## API Endpoints Summary
 
 | Method | Endpoint | Description |
@@ -91,12 +107,16 @@ The `type` field for income items accepts the following values:
 | POST | `/api/budgets` | Create new budget |
 | PUT | `/api/budgets/:id` | Update budget |
 | DELETE | `/api/budgets/:id` | Delete budget |
-| **POST** | `/api/budgets/:id/income` | **Add single income item** |
+| GET | `/api/budgets/:id/income` | Get income items (paginated) |
+| POST | `/api/budgets/:id/income` | Add single income item |
 | PATCH | `/api/budgets/:id/income` | Update all income items |
-| DELETE | `/api/budgets/:id/income/:itemId` | Delete income item |
-| **POST** | `/api/budgets/:id/expense` | **Add single expense item** |
+| **PUT** | `/api/budgets/:id/income/:incomeId` | **Update single income item ⭐** |
+| DELETE | `/api/budgets/:id/income/:incomeId` | Delete income item |
+| GET | `/api/budgets/:id/expense` | Get expense items (paginated) |
+| POST | `/api/budgets/:id/expense` | Add single expense item |
 | PATCH | `/api/budgets/:id/expense` | Update all expense items |
-| DELETE | `/api/budgets/:id/expense/:itemId` | Delete expense item |
+| **PUT** | `/api/budgets/:id/expense/:expenseId` | **Update single expense item ⭐** |
+| DELETE | `/api/budgets/:id/expense/:expenseId` | Delete expense item |
 
 ---
 
@@ -143,18 +163,114 @@ The `type` field for income items accepts the following values:
 - `amount`: Required, number >= 0
 - `type`: **Required**, must be one of the valid income types
 
-### 3. Add Single Expense Item ⭐ NEW
+### 3. Add Single Expense Item
 **POST** `/api/budgets/:id/expense`
 
 **Request Body:**
 ```json
 {
   "description": "Utilities",
-  "amount": 1500
+  "amount": 1500,
+  "type": "Variable"
 }
 ```
 
-### 4. Update All Income Items
+**Validation:**
+- `description`: Required, non-empty string
+- `amount`: Required, number >= 0
+- `type`: **Required**, must be either "Fixed" or "Variable"
+
+### 4. Get Income Items (Paginated) ⭐ NEW
+**GET** `/api/budgets/:id/income?page=1&limit=10`
+
+**Query Parameters:**
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Items per page (default: 10)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "item_id",
+      "description": "Salary",
+      "amount": 35000,
+      "type": "Transfer"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 25,
+    "pages": 3
+  }
+}
+```
+
+### 5. Get Expense Items (Paginated) ⭐ NEW
+**GET** `/api/budgets/:id/expense?page=1&limit=10`
+
+**Query Parameters:**
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Items per page (default: 10)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "item_id",
+      "description": "Rent",
+      "amount": 12000,
+      "type": "Fixed"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 15,
+    "pages": 2
+  }
+}
+```
+
+### 6. Update Single Income Item ⭐ NEW
+**PUT** `/api/budgets/:id/income/:incomeId`
+
+**Request Body:**
+```json
+{
+  "description": "Updated Salary",
+  "amount": 38000,
+  "type": "Transfer"
+}
+```
+
+**Validation:**
+- `description`: Required, non-empty string
+- `amount`: Required, number >= 0
+- `type`: **Required**, must be one of the valid income types
+
+### 7. Update Single Expense Item ⭐ NEW
+**PUT** `/api/budgets/:id/expense/:expenseId`
+
+**Request Body:**
+```json
+{
+  "description": "Updated Rent",
+  "amount": 13000,
+  "type": "Fixed"
+}
+```
+
+**Validation:**
+- `description`: Required, non-empty string
+- `amount`: Required, number >= 0
+- `type`: **Required**, must be either "Fixed" or "Variable"
+
+### 8. Update All Income Items
 **PATCH** `/api/budgets/:id/income`
 
 **Request Body:**
@@ -181,19 +297,38 @@ The `type` field for income items accepts the following values:
 
 ## Budget Instance Methods
 
-### `getIncomeByType(type: IncomeType)`
+### Income Methods
+
+#### `getIncomeByType(type: IncomeType)`
 Filter income items by payment type.
 
 ```typescript
 const cashIncome = budget.getIncomeByType('Cash');
 ```
 
-### `getIncomeTotalsByType()`
+#### `getIncomeTotalsByType()`
 Get total income amounts grouped by type.
 
 ```typescript
 const totals = budget.getIncomeTotalsByType();
 // Returns: { 'Transfer': 35000, 'Cash': 5000, 'Debit Card': 8000 }
+```
+
+### Expense Methods
+
+#### `getExpenseByType(type: ExpenseType)`
+Filter expense items by category type.
+
+```typescript
+const fixedExpenses = budget.getExpenseByType('Fixed');
+```
+
+#### `getExpenseTotalsByType()`
+Get total expense amounts grouped by type.
+
+```typescript
+const totals = budget.getExpenseTotalsByType();
+// Returns: { 'Fixed': 15000, 'Variable': 8000 }
 ```
 
 ---
@@ -216,7 +351,7 @@ curl -X POST http://localhost:3000/api/budgets \
       }
     ],
     "expenseItems": [
-      {"description": "Rent", "amount": 12000}
+      {"description": "Rent", "amount": 12000, "type": "Fixed"}
     ]
   }'
 ```
@@ -240,8 +375,45 @@ curl -X POST http://localhost:3000/api/budgets/BUDGET_ID/expense \
   -H "Content-Type: application/json" \
   -d '{
     "description": "Groceries",
-    "amount": 3000
+    "amount": 3000,
+    "type": "Variable"
   }'
+```
+
+### Update Single Income Item
+```bash
+curl -X PUT http://localhost:3000/api/budgets/BUDGET_ID/income/INCOME_ID \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "Updated Salary",
+    "amount": 38000,
+    "type": "Transfer"
+  }'
+```
+
+### Update Single Expense Item
+```bash
+curl -X PUT http://localhost:3000/api/budgets/BUDGET_ID/expense/EXPENSE_ID \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "Updated Rent",
+    "amount": 13000,
+    "type": "Fixed"
+  }'
+```
+
+### Get Paginated Income Items
+```bash
+curl -X GET "http://localhost:3000/api/budgets/BUDGET_ID/income?page=1&limit=10" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Get Paginated Expense Items
+```bash
+curl -X GET "http://localhost:3000/api/budgets/BUDGET_ID/expense?page=1&limit=10" \
+  -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 ---
@@ -280,7 +452,9 @@ All budgets automatically include:
 ## Features
 
 ✅ **Income Type Classification** - Track payment methods
-✅ **POST Endpoints for Single Items** - Add items one at a time
+✅ **Expense Type Classification** - Track Fixed vs Variable expenses
+✅ **Full CRUD for Individual Items** - Add, Update, Delete single items
+✅ **Pagination Support** - Get income/expense items with pagination
 ✅ **Auto-calculations** - Virtual properties computed automatically
 ✅ **Ownership Validation** - Secure user data
 ✅ **Comprehensive Validation** - Type checking and enum validation
@@ -305,8 +479,10 @@ All budgets automatically include:
 ## Notes
 
 - Month is 0-indexed (0 = January, 11 = December)
-- Income `type` field is **required** and validated
-- Default type is `'Other'` in the schema
+- Both Income and Expense `type` fields are **required** and validated
+- Default income type is `'Other'`, default expense type is `'Variable'`
 - All amounts must be >= 0
 - Year range: 2000-2100
 - Timestamps managed automatically
+- Pagination default: page=1, limit=10
+- PUT endpoints allow updating individual items without affecting the entire array

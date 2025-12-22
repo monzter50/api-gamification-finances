@@ -316,6 +316,96 @@ export class BudgetService {
   }
 
   /**
+   * Get paginated income items
+   */
+  async getPaginatedIncomeItems(
+    budgetId: string,
+    userId: string,
+    page: number = 1,
+    limit: number = 10
+  ) {
+    // Verify budget exists and belongs to user
+    await this.getBudgetById(budgetId, userId);
+
+    return budgetRepository.getPaginatedIncomeItems(budgetId, userId, page, limit);
+  }
+
+  /**
+   * Get paginated expense items
+   */
+  async getPaginatedExpenseItems(
+    budgetId: string,
+    userId: string,
+    page: number = 1,
+    limit: number = 10
+  ) {
+    // Verify budget exists and belongs to user
+    await this.getBudgetById(budgetId, userId);
+
+    return budgetRepository.getPaginatedExpenseItems(budgetId, userId, page, limit);
+  }
+
+  /**
+   * Update a single income item
+   */
+  async updateIncomeItem(
+    budgetId: string,
+    userId: string,
+    incomeId: string,
+    incomeItem: IIncomeItem
+  ): Promise<IBudget> {
+    // Verify budget exists and belongs to user
+    await this.getBudgetById(budgetId, userId);
+
+    // Validate item
+    this.validateItem(incomeItem, 'income');
+
+    const updatedBudget = await budgetRepository.updateIncomeItem(
+      budgetId,
+      userId,
+      incomeId,
+      incomeItem
+    );
+
+    if (!updatedBudget) {
+      throw new Error('Failed to update income item');
+    }
+
+    logger.info(`Income item ${incomeId} updated in budget: ${budgetId}`);
+    return updatedBudget;
+  }
+
+  /**
+   * Update a single expense item
+   */
+  async updateExpenseItem(
+    budgetId: string,
+    userId: string,
+    expenseId: string,
+    expenseItem: IExpenseItem
+  ): Promise<IBudget> {
+    // Verify budget exists and belongs to user
+    await this.getBudgetById(budgetId, userId);
+
+    // Validate item
+    this.validateItem(expenseItem, 'expense');
+
+    const updatedBudget = await budgetRepository.updateExpenseItem(
+      budgetId,
+      userId,
+      expenseId,
+      expenseItem
+    );
+
+    if (!updatedBudget) {
+      throw new Error('Failed to update expense item');
+    }
+
+    logger.info(`Expense item ${expenseId} updated in budget: ${budgetId}`);
+    return updatedBudget;
+  }
+
+  /**
    * Validate single item
    */
   private validateItem(

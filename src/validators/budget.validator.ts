@@ -156,7 +156,7 @@ export const budgetIdValidation = [
 ];
 
 /**
- * Validation for item ID parameter
+ * Validation for item ID parameter (deprecated - use specific validators)
  */
 export const itemIdValidation = [
   param('id')
@@ -165,6 +165,30 @@ export const itemIdValidation = [
   param('itemId')
     .isMongoId()
     .withMessage('Invalid item ID')
+];
+
+/**
+ * Validation for income ID parameter (DELETE)
+ */
+export const deleteIncomeItemValidation = [
+  param('id')
+    .isMongoId()
+    .withMessage('Invalid budget ID'),
+  param('incomeId')
+    .isMongoId()
+    .withMessage('Invalid income ID')
+];
+
+/**
+ * Validation for expense ID parameter (DELETE)
+ */
+export const deleteExpenseItemValidation = [
+  param('id')
+    .isMongoId()
+    .withMessage('Invalid budget ID'),
+  param('expenseId')
+    .isMongoId()
+    .withMessage('Invalid expense ID')
 ];
 
 /**
@@ -207,6 +231,50 @@ export const addExpenseItemValidation = [
   param('id')
     .isMongoId()
     .withMessage('Invalid budget ID'),
+  body('description')
+    .trim()
+    .notEmpty()
+    .withMessage('Description is required'),
+  body('amount')
+    .isFloat({ min: 0 })
+    .withMessage('Amount must be a positive number'),
+  body('type')
+    .isIn(EXPENSE_TYPES)
+    .withMessage('Invalid expense type. Must be one of: Fixed, Variable')
+];
+
+/**
+ * Validation for updating a single income item
+ */
+export const updateIncomeItemValidation = [
+  param('id')
+    .isMongoId()
+    .withMessage('Invalid budget ID'),
+  param('incomeId')
+    .isMongoId()
+    .withMessage('Invalid income ID'),
+  body('description')
+    .trim()
+    .notEmpty()
+    .withMessage('Description is required'),
+  body('amount')
+    .isFloat({ min: 0 })
+    .withMessage('Amount must be a positive number'),
+  body('type')
+    .isIn(INCOME_TYPES)
+    .withMessage('Invalid income type. Must be one of: Debit Card, Credit Card, Cash, Vales, Transfer, Check, Other')
+];
+
+/**
+ * Validation for updating a single expense item
+ */
+export const updateExpenseItemValidation = [
+  param('id')
+    .isMongoId()
+    .withMessage('Invalid budget ID'),
+  param('expenseId')
+    .isMongoId()
+    .withMessage('Invalid expense ID'),
   body('description')
     .trim()
     .notEmpty()
