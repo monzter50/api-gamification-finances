@@ -6,8 +6,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
-    "dev": "node --env-file=.env --import tsx/esm src/server.ts",
-    "dev:watch": "node --env-file=.env --import tsx/esm --watch src/server.ts",
+    "dev": "tsx --env-file=.env src/server.ts",
+    "dev:watch": "tsx --env-file=.env --watch src/server.ts",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
@@ -15,7 +15,7 @@
     "lint:fix": "eslint src/ --ext .ts --fix",
     "type-check": "tsc --noEmit",
     "seed": "tsx src/scripts/seedAchievements.ts",
-    "test:db": "node --env-file=.env --import tsx/esm src/scripts/testConnection.ts"
+    "test:db": "tsx --env-file=.env src/scripts/testConnection.ts"
   },
   "keywords": [
     "gamification",

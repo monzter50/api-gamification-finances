@@ -1,0 +1,82 @@
+version: '3.8'
+
+# Docker Compose para desarrollo local con hot-reload
+# Uso: docker-compose -f docker-compose.dev.yml up
+
+services:
+  # API con hot-reload para desarrollo
+  api:
+    image: node:20-alpine
+    container_name: gamification-api-dev
+    working_dir: /app
+    command: sh -c "yarn install && yarn dev:watch"
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - MONGODB_URI=mongodb://mongo:27017/gamification-finances
+      - MONGODB_URI_DEV=mongodb://mongo:27017/gamification-finances-dev
+      - MONGODB_URI_TEST=mongodb://mongo:27017/gamification-finances-test
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key-do-not-use-in-production}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      - API_VERSION=${API_VERSION:-v1}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS:-900000}
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS:-100}
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - gamification-network
+
+  # Base de datos MongoDB
+  mongo:
+    image: mongo:7
+    container_name: gamification-mongo-dev
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=gamification-finances-dev
+    volumes:
+      - mongo-data-dev:/data/db
+    networks:
+      - gamification-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # Mongo Express - Interfaz web para MongoDB
+  mongo-express:
+    image: mongo-express:latest
+    container_name: gamification-mongo-express-dev
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongo
+      - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=admin123
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - gamification-network
+
+networks:
+  gamification-network:
+    driver: bridge
+
+volumes:
+  mongo-data-dev:
+
