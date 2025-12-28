@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Docker Compose para desarrollo local con hot-reload
 # Uso: docker-compose -f docker-compose.dev.yml up
 
