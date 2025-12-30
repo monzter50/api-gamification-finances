@@ -14,9 +14,9 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3000
-      - MONGODB_URI=mongodb://mongo:27017/gamification-finances
-      - MONGODB_URI_DEV=mongodb://mongo:27017/gamification-finances-dev
-      - MONGODB_URI_TEST=mongodb://mongo:27017/gamification-finances-test
+      - MONGODB_URI=${MONGODB_URI}
+      - MONGODB_URI_DEV=${MONGODB_URI_DEV}
+      - MONGODB_URI_TEST=${MONGODB_URI_TEST}
       - JWT_SECRET=${JWT_SECRET:-dev-secret-key-do-not-use-in-production}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
       - API_VERSION=${API_VERSION:-v1}
