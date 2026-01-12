@@ -1,0 +1,691 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Gamification Finances API",
+    "version": "1.0.0",
+    "description": "API para gestión de finanzas personales con gamificación",
+    "contact": {
+      "name": "API Support",
+      "email": "support@example.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Development server"
+    },
+    {
+      "url": "https://api.production.com",
+      "description": "Production server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Enter your JWT token in the format: Bearer <token>"
+      }
+    },
+    "schemas": {
+      "ApiResponse": {
+        "type": "object",
+        "properties": {
+          "response": {
+            "description": "The actual data returned"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "error"
+            ],
+            "description": "Status of the response"
+          },
+          "statusCode": {
+            "type": "number",
+            "description": "HTTP status code"
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Transaction": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "category",
+          "amount",
+          "description",
+          "date",
+          "userId"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "income",
+              "expense",
+              "savings"
+            ],
+            "description": "Type of transaction",
+            "example": "expense"
+          },
+          "category": {
+            "type": "string",
+            "description": "Category of the transaction",
+            "example": "Food"
+          },
+          "amount": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0.01,
+            "description": "Amount in MXN",
+            "example": 150.5
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Description of the transaction",
+            "example": "Grocery shopping at supermarket"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Date of the transaction (ISO 8601)",
+            "example": "2025-12-29"
+          },
+          "userId": {
+            "type": "string",
+            "description": "ID of the user who owns this transaction",
+            "example": "507f1f77bcf86cd799439011"
+          }
+        }
+      },
+      "CreateTransactionRequest": {
+        "type": "object",
+        "required": [
+          "type",
+          "category",
+          "amount",
+          "description",
+          "date"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "income",
+              "expense",
+              "savings"
+            ],
+            "description": "Type of transaction",
+            "example": "expense"
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Category of the transaction",
+            "example": "Food"
+          },
+          "amount": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0.01,
+            "description": "Amount in MXN",
+            "example": 150.5
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Description of the transaction",
+            "example": "Grocery shopping at supermarket"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Date of the transaction (ISO 8601)",
+            "example": "2025-12-29"
+          }
+        }
+      },
+      "TransactionSummary": {
+        "type": "object",
+        "properties": {
+          "income": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "number",
+                "example": 50000
+              },
+              "count": {
+                "type": "number",
+                "example": 5
+              },
+              "experience": {
+                "type": "number",
+                "example": 100
+              },
+              "coins": {
+                "type": "number",
+                "example": 50
+              }
+            }
+          },
+          "expense": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "number",
+                "example": 30000
+              },
+              "count": {
+                "type": "number",
+                "example": 15
+              },
+              "experience": {
+                "type": "number",
+                "example": 75
+              },
+              "coins": {
+                "type": "number",
+                "example": 30
+              }
+            }
+          },
+          "savings": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "number",
+                "example": 20000
+              },
+              "count": {
+                "type": "number",
+                "example": 3
+              },
+              "experience": {
+                "type": "number",
+                "example": 50
+              },
+              "coins": {
+                "type": "number",
+                "example": 20
+              }
+            }
+          },
+          "netWorth": {
+            "type": "number",
+            "description": "Income - Expense",
+            "example": 20000
+          },
+          "savingsProgress": {
+            "type": "number",
+            "description": "Percentage of savings goal achieved",
+            "example": 65.5
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "response": {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string",
+                "example": "An error occurred"
+              },
+              "error": {
+                "type": "string",
+                "example": "Detailed error message"
+              }
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "error"
+            ]
+          },
+          "statusCode": {
+            "type": "number",
+            "example": 400
+          }
+        }
+      }
+    },
+    "responses": {
+      "UnauthorizedError": {
+        "description": "Access token is missing or invalid",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "response": {
+                "message": "Unauthorized",
+                "error": "No authentication token found"
+              },
+              "status": "error",
+              "statusCode": 401
+            }
+          }
+        }
+      },
+      "NotFoundError": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "response": {
+                "message": "Not Found",
+                "error": "Transaction not found"
+              },
+              "status": "error",
+              "statusCode": 404
+            }
+          }
+        }
+      },
+      "BadRequestError": {
+        "description": "Invalid request data",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "response": {
+                "message": "Bad Request",
+                "error": "Amount must be greater than 0"
+              },
+              "status": "error",
+              "statusCode": 400
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Transactions",
+      "description": "Transaction management endpoints"
+    },
+    {
+      "name": "Authentication",
+      "description": "User authentication endpoints"
+    }
+  ],
+  "paths": {
+    "/api/transactions": {
+      "get": {
+        "summary": "Obtener todas las transacciones del usuario",
+        "description": "Retorna todas las transacciones del usuario autenticado",
+        "tags": [
+          "Transactions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de transacciones obtenida exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Transaction"
+                      }
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      },
+      "post": {
+        "summary": "Crear una nueva transacción",
+        "description": "Crea una nueva transacción para el usuario autenticado",
+        "tags": [
+          "Transactions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTransactionRequest"
+              },
+              "example": {
+                "type": "expense",
+                "category": "Food",
+                "amount": 150.5,
+                "description": "Grocery shopping at supermarket",
+                "date": "2025-12-29"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Transacción creada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/Transaction"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "example": 201
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
+        }
+      }
+    },
+    "/api/transactions/{id}": {
+      "get": {
+        "summary": "Obtener transacción por ID",
+        "description": "Retorna una transacción específica del usuario autenticado",
+        "tags": [
+          "Transactions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID de la transacción",
+            "example": "507f1f77bcf86cd799439011"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transacción obtenida exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/Transaction"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      },
+      "put": {
+        "summary": "Actualizar transacción",
+        "description": "Actualiza una transacción existente del usuario autenticado",
+        "tags": [
+          "Transactions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID de la transacción"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "income",
+                      "expense",
+                      "savings"
+                    ]
+                  },
+                  "category": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "type": "number"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "date": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                }
+              },
+              "example": {
+                "amount": 200,
+                "description": "Updated description"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transacción actualizada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/Transaction"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Eliminar transacción",
+        "description": "Elimina una transacción del usuario autenticado",
+        "tags": [
+          "Transactions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID de la transacción"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Transacción eliminada exitosamente"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/api/transactions/monthly/{year}/{month}": {
+      "get": {
+        "summary": "Obtener resumen mensual",
+        "description": "Retorna un resumen de transacciones para un mes específico",
+        "tags": [
+          "Transactions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "year",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            },
+            "description": "Año",
+            "example": 2025
+          },
+          {
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 11
+            },
+            "description": "Mes (0-11, donde 0 es Enero)",
+            "example": 11
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resumen mensual obtenido exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/TransactionSummary"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
+        }
+      }
+    }
+  }
+}

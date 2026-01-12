@@ -15,7 +15,10 @@
     "lint:fix": "eslint src/ --ext .ts --fix",
     "type-check": "tsc --noEmit",
     "seed": "tsx src/scripts/seedAchievements.ts",
-    "test:db": "tsx --env-file=.env src/scripts/testConnection.ts"
+    "test:db": "tsx --env-file=.env src/scripts/testConnection.ts",
+    "docs": "echo 'OpenAPI docs: http://localhost:3000/api-docs'",
+    "export:schema": "tsx src/scripts/exportOpenApi.ts",
+    "generate:client": "yarn run tsx src/scripts/exportOpenApi.ts && yarn run openapi-typescript openapi-schema.json -o src/types/openapi.d.ts"
   },
   "keywords": [
     "gamification",
@@ -39,7 +42,9 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.0.3",
     "morgan": "^1.10.0",
-    "multer": "^1.4.5-lts.1"
+    "multer": "^1.4.5-lts.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",
@@ -50,12 +55,15 @@
     "@types/morgan": "^1.9.10",
     "@types/multer": "^1.4.11",
     "@types/node": "^24.0.12",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "@typescript-eslint/eslint-plugin": "^6.13.0",
     "@typescript-eslint/parser": "^6.13.0",
     "@vitest/coverage-v8": "^1.0.0",
     "@vitest/ui": "^1.0.0",
     "eslint": "^8.55.0",
     "eslint-config-standard-with-typescript": "^43.0.0",
+    "openapi-typescript": "^7.10.1",
     "supertest": "^6.3.3",
     "tsx": "^4.6.0",
     "typescript": "^5.3.0",

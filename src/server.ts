@@ -1,4 +1,6 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger.config';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -64,6 +66,19 @@ app.get('/health', (_req: Request, res: Response) => {
   });
 });
 
+// Swagger UI
+app.use('/api-docs', swaggerUi.serve as any, swaggerUi.setup(swaggerSpec, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Gamification Finances API Docs',
+}) as any);
+
+// Endpoint para obtener el schema JSON (para generar tipos en frontend)
+app.get('/api/schema.json', (req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+
 // API routes
 app.use('/api', routes);
 
@@ -92,7 +107,7 @@ async function startServer() {
       logger.info(`🚀 Servidor corriendo en puerto ${PORT}`);
       logger.info(`📊 Ambiente: ${process.env.NODE_ENV}`);
       logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
-      logger.info(`📚 API docs: http://localhost:${PORT}/api/docs`);
+      logger.info(`📚 API docs: http://localhost:${PORT}/api-docs`);
     });
   } catch (error) {
     logger.error('Error al iniciar el servidor:', error);
