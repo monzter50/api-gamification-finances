@@ -1,14 +1,14 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, type Document } from 'mongoose';
 
 export interface IUser extends Document {
-  email: string;
-  password: string;
-  name: string;
-  role: 'user' | 'admin';
-  isActive: boolean;
-  lastLogin: Date;
-  createdAt: Date;
-  updatedAt: Date;
+  email: string
+  password: string
+  name: string
+  role: 'user' | 'admin'
+  isActive: boolean
+  lastLogin: Date
+  createdAt: Date
+  updatedAt: Date
 }
 
 const userSchema = new Schema<IUser>({
@@ -18,7 +18,7 @@ const userSchema = new Schema<IUser>({
     unique: true,
     trim: true,
     lowercase: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Invalid email'],
+    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Invalid email']
   },
   password: {
     type: String,
@@ -53,13 +53,13 @@ const userSchema = new Schema<IUser>({
 userSchema.index({ isActive: 1, lastLogin: -1 });
 
 // Static method to find user by email
-userSchema.statics.findByEmail = function(email: string) {
+userSchema.statics.findByEmail = function (email: string) {
   return this.findOne({ email: email.toLowerCase() });
 };
 
 // Static method to check if user exists
-userSchema.statics.userExists = function(email: string) {
+userSchema.statics.userExists = function (email: string) {
   return this.exists({ email: email.toLowerCase() });
 };
 
-export const User = mongoose.model<IUser>('User', userSchema); 
+export const User = mongoose.model<IUser>('User', userSchema);

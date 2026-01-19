@@ -75,10 +75,32 @@ services:
     profiles:
       - local-db
 
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: gamification-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=gamification_finances_dev
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - gamification-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 networks:
   gamification-network:
     driver: bridge
 
 volumes:
   mongo-data:
+  postgres-data:
   mongo-config:

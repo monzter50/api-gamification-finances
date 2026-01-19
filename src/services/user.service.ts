@@ -1,9 +1,9 @@
 import { userRepository } from '../repositories/user.repository';
-import { userWalletRepository } from '../repositories/userWallet.repository';
-import { userProgressRepository } from '../repositories/userProgress.repository';
-import { userProfileRepository } from '../repositories/userProfile.repository';
-import { UpdateProfileRequestDto } from '../dto/request/user.dto';
-import { UserProfileResponseDto, UserStatsResponseDto, LevelUpResponseDto } from '../dto/response/user.dto';
+// import { userWalletRepository } from '../repositories/userWallet.repository';
+// import { userProgressRepository } from '../repositories/userProgress.repository';
+// import { userProfileRepository } from '../repositories/userProfile.repository';
+import { type UpdateProfileRequestDto } from '../dto/request/user.dto';
+import { type UserProfileResponseDto, type UserStatsResponseDto, type LevelUpResponseDto } from '../dto/response/user.dto';
 import { logger } from '../config/logger';
 
 /**
@@ -14,41 +14,45 @@ export class UserService {
   /**
    * Get user profile by ID
    */
-  async getUserProfile(userId: string): Promise<UserProfileResponseDto> {
+  async getUserProfile (userId: string): Promise<UserProfileResponseDto> {
     const user = await userRepository.findByIdWithoutPassword(userId);
 
     if (!user) {
       throw new Error('User not found');
     }
 
+    /*
     // Fetch associated data from separate models
     const [wallet, progress, profile] = await Promise.all([
       userWalletRepository.findByUserId(userId),
       userProgressRepository.findByUserId(userId),
       userProfileRepository.findByUserId(userId)
     ]);
+    */
 
     // Calculate savings progress
+    /*
     const savingsProgress = profile && profile.savingsGoal > 0
       ? Math.min(Math.round((profile.totalSavings / profile.savingsGoal) * 100), 100)
       : 0;
+    */
 
     return {
-      id: (user._id as any).toString(),
+      id: (user as any).id,
       email: user.email,
       name: user.name,
       role: user.role,
-      level: progress?.level || 1,
-      experience: progress?.experience || 0,
-      experienceToNextLevel: progress?.experienceToNextLevel || 100,
-      levelProgress: progress?.levelProgress || 0,
-      coins: wallet?.coins || 0,
-      totalSavings: profile?.totalSavings || 0,
-      totalExpenses: profile?.totalExpenses || 0,
-      savingsGoal: profile?.savingsGoal || 0,
-      savingsProgress,
-      achievements: progress?.achievements?.map((id: any) => id.toString()) || [],
-      badges: progress?.badges?.map((id: any) => id.toString()) || [],
+      level: 1, // progress?.level || 1,
+      experience: 0, // progress?.experience || 0,
+      experienceToNextLevel: 100, // progress?.experienceToNextLevel || 100,
+      levelProgress: 0, // progress?.levelProgress || 0,
+      coins: 0, // wallet?.coins || 0,
+      totalSavings: 0, // profile?.totalSavings || 0,
+      totalExpenses: 0, // profile?.totalExpenses || 0,
+      savingsGoal: 0, // profile?.savingsGoal || 0,
+      savingsProgress: 0, // savingsProgress,
+      achievements: [], // progress?.achievements?.map((id: any) => id.toString()) || [],
+      badges: [], // progress?.badges?.map((id: any) => id.toString()) || [],
       isActive: user.isActive,
       lastLogin: user.lastLogin,
       createdAt: user.createdAt,
@@ -59,7 +63,7 @@ export class UserService {
   /**
    * Update user profile
    */
-  async updateProfile(userId: string, data: UpdateProfileRequestDto): Promise<UserProfileResponseDto> {
+  async updateProfile (userId: string, data: UpdateProfileRequestDto): Promise<UserProfileResponseDto> {
     const user = await userRepository.findById(userId);
     if (!user) {
       throw new Error('User not found');
@@ -71,36 +75,42 @@ export class UserService {
     }
 
     // Update savings goal if provided
+    /*
     if (data.savingsGoal !== undefined) {
       await userProfileRepository.setSavingsGoal(userId, data.savingsGoal);
     }
+    */
 
     logger.info(`User profile updated: ${userId}`);
 
-    return this.getUserProfile(userId);
+    return await this.getUserProfile(userId);
   }
 
   /**
    * Get user statistics
    */
-  async getUserStats(userId: string): Promise<UserStatsResponseDto> {
+  async getUserStats (userId: string): Promise<UserStatsResponseDto> {
     const user = await userRepository.findById(userId);
 
     if (!user) {
       throw new Error('User not found');
     }
 
+    /*
     // Fetch associated data from separate models
     const [wallet, progress, profile] = await Promise.all([
       userWalletRepository.findByUserId(userId),
       userProgressRepository.findByUserId(userId),
       userProfileRepository.findByUserId(userId)
     ]);
+    */
 
     // Calculate savings progress
+    /*
     const savingsProgress = profile && profile.savingsGoal > 0
       ? Math.min(Math.round((profile.totalSavings / profile.savingsGoal) * 100), 100)
       : 0;
+    */
 
     // Calculate account age in days
     const accountAge = Math.floor(
@@ -113,17 +123,17 @@ export class UserService {
     );
 
     return {
-      level: progress?.level || 1,
-      experience: progress?.experience || 0,
-      experienceToNextLevel: progress?.experienceToNextLevel || 100,
-      levelProgress: progress?.levelProgress || 0,
-      coins: wallet?.coins || 0,
-      totalSavings: profile?.totalSavings || 0,
-      totalExpenses: profile?.totalExpenses || 0,
-      savingsGoal: profile?.savingsGoal || 0,
-      savingsProgress,
-      achievementsCount: progress?.achievements?.length || 0,
-      badgesCount: progress?.badges?.length || 0,
+      level: 1,
+      experience: 0,
+      experienceToNextLevel: 100,
+      levelProgress: 0,
+      coins: 0,
+      totalSavings: 0,
+      totalExpenses: 0,
+      savingsGoal: 0,
+      savingsProgress: 0,
+      achievementsCount: 0,
+      badgesCount: 0,
       accountAge,
       lastLoginDaysAgo
     };
@@ -132,13 +142,15 @@ export class UserService {
   /**
    * Add experience to user
    */
-  async addExperience(userId: string, amount: number): Promise<LevelUpResponseDto> {
+  async addExperience (userId: string, amount: number): Promise<LevelUpResponseDto> {
     const user = await userRepository.findById(userId);
 
     if (!user) {
       throw new Error('User not found');
     }
 
+    // Disabled as repos missing
+    /*
     // Add experience (this will handle level-up logic)
     const { progress, result } = await userProgressRepository.addExperience(userId, amount);
 
@@ -164,13 +176,15 @@ export class UserService {
         rewardCoins: rewardCoins
       };
     }
+    */
 
+    // Mock response
     return {
       leveledUp: false,
       newLevel: undefined,
-      experienceGained: result.experienceGained,
-      currentExperience: progress.experience,
-      experienceToNextLevel: progress.experienceToNextLevel,
+      experienceGained: amount, // Mock
+      currentExperience: 0,
+      experienceToNextLevel: 100,
       rewardCoins: undefined
     };
   }
@@ -178,67 +192,25 @@ export class UserService {
   /**
    * Get leaderboard
    */
-  async getLeaderboard(limit: number = 10): Promise<UserProfileResponseDto[]> {
-    // Get top users by progress (level and experience)
-    const topProgress = await userProgressRepository.getLeaderboard(limit);
-
-    // Build response with data from all models
-    const leaderboard = await Promise.all(
-      topProgress.map(async (progress) => {
-        const userId = (progress.userId as any).toString();
-        const user = await userRepository.findByIdWithoutPassword(userId);
-
-        if (!user) {
-          return null;
-        }
-
-        const [wallet, profile] = await Promise.all([
-          userWalletRepository.findByUserId(userId),
-          userProfileRepository.findByUserId(userId)
-        ]);
-
-        const savingsProgress = profile && profile.savingsGoal > 0
-          ? Math.min(Math.round((profile.totalSavings / profile.savingsGoal) * 100), 100)
-          : 0;
-
-        return {
-          id: userId,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          level: progress.level,
-          experience: progress.experience,
-          experienceToNextLevel: progress.experienceToNextLevel,
-          levelProgress: progress.levelProgress,
-          coins: wallet?.coins || 0,
-          totalSavings: profile?.totalSavings || 0,
-          totalExpenses: profile?.totalExpenses || 0,
-          savingsGoal: profile?.savingsGoal || 0,
-          savingsProgress,
-          achievements: progress.achievements?.map((id: any) => id.toString()) || [],
-          badges: progress.badges?.map((id: any) => id.toString()) || [],
-          isActive: user.isActive,
-          lastLogin: user.lastLogin,
-          createdAt: user.createdAt,
-          updatedAt: user.updatedAt
-        };
-      })
-    );
-
-    // Filter out null values
-    return leaderboard.filter(entry => entry !== null) as UserProfileResponseDto[];
+  async getLeaderboard (limit: number = 10): Promise<UserProfileResponseDto[]> {
+    // Disabled functionality
+    return [];
   }
 
   /**
    * Spend user coins
    */
-  async spendCoins(userId: string, amount: number, description?: string): Promise<{ remainingCoins: number }> {
+  async spendCoins (userId: string, amount: number, description?: string): Promise<{ remainingCoins: number }> {
     const user = await userRepository.findById(userId);
 
     if (!user) {
       throw new Error('User not found');
     }
 
+    // Disabled functionality
+    throw new Error('Feature disabled');
+
+    /*
     // Check if user can afford the amount
     const canAfford = await userWalletRepository.canAfford(userId, amount);
     if (!canAfford) {
@@ -253,6 +225,7 @@ export class UserService {
     return {
       remainingCoins: wallet.coins
     };
+    */
   }
 }
 

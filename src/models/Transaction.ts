@@ -1,28 +1,28 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, type Document } from 'mongoose';
 
 /**
  * Transaction Interface
  * Represents a financial transaction (income or expense)
  */
 export interface ITransaction extends Document {
-  user_id: mongoose.Types.ObjectId;
-  account_id: string; // Reference to user's accounts array in User model
-  date: Date;
-  amount: number;
-  vendor: string;
-  category: string;
-  is_installment: boolean;
-  owner: string;
-  description?: string;
-  type: 'income' | 'expense';
-  budget_id?: string; // Reference to Budget
+  user_id: mongoose.Types.ObjectId
+  account_id: string // Reference to user's accounts array in User model
+  date: Date
+  amount: number
+  vendor: string
+  category: string
+  is_installment: boolean
+  owner: string
+  description?: string
+  type: 'income' | 'expense'
+  budget_id?: string // Reference to Budget
   installment_info?: {
-    current_installment: number;
-    total_installments: number;
-    original_amount: number;
-  };
-  createdAt: Date;
-  updatedAt: Date;
+    current_installment: number
+    total_installments: number
+    original_amount: number
+  }
+  createdAt: Date
+  updatedAt: Date
 }
 
 const transactionSchema = new Schema<ITransaction>({
@@ -45,7 +45,7 @@ const transactionSchema = new Schema<ITransaction>({
     type: Number,
     required: [true, 'Amount is required'],
     validate: {
-      validator: function(v: number) {
+      validator: function (v: number) {
         return v !== 0;
       },
       message: 'Amount cannot be zero'
@@ -111,22 +111,22 @@ transactionSchema.index({ user_id: 1, category: 1 });
 transactionSchema.index({ budget_id: 1 });
 
 // Pre-save validation for installment info
-transactionSchema.pre('save', function(next) {
+transactionSchema.pre('save', function (next) {
   if (this.is_installment) {
-    if (!this.installment_info || !this.installment_info.current_installment ||
+    if (!this.installment_info?.current_installment ||
         !this.installment_info.total_installments || !this.installment_info.original_amount) {
-      return next(new Error('Installment info is required for installment transactions'));
+      next(new Error('Installment info is required for installment transactions')); return;
     }
 
     if (this.installment_info.current_installment > this.installment_info.total_installments) {
-      return next(new Error('Current installment cannot exceed total installments'));
+      next(new Error('Current installment cannot exceed total installments')); return;
     }
   }
   next();
 });
 
 // Pre-save hook to auto-link to budget
-transactionSchema.pre('save', async function(next) {
+transactionSchema.pre('save', async function (next) {
   if (!this.budget_id && this.date) {
     const year = this.date.getFullYear();
     const month = this.date.getMonth() + 1; // JavaScript months are 0-indexed
@@ -136,7 +136,7 @@ transactionSchema.pre('save', async function(next) {
     const Budget = mongoose.model('Budget');
     const budget = await Budget.findById(budgetId);
 
-    if (budget && budget.user_id.equals(this.user_id)) {
+    if (budget?.user_id.equals(this.user_id)) {
       this.budget_id = budgetId;
     }
   }
@@ -144,12 +144,12 @@ transactionSchema.pre('save', async function(next) {
 });
 
 // Static method to find transactions by user
-transactionSchema.statics.findByUser = function(userId: mongoose.Types.ObjectId) {
+transactionSchema.statics.findByUser = function (userId: mongoose.Types.ObjectId) {
   return this.find({ user_id: userId }).sort({ date: -1 });
 };
 
 // Static method to find transactions by user and date range
-transactionSchema.statics.findByUserAndDateRange = function(
+transactionSchema.statics.findByUserAndDateRange = function (
   userId: mongoose.Types.ObjectId,
   startDate: Date,
   endDate: Date
@@ -161,7 +161,7 @@ transactionSchema.statics.findByUserAndDateRange = function(
 };
 
 // Static method to find transactions by user and period (month/year)
-transactionSchema.statics.findByUserAndPeriod = function(
+transactionSchema.statics.findByUserAndPeriod = function (
   userId: mongoose.Types.ObjectId,
   year: number,
   month: number
@@ -176,12 +176,12 @@ transactionSchema.statics.findByUserAndPeriod = function(
 };
 
 // Static method to find transactions by budget
-transactionSchema.statics.findByBudget = function(budgetId: string) {
+transactionSchema.statics.findByBudget = function (budgetId: string) {
   return this.find({ budget_id: budgetId }).sort({ date: -1 });
 };
 
 // Static method to get spending by category
-transactionSchema.statics.getSpendingByCategory = async function(
+transactionSchema.statics.getSpendingByCategory = async function (
   userId: mongoose.Types.ObjectId,
   year: number,
   month: number
@@ -189,7 +189,7 @@ transactionSchema.statics.getSpendingByCategory = async function(
   const startDate = new Date(year, month - 1, 1);
   const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 
-  return this.aggregate([
+  return await this.aggregate([
     {
       $match: {
         user_id: userId,
@@ -211,14 +211,14 @@ transactionSchema.statics.getSpendingByCategory = async function(
 };
 
 // Instance method to check if transaction is overdue installment
-transactionSchema.methods.isOverdueInstallment = function(): boolean {
+transactionSchema.methods.isOverdueInstallment = function (): boolean {
   if (!this.is_installment || !this.installment_info) return false;
 
   return this.installment_info.current_installment < this.installment_info.total_installments;
 };
 
 // Instance method to get month and year
-transactionSchema.methods.getMonthYear = function(): { month: number; year: number } {
+transactionSchema.methods.getMonthYear = function (): { month: number, year: number } {
   return {
     month: this.date.getMonth() + 1,
     year: this.date.getFullYear()

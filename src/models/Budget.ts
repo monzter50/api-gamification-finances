@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, type Document } from 'mongoose';
 
 /**
  * Income Type Enum
@@ -18,20 +18,20 @@ export const EXPENSE_TYPES: ExpenseType[] = ['Fixed', 'Variable'];
  * Income Item Interface
  */
 export interface IIncomeItem {
-  _id?: mongoose.Types.ObjectId;
-  description: string;
-  amount: number;
-  type: IncomeType;
+  _id?: mongoose.Types.ObjectId
+  description: string
+  amount: number
+  type: IncomeType
 }
 
 /**
  * Expense Item Interface
  */
 export interface IExpenseItem {
-  _id?: mongoose.Types.ObjectId;
-  description: string;
-  amount: number;
-  type: ExpenseType;
+  _id?: mongoose.Types.ObjectId
+  description: string
+  amount: number
+  type: ExpenseType
 }
 
 /**
@@ -39,18 +39,18 @@ export interface IExpenseItem {
  * Represents a monthly budget for a user
  */
 export interface IBudget extends Document {
-  userId: mongoose.Types.ObjectId;
-  year: number;
-  month: number; // 0-11 (January = 0, December = 11)
-  incomeItems: IIncomeItem[];
-  expenseItems: IExpenseItem[];
-  createdAt: Date;
-  updatedAt: Date;
+  userId: mongoose.Types.ObjectId
+  year: number
+  month: number // 0-11 (January = 0, December = 11)
+  incomeItems: IIncomeItem[]
+  expenseItems: IExpenseItem[]
+  createdAt: Date
+  updatedAt: Date
   // Virtual properties
-  totalIncome: number;
-  totalExpense: number;
-  netSavings: number;
-  savingsRate: number;
+  totalIncome: number
+  totalExpense: number
+  netSavings: number
+  savingsRate: number
 }
 
 const incomeItemSchema = new Schema<IIncomeItem>({
@@ -137,22 +137,22 @@ budgetSchema.index({ userId: 1, year: 1, month: 1 }, { unique: true });
 budgetSchema.index({ userId: 1, year: -1, month: -1 });
 
 // Virtual: Total Income
-budgetSchema.virtual('totalIncome').get(function() {
+budgetSchema.virtual('totalIncome').get(function () {
   return this.incomeItems.reduce((sum, item) => sum + item.amount, 0);
 });
 
 // Virtual: Total Expense
-budgetSchema.virtual('totalExpense').get(function() {
+budgetSchema.virtual('totalExpense').get(function () {
   return this.expenseItems.reduce((sum, item) => sum + item.amount, 0);
 });
 
 // Virtual: Net Savings
-budgetSchema.virtual('netSavings').get(function() {
+budgetSchema.virtual('netSavings').get(function () {
   return this.totalIncome - this.totalExpense;
 });
 
 // Virtual: Savings Rate (%)
-budgetSchema.virtual('savingsRate').get(function() {
+budgetSchema.virtual('savingsRate').get(function () {
   if (this.totalIncome === 0) return 0;
   return (this.netSavings / this.totalIncome) * 100;
 });
@@ -160,7 +160,7 @@ budgetSchema.virtual('savingsRate').get(function() {
 // Ensure virtuals are included in JSON responses
 budgetSchema.set('toJSON', {
   virtuals: true,
-  transform: function(_doc, ret) {
+  transform: function (_doc, ret) {
     // Remove internal fields
     const { __v, ...rest } = ret;
     return rest;
@@ -170,7 +170,7 @@ budgetSchema.set('toJSON', {
 budgetSchema.set('toObject', { virtuals: true });
 
 // Static method to find budget by user and period
-budgetSchema.statics.findByUserAndPeriod = function(
+budgetSchema.statics.findByUserAndPeriod = function (
   userId: mongoose.Types.ObjectId,
   year: number,
   month: number
@@ -179,9 +179,9 @@ budgetSchema.statics.findByUserAndPeriod = function(
 };
 
 // Static method to find all budgets for a user
-budgetSchema.statics.findByUser = function(
+budgetSchema.statics.findByUser = function (
   userId: mongoose.Types.ObjectId,
-  filters?: { year?: number; month?: number }
+  filters?: { year?: number, month?: number }
 ) {
   const query: any = { userId };
 
@@ -197,13 +197,13 @@ budgetSchema.statics.findByUser = function(
 };
 
 // Instance method to add income item
-budgetSchema.methods.addIncomeItem = function(description: string, amount: number, type: IncomeType) {
+budgetSchema.methods.addIncomeItem = function (description: string, amount: number, type: IncomeType) {
   this.incomeItems.push({ description, amount, type });
   return this.save();
 };
 
 // Instance method to update income item
-budgetSchema.methods.updateIncomeItem = function(itemId: string, description: string, amount: number, type: IncomeType) {
+budgetSchema.methods.updateIncomeItem = function (itemId: string, description: string, amount: number, type: IncomeType) {
   const item = this.incomeItems.id(itemId);
   if (!item) {
     throw new Error('Income item not found');
@@ -216,7 +216,7 @@ budgetSchema.methods.updateIncomeItem = function(itemId: string, description: st
 };
 
 // Instance method to remove income item
-budgetSchema.methods.removeIncomeItem = function(itemId: string) {
+budgetSchema.methods.removeIncomeItem = function (itemId: string) {
   const item = this.incomeItems.id(itemId);
   if (!item) {
     throw new Error('Income item not found');
@@ -227,13 +227,13 @@ budgetSchema.methods.removeIncomeItem = function(itemId: string) {
 };
 
 // Instance method to add expense item
-budgetSchema.methods.addExpenseItem = function(description: string, amount: number, type: ExpenseType) {
+budgetSchema.methods.addExpenseItem = function (description: string, amount: number, type: ExpenseType) {
   this.expenseItems.push({ description, amount, type });
   return this.save();
 };
 
 // Instance method to update expense item
-budgetSchema.methods.updateExpenseItem = function(itemId: string, description: string, amount: number, type: ExpenseType) {
+budgetSchema.methods.updateExpenseItem = function (itemId: string, description: string, amount: number, type: ExpenseType) {
   const item = this.expenseItems.id(itemId);
   if (!item) {
     throw new Error('Expense item not found');
@@ -246,7 +246,7 @@ budgetSchema.methods.updateExpenseItem = function(itemId: string, description: s
 };
 
 // Instance method to remove expense item
-budgetSchema.methods.removeExpenseItem = function(itemId: string) {
+budgetSchema.methods.removeExpenseItem = function (itemId: string) {
   const item = this.expenseItems.id(itemId);
   if (!item) {
     throw new Error('Expense item not found');
@@ -257,12 +257,12 @@ budgetSchema.methods.removeExpenseItem = function(itemId: string) {
 };
 
 // Instance method to get income items by type
-budgetSchema.methods.getIncomeByType = function(type: IncomeType) {
+budgetSchema.methods.getIncomeByType = function (type: IncomeType) {
   return this.incomeItems.filter((item: IIncomeItem) => item.type === type);
 };
 
 // Instance method to calculate totals by income type
-budgetSchema.methods.getIncomeTotalsByType = function(): Record<IncomeType, number> {
+budgetSchema.methods.getIncomeTotalsByType = function (): Record<IncomeType, number> {
   const totals: Record<string, number> = {};
 
   this.incomeItems.forEach((item: IIncomeItem) => {
@@ -273,12 +273,12 @@ budgetSchema.methods.getIncomeTotalsByType = function(): Record<IncomeType, numb
 };
 
 // Instance method to get expense items by type
-budgetSchema.methods.getExpenseByType = function(type: ExpenseType) {
+budgetSchema.methods.getExpenseByType = function (type: ExpenseType) {
   return this.expenseItems.filter((item: IExpenseItem) => item.type === type);
 };
 
 // Instance method to calculate totals by expense type
-budgetSchema.methods.getExpenseTotalsByType = function(): Record<ExpenseType, number> {
+budgetSchema.methods.getExpenseTotalsByType = function (): Record<ExpenseType, number> {
   const totals: Record<string, number> = {};
 
   this.expenseItems.forEach((item: IExpenseItem) => {

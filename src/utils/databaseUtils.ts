@@ -41,7 +41,7 @@ export const getDatabaseInfo = () => {
 export const createModelsInDatabase = async (databaseName: string) => {
   // Switch to the target database
   await switchToDatabase(databaseName);
-  
+
   // Now all model operations will use this database
   const achievement = new Achievement({
     name: 'First Transaction',
@@ -59,7 +59,7 @@ export const createModelsInDatabase = async (databaseName: string) => {
     },
     rarity: 'common'
   });
-  
+
   await achievement.save();
   logger.info(`✅ Modelo creado en base de datos: ${databaseName}`);
 };
@@ -73,4 +73,4 @@ export const listCollections = async () => {
     logger.info(`  - ${collection.name}`);
   });
   return collections;
-}; 
+};

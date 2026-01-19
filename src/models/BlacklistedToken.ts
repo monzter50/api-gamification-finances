@@ -1,17 +1,17 @@
-import mongoose, { Schema, Document, Model } from 'mongoose';
+import mongoose, { Schema, type Document, type Model } from 'mongoose';
 
 export interface IBlacklistedToken extends Document {
-  token: string;
-  userId: string;
-  expiresAt: Date;
-  createdAt: Date;
+  token: string
+  userId: string
+  expiresAt: Date
+  createdAt: Date
 }
 
 // Define the interface for static methods
 interface IBlacklistedTokenModel extends Model<IBlacklistedToken> {
-  isBlacklisted(token: string): Promise<boolean>;
-  blacklistToken(token: string, userId: string, expiresAt: Date): Promise<IBlacklistedToken>;
-  cleanExpiredTokens(): Promise<any>;
+  isBlacklisted: (token: string) => Promise<boolean>
+  blacklistToken: (token: string, userId: string, expiresAt: Date) => Promise<IBlacklistedToken>
+  cleanExpiredTokens: () => Promise<any>
 }
 
 const blacklistedTokenSchema = new Schema<IBlacklistedToken>({
@@ -42,18 +42,18 @@ blacklistedTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 blacklistedTokenSchema.index({ token: 1, userId: 1 });
 
 // Static method to check if token is blacklisted
-blacklistedTokenSchema.statics.isBlacklisted = function(token: string) {
+blacklistedTokenSchema.statics.isBlacklisted = function (token: string) {
   return this.exists({ token });
 };
 
 // Static method to add token to blacklist
-blacklistedTokenSchema.statics.blacklistToken = function(token: string, userId: string, expiresAt: Date) {
-  return this.create({ token, userId, expiresAt });
+blacklistedTokenSchema.statics.blacklistToken = async function (token: string, userId: string, expiresAt: Date) {
+  return await this.create({ token, userId, expiresAt });
 };
 
 // Static method to clean expired tokens (optional, TTL should handle this)
-blacklistedTokenSchema.statics.cleanExpiredTokens = function() {
+blacklistedTokenSchema.statics.cleanExpiredTokens = function () {
   return this.deleteMany({ expiresAt: { $lt: new Date() } });
 };
 
-export const BlacklistedToken = mongoose.model<IBlacklistedToken, IBlacklistedTokenModel>('BlacklistedToken', blacklistedTokenSchema); 
+export const BlacklistedToken = mongoose.model<IBlacklistedToken, IBlacklistedTokenModel>('BlacklistedToken', blacklistedTokenSchema);

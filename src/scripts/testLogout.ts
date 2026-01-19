@@ -6,7 +6,7 @@ import { logger } from '../config/logger';
 
 const JWT_SECRET = process.env.JWT_SECRET ?? 'default_secret';
 
-async function testLogout() {
+async function testLogout () {
   try {
     // Connect to database
     await connectDB();
@@ -21,10 +21,10 @@ async function testLogout() {
 
     // Generate a token
     const token = jwt.sign(
-      { 
-        id: (testUser._id as any).toString(), 
-        email: testUser.email, 
-        name: testUser.name 
+      {
+        id: (testUser._id as any).toString(),
+        email: testUser.email,
+        name: testUser.name
       },
       JWT_SECRET,
       { expiresIn: '1h' }
@@ -58,4 +58,4 @@ async function testLogout() {
 }
 
 // Run the test
-testLogout(); 
+testLogout();

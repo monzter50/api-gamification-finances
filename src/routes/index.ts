@@ -3,9 +3,6 @@ import type { Request, Response } from 'express';
 import { authRoutes } from './auth';
 import { userRoutes } from './users';
 import { transactionRoutes } from './transactions';
-import { achievementRoutes } from './achievements';
-import { gamificationRoutes } from './gamification';
-import { badgeRoutes } from './badges';
 import { budgetRoutes } from './budgets';
 
 const router = express.Router();
@@ -96,9 +93,6 @@ router.get('/docs', (req: Request, res: Response) => {
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/transactions', transactionRoutes);
-router.use('/achievements', achievementRoutes);
-router.use('/gamification', gamificationRoutes);
-router.use('/badges', badgeRoutes);
 router.use('/budgets', budgetRoutes);
 
-export { router as routes }; 
+export { router as routes };

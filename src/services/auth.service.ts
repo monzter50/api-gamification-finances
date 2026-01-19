@@ -1,11 +1,8 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { userRepository } from '../repositories/user.repository';
-import { userWalletRepository } from '../repositories/userWallet.repository';
-import { userProgressRepository } from '../repositories/userProgress.repository';
-import { userProfileRepository } from '../repositories/userProfile.repository';
-import { RegisterRequestDto, LoginRequestDto } from '../dto/request/auth.dto';
-import { AuthResponseDto, LogoutResponseDto } from '../dto/response/auth.dto';
+import { type RegisterRequestDto, type LoginRequestDto } from '../dto/request/auth.dto';
+import { type AuthResponseDto, type LogoutResponseDto } from '../dto/response/auth.dto';
 import { blacklistToken, isTokenBlacklisted } from '../utils/tokenUtils';
 import { logger } from '../config/logger';
 import {
@@ -24,7 +21,7 @@ export class AuthService {
   /**
    * Register a new user
    */
-  async register(data: RegisterRequestDto): Promise<AuthResponseDto> {
+  async register (data: RegisterRequestDto): Promise<AuthResponseDto> {
     const { email, password, name } = data;
 
     // Check if user already exists
@@ -44,20 +41,7 @@ export class AuthService {
       role: 'user'
     } as any);
 
-    const userId = (user._id as any).toString();
-
-    // Create associated records for the new user
-    await Promise.all([
-      userWalletRepository.createForUser(userId, 0), // Start with 0 coins
-      userProgressRepository.createForUser(userId), // Level 1, 0 XP
-      userProfileRepository.createForUser(userId, 0) // 0 savings goal
-    ]);
-
-    // Fetch the created records
-    const [wallet, progress] = await Promise.all([
-      userWalletRepository.findByUserId(userId),
-      userProgressRepository.findByUserId(userId)
-    ]);
+    const userId = (user as any).id;
 
     // Generate JWT token
     const { token, expiresIn } = this.generateToken(userId, user.email);
@@ -72,9 +56,9 @@ export class AuthService {
         email: user.email,
         name: user.name,
         role: user.role,
-        level: progress?.level || 1,
-        experience: progress?.experience || 0,
-        coins: wallet?.coins || 0
+        level: 1, // progress?.level || 1,
+        experience: 0, // progress?.experience || 0,
+        coins: 0 // wallet?.coins || 0
       }
     };
   }
@@ -82,7 +66,7 @@ export class AuthService {
   /**
    * Login user
    */
-  async login(data: LoginRequestDto): Promise<AuthResponseDto> {
+  async login (data: LoginRequestDto): Promise<AuthResponseDto> {
     const { email, password } = data;
 
     // Find user by email
@@ -102,12 +86,10 @@ export class AuthService {
       throw new AccountDeactivatedError();
     }
 
-    const userId = (user._id as any).toString();
+    const userId = (user as any).id;
 
     // Update last login
     await userRepository.updateLastLogin(userId);
-
-
 
     // Generate JWT token
     const { token, expiresIn } = this.generateToken(userId, user.email);
@@ -123,7 +105,7 @@ export class AuthService {
   /**
    * Logout user by blacklisting token
    */
-  async logout(token: string, userId: string): Promise<LogoutResponseDto> {
+  async logout (token: string, userId: string): Promise<LogoutResponseDto> {
     // Check if token is already blacklisted
     const isBlacklisted = await isTokenBlacklisted(token);
     if (isBlacklisted) {
@@ -144,7 +126,7 @@ export class AuthService {
   /**
    * Verify token and get user
    */
-  async verifyToken(token: string): Promise<any> {
+  async verifyToken (token: string): Promise<any> {
     // Check if token is blacklisted
     const isBlacklisted = await isTokenBlacklisted(token);
     if (isBlacklisted) {
@@ -166,7 +148,7 @@ export class AuthService {
     }
 
     return {
-      userId: (user._id as any).toString(),
+      userId: (user as any).id,
       email: user.email,
       role: user.role
     };
@@ -178,7 +160,7 @@ export class AuthService {
   /**
    * Generate JWT token
    */
-  private generateToken(userId: string, email: string): { token: string; expiresIn: number } {
+  private generateToken (userId: string, email: string): { token: string, expiresIn: number } {
     const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
     const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '7d';
 
@@ -189,7 +171,7 @@ export class AuthService {
     );
 
     // Decode to get expiration time
-    const decoded = jwt.decode(token) as { exp: number; iat: number };
+    const decoded = jwt.decode(token) as { exp: number, iat: number };
     const expiresIn = decoded.exp - decoded.iat;
 
     return { token, expiresIn };

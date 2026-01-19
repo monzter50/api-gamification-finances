@@ -1,9 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
+import { type Request, type Response, type NextFunction } from 'express';
 import { logger } from '../config/logger';
 
 interface CustomError extends Error {
-  statusCode?: number;
-  code?: number;
+  statusCode?: number
+  code?: number
 }
 
 export const errorHandler = (
@@ -59,4 +59,4 @@ export const errorHandler = (
     error: error.message || 'Error interno del servidor',
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
-}; 
+};

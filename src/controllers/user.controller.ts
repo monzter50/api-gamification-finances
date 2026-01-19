@@ -1,6 +1,6 @@
 import type { Response } from 'express';
 import { userService } from '../services/user.service';
-import { AuthenticatedRequest } from '../types';
+import { type AuthenticatedRequest } from '../types';
 
 /**
  * User Controller
@@ -11,7 +11,7 @@ export class UserController {
    * Get user profile
    * GET /api/users/profile
    */
-  async getProfile(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async getProfile (req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const userId = req.user!.id;
       const profile = await userService.getUserProfile(userId);
@@ -35,7 +35,7 @@ export class UserController {
    * Update user profile
    * PUT /api/users/profile
    */
-  async updateProfile(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async updateProfile (req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const userId = req.user!.id;
       const { name, savingsGoal } = req.body;
@@ -62,7 +62,7 @@ export class UserController {
    * Get user statistics
    * GET /api/users/stats
    */
-  async getStats(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async getStats (req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const userId = req.user!.id;
       const stats = await userService.getUserStats(userId);

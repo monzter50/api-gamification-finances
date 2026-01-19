@@ -3,20 +3,20 @@ import { Achievement } from '../models/Achievement';
 import { logger } from '../config/logger';
 
 interface AchievementData {
-  name: string;
-  description: string;
-  icon: string;
-  category: 'financial' | 'savings' | 'tracking' | 'streak' | 'milestone';
+  name: string
+  description: string
+  icon: string
+  category: 'financial' | 'savings' | 'tracking' | 'streak' | 'milestone'
   criteria: {
-    type: 'transaction_count' | 'total_amount' | 'savings_goal' | 'streak_days' | 'level_reached';
-    value: number;
-    timeframe: 'all_time' | 'monthly' | 'weekly' | 'daily';
-  };
+    type: 'transaction_count' | 'total_amount' | 'savings_goal' | 'streak_days' | 'level_reached'
+    value: number
+    timeframe: 'all_time' | 'monthly' | 'weekly' | 'daily'
+  }
   reward: {
-    experience: number;
-    coins: number;
-  };
-  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+    experience: number
+    coins: number
+  }
+  rarity: 'common' | 'rare' | 'epic' | 'legendary'
 }
 
 const achievements: AchievementData[] = [
@@ -245,4 +245,4 @@ const seedAchievements = async (): Promise<void> => {
 };
 
 // Run the seed function
-seedAchievements(); 
+seedAchievements();

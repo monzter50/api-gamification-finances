@@ -1,9 +1,9 @@
 import express from 'express';
 import type { Response } from 'express';
-import { AuthenticatedRequest } from '../types';
+import { type AuthenticatedRequest } from '../types';
 import { authenticateJWT } from './auth';
 import { logger } from '../config/logger';
-import { userProfileRepository } from '../repositories/userProfile.repository';
+// import { userProfileRepository } from '../repositories/userProfile.repository';
 
 const router = express.Router();
 
@@ -42,7 +42,7 @@ const router = express.Router();
 // Get all transactions for user
 router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    // TODO: Implement when Transaction model is created
+    // TODO: Implement when Transaction model is refactored/used via Repository
     res.status(200).json({
       success: true,
       message: 'Endpoint en desarrollo - Modelo de transacciones pendiente',
@@ -381,7 +381,7 @@ router.get('/summary', authenticateJWT, async (req: AuthenticatedRequest, res: R
       return;
     }
 
-    const profile = await userProfileRepository.findByUserId(userId);
+    // const profile = await userProfileRepository.findByUserId(userId);
 
     // TODO: Calculate from actual transactions when model is created
     const summary = {
@@ -392,21 +392,19 @@ router.get('/summary', authenticateJWT, async (req: AuthenticatedRequest, res: R
         coins: 0
       },
       expense: {
-        total: profile?.totalExpenses || 0,
+        total: 0, // profile?.totalExpenses || 0,
         count: 0,
         experience: 0,
         coins: 0
       },
       savings: {
-        total: profile?.totalSavings || 0,
+        total: 0, // profile?.totalSavings || 0,
         count: 0,
         experience: 0,
         coins: 0
       },
-      netWorth: (profile?.totalSavings || 0) - (profile?.totalExpenses || 0),
-      savingsProgress: profile && profile.savingsGoal > 0
-        ? Math.min((profile.totalSavings / profile.savingsGoal) * 100, 100)
-        : 0
+      netWorth: 0, // (profile?.totalSavings || 0) - (profile?.totalExpenses || 0),
+      savingsProgress: 0 // profile && profile.savingsGoal > 0 ? Math.min((profile.totalSavings / profile.savingsGoal) * 100, 100) : 0
     };
 
     res.status(200).json({
@@ -522,4 +520,4 @@ router.get('/monthly/:year/:month', authenticateJWT, async (req: AuthenticatedRe
   }
 });
 
-export { router as transactionRoutes }; 
+export { router as transactionRoutes };

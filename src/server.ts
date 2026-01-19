@@ -1,4 +1,4 @@
-import express, { Application, Request, Response, NextFunction } from 'express';
+import express, { type Application, type Request, type Response, NextFunction } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger.config';
 import cors from 'cors';
@@ -70,7 +70,7 @@ app.get('/health', (_req: Request, res: Response) => {
 app.use('/api-docs', swaggerUi.serve as any, swaggerUi.setup(swaggerSpec, {
   explorer: true,
   customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'Gamification Finances API Docs',
+  customSiteTitle: 'Gamification Finances API Docs'
 }) as any);
 
 // Endpoint para obtener el schema JSON (para generar tipos en frontend)
@@ -95,7 +95,7 @@ app.use('*', (req: Request, res: Response) => {
 app.use(errorHandler);
 
 // Start server function
-async function startServer() {
+async function startServer () {
   try {
     // Connect to database based on environment
     const environment = (process.env.NODE_ENV as 'development' | 'test' | 'production') || 'development';
@@ -118,4 +118,4 @@ async function startServer() {
 // Initialize server
 startServer();
 
-export default app; 
+export default app;
