@@ -1,6 +1,6 @@
 import { budgetRepository, type EnhancedBudget } from '../repositories/budget.repository';
 import { type IncomeItem, type ExpenseItem } from '@prisma/client';
-import { type IncomeType, type ExpenseType, INCOME_TYPES, EXPENSE_TYPES } from '../models/Budget';
+import { type IncomeType, type ExpenseType, INCOME_TYPES, EXPENSE_TYPES } from '../constants/budget.constants';
 import { logger } from '../config/logger';
 
 /**
@@ -11,7 +11,7 @@ export class BudgetService {
   /**
    * Get all budgets for a user with optional filters
    */
-  async getUserBudgets (
+  async getUserBudgets(
     userId: string,
     filters?: { year?: number, month?: number }
   ): Promise<EnhancedBudget[]> {
@@ -22,7 +22,7 @@ export class BudgetService {
   /**
    * Get budget by ID
    */
-  async getBudgetById (budgetId: string, userId: string): Promise<EnhancedBudget> {
+  async getBudgetById(budgetId: string, userId: string): Promise<EnhancedBudget> {
     const budget = await budgetRepository.findById(budgetId);
 
     if (!budget) {
@@ -40,7 +40,7 @@ export class BudgetService {
   /**
    * Get budget by period
    */
-  async getBudgetByPeriod (
+  async getBudgetByPeriod(
     userId: string,
     year: number,
     month: number
@@ -51,7 +51,7 @@ export class BudgetService {
   /**
    * Create new budget
    */
-  async createBudget (data: {
+  async createBudget(data: {
     userId: string
     year: number
     month: number
@@ -96,7 +96,7 @@ export class BudgetService {
   /**
    * Update budget
    */
-  async updateBudget (
+  async updateBudget(
     budgetId: string,
     userId: string,
     data: {
@@ -131,7 +131,7 @@ export class BudgetService {
   /**
    * Delete budget
    */
-  async deleteBudget (budgetId: string, userId: string): Promise<void> {
+  async deleteBudget(budgetId: string, userId: string): Promise<void> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
@@ -150,7 +150,7 @@ export class BudgetService {
   /**
    * Add/Update income items
    */
-  async updateIncomeItems (
+  async updateIncomeItems(
     budgetId: string,
     userId: string,
     incomeItems: Omit<IncomeItem, 'id' | 'budgetId'>[]
@@ -178,7 +178,7 @@ export class BudgetService {
   /**
    * Add single income item
    */
-  async addIncomeItem (
+  async addIncomeItem(
     budgetId: string,
     userId: string,
     incomeItem: Omit<IncomeItem, 'id' | 'budgetId'>
@@ -206,7 +206,7 @@ export class BudgetService {
   /**
    * Remove income item
    */
-  async removeIncomeItem (
+  async removeIncomeItem(
     budgetId: string,
     userId: string,
     itemId: string
@@ -231,7 +231,7 @@ export class BudgetService {
   /**
    * Add/Update expense items
    */
-  async updateExpenseItems (
+  async updateExpenseItems(
     budgetId: string,
     userId: string,
     expenseItems: Array<Omit<ExpenseItem, 'id' | 'budgetId'>>
@@ -259,7 +259,7 @@ export class BudgetService {
   /**
    * Add single expense item
    */
-  async addExpenseItem (
+  async addExpenseItem(
     budgetId: string,
     userId: string,
     expenseItem: Omit<ExpenseItem, 'id' | 'budgetId'>
@@ -287,7 +287,7 @@ export class BudgetService {
   /**
    * Remove expense item
    */
-  async removeExpenseItem (
+  async removeExpenseItem(
     budgetId: string,
     userId: string,
     itemId: string
@@ -312,14 +312,14 @@ export class BudgetService {
   /**
    * Get budget statistics for a user
    */
-  async getUserBudgetStats (userId: string) {
+  async getUserBudgetStats(userId: string) {
     return await budgetRepository.getUserBudgetStats(userId);
   }
 
   /**
    * Get paginated income items
    */
-  async getPaginatedIncomeItems (
+  async getPaginatedIncomeItems(
     budgetId: string,
     userId: string,
     page: number = 1,
@@ -334,7 +334,7 @@ export class BudgetService {
   /**
    * Get paginated expense items
    */
-  async getPaginatedExpenseItems (
+  async getPaginatedExpenseItems(
     budgetId: string,
     userId: string,
     page: number = 1,
@@ -349,7 +349,7 @@ export class BudgetService {
   /**
    * Update a single income item
    */
-  async updateIncomeItem (
+  async updateIncomeItem(
     budgetId: string,
     userId: string,
     incomeId: string,
@@ -379,7 +379,7 @@ export class BudgetService {
   /**
    * Update a single expense item
    */
-  async updateExpenseItem (
+  async updateExpenseItem(
     budgetId: string,
     userId: string,
     expenseId: string,
@@ -409,7 +409,7 @@ export class BudgetService {
   /**
    * Validate single item
    */
-  private validateItem (
+  private validateItem(
     item: Omit<IncomeItem, 'id' | 'budgetId'> | Omit<ExpenseItem, 'id' | 'budgetId'>,
     type: 'income' | 'expense'
   ): void {
@@ -451,7 +451,7 @@ export class BudgetService {
   /**
    * Validate multiple items
    */
-  private validateItems (
+  private validateItems(
     items: Array<Omit<IncomeItem, 'id' | 'budgetId'> | Omit<ExpenseItem, 'id' | 'budgetId'>>,
     type: 'income' | 'expense'
   ): void {

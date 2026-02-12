@@ -1,8 +1,8 @@
 import { type Request } from 'express';
-import { type Document, type Types } from 'mongoose';
+// Removed mongoose imports
 
 // User types
-export interface IUser extends Document {
+export interface IUser {
   email: string
   password: string
   name: string
@@ -14,8 +14,8 @@ export interface IUser extends Document {
 }
 
 // Transaction types
-export interface ITransaction extends Document {
-  user: Types.ObjectId
+export interface ITransaction {
+  user: string
   type: 'income' | 'expense' | 'savings'
   category: string
   amount: number
@@ -35,7 +35,7 @@ export interface ITransaction extends Document {
 }
 
 // Achievement types
-export interface IAchievement extends Document {
+export interface IAchievement {
   name: string
   description: string
   icon: string

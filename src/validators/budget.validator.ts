@@ -1,5 +1,5 @@
 import { body, param, query } from 'express-validator';
-import { INCOME_TYPES, EXPENSE_TYPES } from '../models/Budget';
+import { INCOME_TYPES, EXPENSE_TYPES } from '../constants/budget.constants';
 
 /**
  * Validation schemas for budget endpoints

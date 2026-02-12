@@ -1,6 +1,6 @@
 import { type Request } from 'express';
 import { type JWTPayload } from './index';
-import { type IncomeType, type ExpenseType } from '../models/Budget';
+import { type IncomeType, type ExpenseType } from '../constants/budget.constants';
 
 /**
  * Budget Request Type
