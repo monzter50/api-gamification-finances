@@ -14,9 +14,6 @@ export interface UserBasicInfoDto {
   email: string
   name: string
   role: string
-  level: number
-  experience: number
-  coins: number
 }
 
 export interface LogoutResponseDto {

@@ -56,7 +56,7 @@ export const createBudgetValidation = [
  */
 export const updateBudgetValidation = [
   param('id')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid budget ID'),
   body('year')
     .optional()
@@ -107,7 +107,7 @@ export const updateBudgetValidation = [
  */
 export const updateIncomeItemsValidation = [
   param('id')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid budget ID'),
   body('incomeItems')
     .isArray({ min: 0 })
@@ -129,7 +129,7 @@ export const updateIncomeItemsValidation = [
  */
 export const updateExpenseItemsValidation = [
   param('id')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid budget ID'),
   body('expenseItems')
     .isArray({ min: 0 })
@@ -151,7 +151,7 @@ export const updateExpenseItemsValidation = [
  */
 export const budgetIdValidation = [
   param('id')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid budget ID')
 ];
 
@@ -160,10 +160,10 @@ export const budgetIdValidation = [
  */
 export const itemIdValidation = [
   param('id')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid budget ID'),
   param('itemId')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid item ID')
 ];
 
@@ -172,10 +172,10 @@ export const itemIdValidation = [
  */
 export const deleteIncomeItemValidation = [
   param('id')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid budget ID'),
   param('incomeId')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid income ID')
 ];
 
@@ -184,10 +184,10 @@ export const deleteIncomeItemValidation = [
  */
 export const deleteExpenseItemValidation = [
   param('id')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid budget ID'),
   param('expenseId')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid expense ID')
 ];
 
@@ -210,7 +210,7 @@ export const budgetQueryValidation = [
  */
 export const addIncomeItemValidation = [
   param('id')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid budget ID'),
   body('description')
     .trim()
@@ -229,7 +229,7 @@ export const addIncomeItemValidation = [
  */
 export const addExpenseItemValidation = [
   param('id')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid budget ID'),
   body('description')
     .trim()
@@ -248,10 +248,10 @@ export const addExpenseItemValidation = [
  */
 export const updateIncomeItemValidation = [
   param('id')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid budget ID'),
   param('incomeId')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid income ID'),
   body('description')
     .trim()
@@ -270,10 +270,10 @@ export const updateIncomeItemValidation = [
  */
 export const updateExpenseItemValidation = [
   param('id')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid budget ID'),
   param('expenseId')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid expense ID'),
   body('description')
     .trim()

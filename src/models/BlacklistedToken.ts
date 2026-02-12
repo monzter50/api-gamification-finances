@@ -1,59 +1,80 @@
-import mongoose, { Schema, type Document, type Model } from 'mongoose';
+import { PrismaClient } from '@prisma/client';
 
-export interface IBlacklistedToken extends Document {
+// Use a singleton instance
+declare global {
+  // eslint-disable-next-line no-var
+  var prisma: PrismaClient | undefined;
+}
+
+const prisma = global.prisma ?? new PrismaClient();
+
+if (process.env.NODE_ENV !== 'production') {
+  global.prisma = prisma;
+}
+
+export interface IBlacklistedToken {
+  id: string
   token: string
   userId: string
   expiresAt: Date
   createdAt: Date
 }
 
-// Define the interface for static methods
-interface IBlacklistedTokenModel extends Model<IBlacklistedToken> {
-  isBlacklisted: (token: string) => Promise<boolean>
-  blacklistToken: (token: string, userId: string, expiresAt: Date) => Promise<IBlacklistedToken>
-  cleanExpiredTokens: () => Promise<any>
-}
+export const BlacklistedToken = {
+  /**
+   * Check if a token is blacklisted
+   */
+  async isBlacklisted (token: string): Promise<boolean> {
+    const result = await prisma.blacklistedToken.findUnique({
+      where: { token }
+    });
+    return result !== null;
+  },
 
-const blacklistedTokenSchema = new Schema<IBlacklistedToken>({
-  token: {
-    type: String,
-    required: [true, 'Token is required'],
-    unique: true,
-    index: true
+  /**
+   * Add a token to the blacklist
+   */
+  async blacklistToken (token: string, userId: string, expiresAt: Date): Promise<IBlacklistedToken> {
+    const blackList = await prisma.blacklistedToken.create({
+      data: {
+        token,
+        userId,
+        expiresAt
+      }
+    });
+    return blackList;
   },
-  userId: {
-    type: String,
-    required: [true, 'User ID is required'],
-    index: true
+
+  /**
+   * Clean expired tokens (manual cleanup if needed)
+   * Note: In production, you should set up a cron job or scheduled task
+   */
+  async cleanExpiredTokens (): Promise<number> {
+    const result = await prisma.blacklistedToken.deleteMany({
+      where: {
+        expiresAt: {
+          lt: new Date()
+        }
+      }
+    });
+    return result.count;
   },
-  expiresAt: {
-    type: Date,
-    required: [true, 'Expiration date is required']
-    // Note: index is created separately below with TTL configuration
+
+  /**
+   * Find a blacklisted token by token string
+   */
+  async findByToken (token: string): Promise<IBlacklistedToken | null> {
+    return await prisma.blacklistedToken.findUnique({
+      where: { token }
+    });
+  },
+
+  /**
+   * Find all blacklisted tokens for a user
+   */
+  async findByUserId (userId: string): Promise<IBlacklistedToken[]> {
+    return await prisma.blacklistedToken.findMany({
+      where: { userId }
+    });
   }
-}, {
-  timestamps: true
-});
-
-// TTL index to automatically delete expired tokens
-blacklistedTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-
-// Index for faster queries
-blacklistedTokenSchema.index({ token: 1, userId: 1 });
-
-// Static method to check if token is blacklisted
-blacklistedTokenSchema.statics.isBlacklisted = function (token: string) {
-  return this.exists({ token });
 };
-
-// Static method to add token to blacklist
-blacklistedTokenSchema.statics.blacklistToken = async function (token: string, userId: string, expiresAt: Date) {
-  return await this.create({ token, userId, expiresAt });
-};
-
-// Static method to clean expired tokens (optional, TTL should handle this)
-blacklistedTokenSchema.statics.cleanExpiredTokens = function () {
-  return this.deleteMany({ expiresAt: { $lt: new Date() } });
-};
-
-export const BlacklistedToken = mongoose.model<IBlacklistedToken, IBlacklistedTokenModel>('BlacklistedToken', blacklistedTokenSchema);

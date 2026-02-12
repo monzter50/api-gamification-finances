@@ -1,6 +1,6 @@
-import { budgetRepository } from '../repositories/budget.repository';
-import { type IBudget, type IIncomeItem, type IExpenseItem, IncomeType, ExpenseType, INCOME_TYPES, EXPENSE_TYPES } from '../models/Budget';
-import { Types } from 'mongoose';
+import { budgetRepository, type EnhancedBudget } from '../repositories/budget.repository';
+import { type IncomeItem, type ExpenseItem } from '@prisma/client';
+import { type IncomeType, type ExpenseType, INCOME_TYPES, EXPENSE_TYPES } from '../models/Budget';
 import { logger } from '../config/logger';
 
 /**
@@ -14,14 +14,15 @@ export class BudgetService {
   async getUserBudgets (
     userId: string,
     filters?: { year?: number, month?: number }
-  ): Promise<IBudget[]> {
-    return await budgetRepository.findByUser(userId, filters);
+  ): Promise<EnhancedBudget[]> {
+    const budget = await budgetRepository.findByUser(userId, filters);
+    return budget;
   }
 
   /**
    * Get budget by ID
    */
-  async getBudgetById (budgetId: string, userId: string): Promise<IBudget> {
+  async getBudgetById (budgetId: string, userId: string): Promise<EnhancedBudget> {
     const budget = await budgetRepository.findById(budgetId);
 
     if (!budget) {
@@ -43,7 +44,7 @@ export class BudgetService {
     userId: string,
     year: number,
     month: number
-  ): Promise<IBudget | null> {
+  ): Promise<EnhancedBudget | null> {
     return await budgetRepository.findByUserAndPeriod(userId, year, month);
   }
 
@@ -54,9 +55,9 @@ export class BudgetService {
     userId: string
     year: number
     month: number
-    incomeItems?: IIncomeItem[]
-    expenseItems?: IExpenseItem[]
-  }): Promise<IBudget> {
+    incomeItems?: Array<Omit<IncomeItem, 'id' | 'budgetId'>>
+    expenseItems?: Array<Omit<ExpenseItem, 'id' | 'budgetId'>>
+  }): Promise<EnhancedBudget> {
     // Validate month range (0-11)
     if (data.month < 0 || data.month > 11) {
       throw new Error('Month must be between 0 and 11');
@@ -84,7 +85,7 @@ export class BudgetService {
         expenseItems: data.expenseItems || []
       });
 
-      logger.info(`Budget created for user ${data.userId}: ${budget._id}`);
+      logger.info(`Budget created for user ${data.userId}: ${budget.id}`);
       return budget;
     } catch (error) {
       logger.error('Error creating budget:', error);
@@ -101,10 +102,10 @@ export class BudgetService {
     data: {
       year?: number
       month?: number
-      incomeItems?: IIncomeItem[]
-      expenseItems?: IExpenseItem[]
+      incomeItems?: Array<Omit<IncomeItem, 'id' | 'budgetId'>>
+      expenseItems?: Array<Omit<ExpenseItem, 'id' | 'budgetId'>>
     }
-  ): Promise<IBudget> {
+  ): Promise<EnhancedBudget> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
@@ -152,8 +153,8 @@ export class BudgetService {
   async updateIncomeItems (
     budgetId: string,
     userId: string,
-    incomeItems: IIncomeItem[]
-  ): Promise<IBudget> {
+    incomeItems: Omit<IncomeItem, 'id' | 'budgetId'>[]
+  ): Promise<EnhancedBudget> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
@@ -180,8 +181,8 @@ export class BudgetService {
   async addIncomeItem (
     budgetId: string,
     userId: string,
-    incomeItem: IIncomeItem
-  ): Promise<IBudget> {
+    incomeItem: Omit<IncomeItem, 'id' | 'budgetId'>
+  ): Promise<EnhancedBudget> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
@@ -209,7 +210,7 @@ export class BudgetService {
     budgetId: string,
     userId: string,
     itemId: string
-  ): Promise<IBudget> {
+  ): Promise<EnhancedBudget> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
@@ -233,8 +234,8 @@ export class BudgetService {
   async updateExpenseItems (
     budgetId: string,
     userId: string,
-    expenseItems: IExpenseItem[]
-  ): Promise<IBudget> {
+    expenseItems: Array<Omit<ExpenseItem, 'id' | 'budgetId'>>
+  ): Promise<EnhancedBudget> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
@@ -261,8 +262,8 @@ export class BudgetService {
   async addExpenseItem (
     budgetId: string,
     userId: string,
-    expenseItem: IExpenseItem
-  ): Promise<IBudget> {
+    expenseItem: Omit<ExpenseItem, 'id' | 'budgetId'>
+  ): Promise<EnhancedBudget> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
@@ -290,7 +291,7 @@ export class BudgetService {
     budgetId: string,
     userId: string,
     itemId: string
-  ): Promise<IBudget> {
+  ): Promise<EnhancedBudget> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
@@ -352,8 +353,8 @@ export class BudgetService {
     budgetId: string,
     userId: string,
     incomeId: string,
-    incomeItem: IIncomeItem
-  ): Promise<IBudget> {
+    incomeItem: Omit<IncomeItem, 'id' | 'budgetId'>
+  ): Promise<EnhancedBudget> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
@@ -382,8 +383,8 @@ export class BudgetService {
     budgetId: string,
     userId: string,
     expenseId: string,
-    expenseItem: IExpenseItem
-  ): Promise<IBudget> {
+    expenseItem: Omit<ExpenseItem, 'id' | 'budgetId'>
+  ): Promise<EnhancedBudget> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
@@ -409,7 +410,7 @@ export class BudgetService {
    * Validate single item
    */
   private validateItem (
-    item: IIncomeItem | IExpenseItem,
+    item: Omit<IncomeItem, 'id' | 'budgetId'> | Omit<ExpenseItem, 'id' | 'budgetId'>,
     type: 'income' | 'expense'
   ): void {
     if (!item.description || item.description.trim() === '') {
@@ -426,22 +427,22 @@ export class BudgetService {
 
     // Validate income type if it's an income item
     if (type === 'income' && 'type' in item) {
-      const incomeItem = item as IIncomeItem;
+      const incomeItem = item as Omit<IncomeItem, 'id' | 'budgetId'>;
       if (!incomeItem.type) {
         throw new Error('Income type is required');
       }
-      if (!INCOME_TYPES.includes(incomeItem.type)) {
+      if (!INCOME_TYPES.includes(incomeItem.type as IncomeType)) {
         throw new Error(`Invalid income type. Must be one of: ${INCOME_TYPES.join(', ')}`);
       }
     }
 
     // Validate expense type if it's an expense item
     if (type === 'expense' && 'type' in item) {
-      const expenseItem = item as IExpenseItem;
+      const expenseItem = item as Omit<ExpenseItem, 'id' | 'budgetId'>;
       if (!expenseItem.type) {
         throw new Error('Expense type is required');
       }
-      if (!EXPENSE_TYPES.includes(expenseItem.type)) {
+      if (!EXPENSE_TYPES.includes(expenseItem.type as ExpenseType)) {
         throw new Error(`Invalid expense type. Must be one of: ${EXPENSE_TYPES.join(', ')}`);
       }
     }
@@ -451,7 +452,7 @@ export class BudgetService {
    * Validate multiple items
    */
   private validateItems (
-    items: Array<IIncomeItem | IExpenseItem>,
+    items: Array<Omit<IncomeItem, 'id' | 'budgetId'> | Omit<ExpenseItem, 'id' | 'budgetId'>>,
     type: 'income' | 'expense'
   ): void {
     if (!Array.isArray(items)) {

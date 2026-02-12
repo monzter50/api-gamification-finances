@@ -65,6 +65,5 @@ export async function isTokenBlacklisted (token: string): Promise<boolean> {
  * Clean expired tokens from blacklist
  */
 export async function cleanExpiredTokens (): Promise<number> {
-  const result = await BlacklistedToken.cleanExpiredTokens();
-  return result.deletedCount || 0;
+  return await BlacklistedToken.cleanExpiredTokens();
 }

@@ -88,3 +88,16 @@ model ExpenseItem {
   type        String   // Enum handled as string: 'Fixed', 'Variable'
 }
 
+model BlacklistedToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+  @@index([token, userId])
+  @@index([expiresAt])
+}
+

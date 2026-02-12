@@ -17,7 +17,6 @@ export async function authenticateJWT (req: Request, res: Response, next: NextFu
     return;
   }
   const token: string = authHeader.split(' ')[1]!;
-
   try {
     // Check if token is blacklisted
     const isBlacklisted = await isTokenBlacklisted(token);

@@ -112,6 +112,7 @@ export class AuthController {
     try {
       const userId = req.user!.id;
       const profile = await userService.getUserProfile(userId);
+      console.log('Fetched user profile:', profile);
 
       res.status(200).json({
         success: true,

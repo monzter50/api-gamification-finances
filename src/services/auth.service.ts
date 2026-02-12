@@ -55,10 +55,7 @@ export class AuthService {
         id: userId,
         email: user.email,
         name: user.name,
-        role: user.role,
-        level: 1, // progress?.level || 1,
-        experience: 0, // progress?.experience || 0,
-        coins: 0 // wallet?.coins || 0
+        role: user.role
       }
     };
   }
