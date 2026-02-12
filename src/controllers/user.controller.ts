@@ -1,6 +1,6 @@
 import type { Response } from 'express';
 import { userService } from '../services/user.service';
-import { AuthenticatedRequest } from '../types';
+import { type AuthenticatedRequest } from '../types';
 
 /**
  * User Controller
@@ -65,7 +65,8 @@ export class UserController {
   async getStats(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const userId = req.user!.id;
-      const stats = await userService.getUserStats(userId);
+      // const stats = await userService.getUserStats(userId);
+      const stats = {}; // Placeholder until implemented with Prisma
 
       res.status(200).json({
         success: true,

@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("user")
+  isActive  Boolean  @default(true)
+  lastLogin DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions Transaction[]
+  budgets      Budget[]
+}
+
+model Transaction {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  accountId        String
+  date             DateTime
+  amount           Float
+  vendor           String
+  category         String
+  isInstallment    Boolean  @default(false)
+  owner            String
+  description      String?
+  type             String   // 'income' | 'expense'
+  budgetId         String?
+  budget           Budget?  @relation(fields: [budgetId], references: [id])
+  
+  // Installment info flattened
+  installmentCurrent  Int?
+  installmentTotal    Int?
+  installmentOriginal Float?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId, date])
+  @@index([userId, type, date])
+  @@index([userId, category])
+  @@index([budgetId])
+}
+
+model Budget {
+  id           String   @id @default(uuid()) // Using UUID to match the "budget_YYYY_MM" pattern or just let it generate and use composite logic
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  year         Int
+  month        Int
+  
+  incomeItems  IncomeItem[]
+  expenseItems ExpenseItem[]
+  transactions Transaction[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, year, month])
+  @@index([userId, year, month])
+}
+
+model IncomeItem {
+  id          String   @id @default(uuid())
+  budgetId    String
+  budget      Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  description String
+  amount      Float
+  type        String   // Enum handled as string: 'Debit Card', etc.
+}
+
+model ExpenseItem {
+  id          String   @id @default(uuid())
+  budgetId    String
+  budget      Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  description String
+  amount      Float
+  type        String   // Enum handled as string: 'Fixed', 'Variable'
+}
+
+model BlacklistedToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+  @@index([token, userId])
+  @@index([expiresAt])
+}
+

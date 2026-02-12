@@ -5,19 +5,18 @@ import { authController } from '../controllers/auth.controller';
 import { registerValidation, loginValidation } from '../validators/auth.validator';
 import { validate } from '../middleware/validate';
 import { isTokenBlacklisted } from '../utils/tokenUtils';
-import { AuthenticatedRequest } from '../types';
+import { type AuthenticatedRequest } from '../types';
 
 const router = express.Router();
 
 // Auth middleware
-export async function authenticateJWT(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function authenticateJWT (req: Request, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     res.status(401).json({ success: false, message: 'Unauthorized' });
     return;
   }
-  const token: string = authHeader.split(' ')[1] as string;
-
+  const token: string = authHeader.split(' ')[1]!;
   try {
     // Check if token is blacklisted
     const isBlacklisted = await isTokenBlacklisted(token);
@@ -27,12 +26,11 @@ export async function authenticateJWT(req: Request, res: Response, next: NextFun
     }
 
     const JWT_SECRET = process.env.JWT_SECRET ?? 'default_secret';
-    const decoded = jwt.verify(token, JWT_SECRET as string) as any;
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
     (req as AuthenticatedRequest).user = decoded;
     next();
   } catch (err) {
     res.status(401).json({ success: false, message: 'Invalid token' });
-    return;
   }
 }
 
@@ -48,4 +46,4 @@ router.post('/logout', authenticateJWT, authController.logout.bind(authControlle
 // Get current user profile (protected)
 router.get('/me', authenticateJWT, authController.getCurrentUser.bind(authController));
 
-export { router as authRoutes }; 
+export { router as authRoutes };

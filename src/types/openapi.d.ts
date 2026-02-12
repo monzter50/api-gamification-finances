@@ -4,66 +4,62 @@
  */
 
 export interface paths {
-    "/api/transactions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
+  '/api/transactions': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
          * Obtener todas las transacciones del usuario
          * @description Retorna todas las transacciones del usuario autenticado
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Lista de transacciones obtenida exitosamente */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            response?: components["schemas"]["Transaction"][];
-                            /** @example ok */
-                            status?: string;
-                            /** @example 200 */
-                            statusCode?: number;
-                        };
-                    };
-                };
-                401: components["responses"]["UnauthorizedError"];
-                /** @description Error interno del servidor */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        /**
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description Lista de transacciones obtenida exitosamente */
+        200: {
+          headers: Record<string, unknown>
+          content: {
+            'application/json': {
+              response?: Array<components['schemas']['Transaction']>
+              /** @example ok */
+              status?: string
+              /** @example 200 */
+              statusCode?: number
+            }
+          }
+        }
+        401: components['responses']['UnauthorizedError']
+        /** @description Error interno del servidor */
+        500: {
+          headers: Record<string, unknown>
+          content?: never
+        }
+      }
+    }
+    put?: never
+    /**
          * Crear una nueva transacción
          * @description Crea una nueva transacción para el usuario autenticado
          */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    /**
+    post: {
+      parameters: {
+        query?: never
+        header?: never
+        path?: never
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          /**
                      * @example {
                      *       "type": "expense",
                      *       "category": "Food",
@@ -72,370 +68,356 @@ export interface paths {
                      *       "date": "2025-12-29"
                      *     }
                      */
-                    "application/json": components["schemas"]["CreateTransactionRequest"];
-                };
-            };
-            responses: {
-                /** @description Transacción creada exitosamente */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            response?: components["schemas"]["Transaction"];
-                            /** @example ok */
-                            status?: string;
-                            /** @example 201 */
-                            statusCode?: number;
-                        };
-                    };
-                };
-                400: components["responses"]["BadRequestError"];
-                401: components["responses"]["UnauthorizedError"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/transactions/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
+          'application/json': components['schemas']['CreateTransactionRequest']
+        }
+      }
+      responses: {
+        /** @description Transacción creada exitosamente */
+        201: {
+          headers: Record<string, unknown>
+          content: {
+            'application/json': {
+              response?: components['schemas']['Transaction']
+              /** @example ok */
+              status?: string
+              /** @example 201 */
+              statusCode?: number
+            }
+          }
+        }
+        400: components['responses']['BadRequestError']
+        401: components['responses']['UnauthorizedError']
+      }
+    }
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/transactions/{id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
          * Obtener transacción por ID
          * @description Retorna una transacción específica del usuario autenticado
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /**
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          /**
                      * @description ID de la transacción
                      * @example 507f1f77bcf86cd799439011
                      */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Transacción obtenida exitosamente */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            response?: components["schemas"]["Transaction"];
-                            /** @example ok */
-                            status?: string;
-                        };
-                    };
-                };
-                401: components["responses"]["UnauthorizedError"];
-                404: components["responses"]["NotFoundError"];
-            };
-        };
-        /**
+          id: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description Transacción obtenida exitosamente */
+        200: {
+          headers: Record<string, unknown>
+          content: {
+            'application/json': {
+              response?: components['schemas']['Transaction']
+              /** @example ok */
+              status?: string
+            }
+          }
+        }
+        401: components['responses']['UnauthorizedError']
+        404: components['responses']['NotFoundError']
+      }
+    }
+    /**
          * Actualizar transacción
          * @description Actualiza una transacción existente del usuario autenticado
          */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description ID de la transacción */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    /**
+    put: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          /** @description ID de la transacción */
+          id: string
+        }
+        cookie?: never
+      }
+      requestBody: {
+        content: {
+          /**
                      * @example {
                      *       "amount": 200,
                      *       "description": "Updated description"
                      *     }
                      */
-                    "application/json": {
-                        /** @enum {string} */
-                        type?: "income" | "expense" | "savings";
-                        category?: string;
-                        amount?: number;
-                        description?: string;
-                        /** Format: date */
-                        date?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Transacción actualizada exitosamente */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            response?: components["schemas"]["Transaction"];
-                            /** @example ok */
-                            status?: string;
-                        };
-                    };
-                };
-                400: components["responses"]["BadRequestError"];
-                401: components["responses"]["UnauthorizedError"];
-                404: components["responses"]["NotFoundError"];
-            };
-        };
-        post?: never;
-        /**
+          'application/json': {
+            /** @enum {string} */
+            type?: 'income' | 'expense' | 'savings'
+            category?: string
+            amount?: number
+            description?: string
+            /** Format: date */
+            date?: string
+          }
+        }
+      }
+      responses: {
+        /** @description Transacción actualizada exitosamente */
+        200: {
+          headers: Record<string, unknown>
+          content: {
+            'application/json': {
+              response?: components['schemas']['Transaction']
+              /** @example ok */
+              status?: string
+            }
+          }
+        }
+        400: components['responses']['BadRequestError']
+        401: components['responses']['UnauthorizedError']
+        404: components['responses']['NotFoundError']
+      }
+    }
+    post?: never
+    /**
          * Eliminar transacción
          * @description Elimina una transacción del usuario autenticado
          */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description ID de la transacción */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Transacción eliminada exitosamente */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                401: components["responses"]["UnauthorizedError"];
-                404: components["responses"]["NotFoundError"];
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/transactions/monthly/{year}/{month}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
+    delete: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          /** @description ID de la transacción */
+          id: string
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description Transacción eliminada exitosamente */
+        204: {
+          headers: Record<string, unknown>
+          content?: never
+        }
+        401: components['responses']['UnauthorizedError']
+        404: components['responses']['NotFoundError']
+      }
+    }
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/transactions/monthly/{year}/{month}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
          * Obtener resumen mensual
          * @description Retorna un resumen de transacciones para un mes específico
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /**
+    get: {
+      parameters: {
+        query?: never
+        header?: never
+        path: {
+          /**
                      * @description Año
                      * @example 2025
                      */
-                    year: number;
-                    /**
+          year: number
+          /**
                      * @description Mes (0-11, donde 0 es Enero)
                      * @example 11
                      */
-                    month: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Resumen mensual obtenido exitosamente */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            response?: components["schemas"]["TransactionSummary"];
-                            /** @example ok */
-                            status?: string;
-                        };
-                    };
-                };
-                400: components["responses"]["BadRequestError"];
-                401: components["responses"]["UnauthorizedError"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
+          month: number
+        }
+        cookie?: never
+      }
+      requestBody?: never
+      responses: {
+        /** @description Resumen mensual obtenido exitosamente */
+        200: {
+          headers: Record<string, unknown>
+          content: {
+            'application/json': {
+              response?: components['schemas']['TransactionSummary']
+              /** @example ok */
+              status?: string
+            }
+          }
+        }
+        400: components['responses']['BadRequestError']
+        401: components['responses']['UnauthorizedError']
+      }
+    }
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        ApiResponse: {
-            /** @description The actual data returned */
-            response?: unknown;
-            /**
+  schemas: {
+    ApiResponse: {
+      /** @description The actual data returned */
+      response?: unknown
+      /**
              * @description Status of the response
              * @enum {string}
              */
-            status?: "ok" | "error";
-            /** @description HTTP status code */
-            statusCode?: number;
-            headers?: {
-                [key: string]: string;
-            };
-        };
-        Transaction: {
-            /**
+      status?: 'ok' | 'error'
+      /** @description HTTP status code */
+      statusCode?: number
+      headers?: Record<string, string>
+    }
+    Transaction: {
+      /**
              * @description Unique identifier
              * @example 507f1f77bcf86cd799439011
              */
-            id: string;
-            /**
+      id: string
+      /**
              * @description Type of transaction
              * @example expense
              * @enum {string}
              */
-            type: "income" | "expense" | "savings";
-            /**
+      type: 'income' | 'expense' | 'savings'
+      /**
              * @description Category of the transaction
              * @example Food
              */
-            category: string;
-            /**
+      category: string
+      /**
              * Format: float
              * @description Amount in MXN
              * @example 150.5
              */
-            amount: number;
-            /**
+      amount: number
+      /**
              * @description Description of the transaction
              * @example Grocery shopping at supermarket
              */
-            description: string;
-            /**
+      description: string
+      /**
              * Format: date
              * @description Date of the transaction (ISO 8601)
              * @example 2025-12-29
              */
-            date: string;
-            /**
+      date: string
+      /**
              * @description ID of the user who owns this transaction
              * @example 507f1f77bcf86cd799439011
              */
-            userId: string;
-        };
-        CreateTransactionRequest: {
-            /**
+      userId: string
+    }
+    CreateTransactionRequest: {
+      /**
              * @description Type of transaction
              * @example expense
              * @enum {string}
              */
-            type: "income" | "expense" | "savings";
-            /**
+      type: 'income' | 'expense' | 'savings'
+      /**
              * @description Category of the transaction
              * @example Food
              */
-            category: string;
-            /**
+      category: string
+      /**
              * Format: float
              * @description Amount in MXN
              * @example 150.5
              */
-            amount: number;
-            /**
+      amount: number
+      /**
              * @description Description of the transaction
              * @example Grocery shopping at supermarket
              */
-            description: string;
-            /**
+      description: string
+      /**
              * Format: date
              * @description Date of the transaction (ISO 8601)
              * @example 2025-12-29
              */
-            date: string;
-        };
-        TransactionSummary: {
-            income?: {
-                /** @example 50000 */
-                total?: number;
-                /** @example 5 */
-                count?: number;
-                /** @example 100 */
-                experience?: number;
-                /** @example 50 */
-                coins?: number;
-            };
-            expense?: {
-                /** @example 30000 */
-                total?: number;
-                /** @example 15 */
-                count?: number;
-                /** @example 75 */
-                experience?: number;
-                /** @example 30 */
-                coins?: number;
-            };
-            savings?: {
-                /** @example 20000 */
-                total?: number;
-                /** @example 3 */
-                count?: number;
-                /** @example 50 */
-                experience?: number;
-                /** @example 20 */
-                coins?: number;
-            };
-            /**
+      date: string
+    }
+    TransactionSummary: {
+      income?: {
+        /** @example 50000 */
+        total?: number
+        /** @example 5 */
+        count?: number
+        /** @example 100 */
+        experience?: number
+        /** @example 50 */
+        coins?: number
+      }
+      expense?: {
+        /** @example 30000 */
+        total?: number
+        /** @example 15 */
+        count?: number
+        /** @example 75 */
+        experience?: number
+        /** @example 30 */
+        coins?: number
+      }
+      savings?: {
+        /** @example 20000 */
+        total?: number
+        /** @example 3 */
+        count?: number
+        /** @example 50 */
+        experience?: number
+        /** @example 20 */
+        coins?: number
+      }
+      /**
              * @description Income - Expense
              * @example 20000
              */
-            netWorth?: number;
-            /**
+      netWorth?: number
+      /**
              * @description Percentage of savings goal achieved
              * @example 65.5
              */
-            savingsProgress?: number;
-        };
-        Error: {
-            response?: {
-                /** @example An error occurred */
-                message?: string;
-                /** @example Detailed error message */
-                error?: string;
-            };
-            /** @enum {string} */
-            status?: "error";
-            /** @example 400 */
-            statusCode?: number;
-        };
-    };
-    responses: {
-        /** @description Access token is missing or invalid */
-        UnauthorizedError: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                /**
+      savingsProgress?: number
+    }
+    Error: {
+      response?: {
+        /** @example An error occurred */
+        message?: string
+        /** @example Detailed error message */
+        error?: string
+      }
+      /** @enum {string} */
+      status?: 'error'
+      /** @example 400 */
+      statusCode?: number
+    }
+  }
+  responses: {
+    /** @description Access token is missing or invalid */
+    UnauthorizedError: {
+      headers: Record<string, unknown>
+      content: {
+        /**
                  * @example {
                  *       "response": {
                  *         "message": "Unauthorized",
@@ -445,16 +427,14 @@ export interface components {
                  *       "statusCode": 401
                  *     }
                  */
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description Resource not found */
-        NotFoundError: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                /**
+        'application/json': components['schemas']['Error']
+      }
+    }
+    /** @description Resource not found */
+    NotFoundError: {
+      headers: Record<string, unknown>
+      content: {
+        /**
                  * @example {
                  *       "response": {
                  *         "message": "Not Found",
@@ -464,16 +444,14 @@ export interface components {
                  *       "statusCode": 404
                  *     }
                  */
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description Invalid request data */
-        BadRequestError: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                /**
+        'application/json': components['schemas']['Error']
+      }
+    }
+    /** @description Invalid request data */
+    BadRequestError: {
+      headers: Record<string, unknown>
+      content: {
+        /**
                  * @example {
                  *       "response": {
                  *         "message": "Bad Request",
@@ -483,14 +461,14 @@ export interface components {
                  *       "statusCode": 400
                  *     }
                  */
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-    };
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+        'application/json': components['schemas']['Error']
+      }
+    }
+  }
+  parameters: never
+  requestBodies: never
+  headers: never
+  pathItems: never
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;

@@ -17,7 +17,7 @@ export const TRANSACTION_CATEGORIES = {
   INVESTMENT: 'investment',
   BONUS: 'bonus',
   OTHER_INCOME: 'other_income',
-  
+
   // Expense categories
   FOOD: 'food',
   TRANSPORT: 'transport',
@@ -27,7 +27,7 @@ export const TRANSACTION_CATEGORIES = {
   EDUCATION: 'education',
   BILLS: 'bills',
   OTHER_EXPENSE: 'other_expense',
-  
+
   // Savings categories
   EMERGENCY_FUND: 'emergency_fund',
   VACATION: 'vacation',
@@ -71,21 +71,21 @@ export const ACHIEVEMENT_CRITERIA_TYPES = {
 export const GAMIFICATION = {
   // Experience calculation
   EXPERIENCE_MULTIPLIERS: {
-    INCOME: 0.1,    // 10% of amount
-    SAVINGS: 0.2,   // 20% of amount
-    EXPENSE: 0.05   // 5% of amount
+    INCOME: 0.1, // 10% of amount
+    SAVINGS: 0.2, // 20% of amount
+    EXPENSE: 0.05 // 5% of amount
   },
-  
+
   // Coin calculation
   COIN_MULTIPLIERS: {
-    INCOME: 0.05,   // 5% of amount
-    SAVINGS: 0.1,   // 10% of amount
-    EXPENSE: 0.02   // 2% of amount
+    INCOME: 0.05, // 5% of amount
+    SAVINGS: 0.1, // 10% of amount
+    EXPENSE: 0.02 // 2% of amount
   },
-  
+
   // Level progression
   EXPERIENCE_PER_LEVEL: 100, // Base experience needed per level
-  
+
   // Default values
   DEFAULT_LEVEL: 1,
   DEFAULT_EXPERIENCE: 0,
@@ -147,4 +147,4 @@ export type TransactionCategory = typeof TRANSACTION_CATEGORIES[keyof typeof TRA
 export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES];
 export type AchievementCategory = typeof ACHIEVEMENT_CATEGORIES[keyof typeof ACHIEVEMENT_CATEGORIES];
 export type AchievementRarity = typeof ACHIEVEMENT_RARITY[keyof typeof ACHIEVEMENT_RARITY];
-export type AchievementCriteriaType = typeof ACHIEVEMENT_CRITERIA_TYPES[keyof typeof ACHIEVEMENT_CRITERIA_TYPES]; 
+export type AchievementCriteriaType = typeof ACHIEVEMENT_CRITERIA_TYPES[keyof typeof ACHIEVEMENT_CRITERIA_TYPES];

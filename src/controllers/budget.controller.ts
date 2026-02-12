@@ -1,14 +1,14 @@
 import type { Response } from 'express';
 import {
-  BudgetRequest,
-  CreateBudgetBody,
-  UpdateBudgetBody,
-  AddIncomeItemBody,
-  AddExpenseItemBody,
-  UpdateIncomeItemsBody,
-  UpdateExpenseItemsBody,
-  UpdateIncomeItemBody,
-  UpdateExpenseItemBody
+  type BudgetRequest,
+  type CreateBudgetBody,
+  type UpdateBudgetBody,
+  type AddIncomeItemBody,
+  type AddExpenseItemBody,
+  type UpdateIncomeItemsBody,
+  type UpdateExpenseItemsBody,
+  type UpdateIncomeItemBody,
+  type UpdateExpenseItemBody
 } from '../types/budget.types';
 import { budgetService } from '../services/budget.service';
 import { logger } from '../config/logger';
@@ -23,13 +23,13 @@ export class BudgetController {
    * GET /api/budgets
    * Get all budgets for authenticated user
    */
-  async getAllBudgets(req: BudgetRequest, res: Response): Promise<void> {
+  async getAllBudgets (req: BudgetRequest, res: Response): Promise<void> {
     try {
       const userId = req.user!.userId;
       const year = req.query.year ? parseInt(req.query.year as string) : undefined;
       const month = req.query.month ? parseInt(req.query.month as string) : undefined;
 
-      const filters: { year?: number; month?: number } = {};
+      const filters: { year?: number, month?: number } = {};
       if (year !== undefined) filters.year = year;
       if (month !== undefined) filters.month = month;
 
@@ -54,7 +54,7 @@ export class BudgetController {
    * GET /api/budgets/:id
    * Get budget by ID
    */
-  async getBudgetById(req: BudgetRequest, res: Response): Promise<void> {
+  async getBudgetById (req: BudgetRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       if (!id) {
@@ -107,7 +107,7 @@ export class BudgetController {
    * POST /api/budgets
    * Create new budget
    */
-  async createBudget(req: BudgetRequest<CreateBudgetBody>, res: Response): Promise<void> {
+  async createBudget (req: BudgetRequest<CreateBudgetBody>, res: Response): Promise<void> {
     try {
       // Validate request
       const errors = validationResult(req);
@@ -162,7 +162,7 @@ export class BudgetController {
    * PUT /api/budgets/:id
    * Update entire budget
    */
-  async updateBudget(req: BudgetRequest<UpdateBudgetBody>, res: Response): Promise<void> {
+  async updateBudget (req: BudgetRequest<UpdateBudgetBody>, res: Response): Promise<void> {
     try {
       // Validate request
       const errors = validationResult(req);
@@ -235,7 +235,7 @@ export class BudgetController {
    * DELETE /api/budgets/:id
    * Delete budget
    */
-  async deleteBudget(req: BudgetRequest, res: Response): Promise<void> {
+  async deleteBudget (req: BudgetRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       if (!id) {
@@ -288,7 +288,7 @@ export class BudgetController {
    * PATCH /api/budgets/:id/income
    * Update income items
    */
-  async updateIncomeItems(req: BudgetRequest<UpdateIncomeItemsBody>, res: Response): Promise<void> {
+  async updateIncomeItems (req: BudgetRequest<UpdateIncomeItemsBody>, res: Response): Promise<void> {
     try {
       // Validate request
       const errors = validationResult(req);
@@ -356,7 +356,7 @@ export class BudgetController {
    * PATCH /api/budgets/:id/expense
    * Update expense items
    */
-  async updateExpenseItems(req: BudgetRequest<UpdateExpenseItemsBody>, res: Response): Promise<void> {
+  async updateExpenseItems (req: BudgetRequest<UpdateExpenseItemsBody>, res: Response): Promise<void> {
     try {
       // Validate request
       const errors = validationResult(req);
@@ -424,7 +424,7 @@ export class BudgetController {
    * DELETE /api/budgets/:id/income/:incomeId
    * Delete income item
    */
-  async deleteIncomeItem(req: BudgetRequest, res: Response): Promise<void> {
+  async deleteIncomeItem (req: BudgetRequest, res: Response): Promise<void> {
     try {
       const { id, incomeId } = req.params;
       if (!id) {
@@ -486,7 +486,7 @@ export class BudgetController {
    * DELETE /api/budgets/:id/expense/:expenseId
    * Delete expense item
    */
-  async deleteExpenseItem(req: BudgetRequest, res: Response): Promise<void> {
+  async deleteExpenseItem (req: BudgetRequest, res: Response): Promise<void> {
     try {
       const { id, expenseId } = req.params;
       if (!id) {
@@ -548,7 +548,7 @@ export class BudgetController {
    * POST /api/budgets/:id/income
    * Add a single income item
    */
-  async addIncomeItem(req: BudgetRequest<AddIncomeItemBody>, res: Response): Promise<void> {
+  async addIncomeItem (req: BudgetRequest<AddIncomeItemBody>, res: Response): Promise<void> {
     try {
       // Validate request
       const errors = validationResult(req);
@@ -616,7 +616,7 @@ export class BudgetController {
    * POST /api/budgets/:id/expense
    * Add a single expense item
    */
-  async addExpenseItem(req: BudgetRequest<AddExpenseItemBody>, res: Response): Promise<void> {
+  async addExpenseItem (req: BudgetRequest<AddExpenseItemBody>, res: Response): Promise<void> {
     try {
       // Validate request
       const errors = validationResult(req);
@@ -684,7 +684,7 @@ export class BudgetController {
    * GET /api/budgets/stats
    * Get budget statistics for user
    */
-  async getUserStats(req: BudgetRequest, res: Response): Promise<void> {
+  async getUserStats (req: BudgetRequest, res: Response): Promise<void> {
     try {
       const userId = req.user!.userId;
       const stats = await budgetService.getUserBudgetStats(userId);
@@ -709,7 +709,7 @@ export class BudgetController {
    * Get income items from a budget (paginated by default)
    * Query params: page (default: 1), limit (default: 10)
    */
-  async getIncomeItems(req: BudgetRequest, res: Response): Promise<void> {
+  async getIncomeItems (req: BudgetRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       if (!id) {
@@ -764,7 +764,7 @@ export class BudgetController {
    * Get expense items from a budget (paginated by default)
    * Query params: page (default: 1), limit (default: 10)
    */
-  async getExpenseItems(req: BudgetRequest, res: Response): Promise<void> {
+  async getExpenseItems (req: BudgetRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       if (!id) {
@@ -818,7 +818,7 @@ export class BudgetController {
    * PUT /api/budgets/:id/income/:incomeId
    * Update a single income item
    */
-  async updateIncomeItem(req: BudgetRequest<UpdateIncomeItemBody>, res: Response): Promise<void> {
+  async updateIncomeItem (req: BudgetRequest<UpdateIncomeItemBody>, res: Response): Promise<void> {
     try {
       // Validate request
       const errors = validationResult(req);
@@ -903,7 +903,7 @@ export class BudgetController {
    * PUT /api/budgets/:id/expense/:expenseId
    * Update a single expense item
    */
-  async updateExpenseItem(req: BudgetRequest<UpdateExpenseItemBody>, res: Response): Promise<void> {
+  async updateExpenseItem (req: BudgetRequest<UpdateExpenseItemBody>, res: Response): Promise<void> {
     try {
       // Validate request
       const errors = validationResult(req);

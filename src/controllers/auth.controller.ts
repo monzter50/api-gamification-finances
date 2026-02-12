@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { authService } from '../services/auth.service';
 import { userService } from '../services/user.service';
-import { AuthenticatedRequest } from '../types';
+import { type AuthenticatedRequest } from '../types';
 import { AuthError } from '../errors/AuthErrors';
 
 /**
@@ -13,7 +13,7 @@ export class AuthController {
    * Register a new user
    * POST /api/auth/register
    */
-  async register(req: Request, res: Response): Promise<void> {
+  async register (req: Request, res: Response): Promise<void> {
     try {
       const { email, password, name } = req.body;
       const result = await authService.register({ email, password, name });
@@ -44,7 +44,7 @@ export class AuthController {
    * Login user
    * POST /api/auth/login
    */
-  async login(req: Request, res: Response): Promise<void> {
+  async login (req: Request, res: Response): Promise<void> {
     try {
       const { email, password } = req.body;
       const result = await authService.login({ email, password });
@@ -75,10 +75,10 @@ export class AuthController {
    * Logout user
    * POST /api/auth/logout
    */
-  async logout(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async logout (req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const authHeader = req.headers.authorization;
-      const token: string = authHeader!.split(' ')[1] as string;
+      const token: string = authHeader!.split(' ')[1]!;
       const userId = req.user!.id;
 
       const result = await authService.logout(token, userId);
@@ -108,10 +108,11 @@ export class AuthController {
    * Get current authenticated user profile
    * GET /api/auth/me
    */
-  async getCurrentUser(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async getCurrentUser (req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const userId = req.user!.id;
       const profile = await userService.getUserProfile(userId);
+      console.log('Fetched user profile:', profile);
 
       res.status(200).json({
         success: true,

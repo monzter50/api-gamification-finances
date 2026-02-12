@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { type Response } from 'express';
 import type { ApiResponse } from '@/types/index.js';
 
 /**
@@ -114,4 +114,4 @@ export const forbiddenResponse = (
     success: false,
     message
   });
-}; 
+};
