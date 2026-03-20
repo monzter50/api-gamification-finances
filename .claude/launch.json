@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "API Dev Server",
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": ["dev"],
+      "port": 3000
+    },
+    {
+      "name": "API Dev Server (Watch Mode)",
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": ["dev:watch"],
+      "port": 3000
+    },
+    {
+      "name": "Vitest UI",
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": ["test:ui"],
+      "port": 51204
+    }
+  ]
+}
