@@ -57,7 +57,7 @@ const options: swaggerJsdoc.Options = {
         },
         Transaction: {
           type: 'object',
-          required: ['id', 'type', 'category', 'amount', 'description', 'date', 'userId'],
+          required: ['id', 'type', 'amount', 'description', 'date', 'userId'],
           properties: {
             id: {
               type: 'string',
@@ -69,11 +69,6 @@ const options: swaggerJsdoc.Options = {
               enum: ['income', 'expense', 'savings'],
               description: 'Type of transaction',
               example: 'expense'
-            },
-            category: {
-              type: 'string',
-              description: 'Category of the transaction',
-              example: 'Food'
             },
             amount: {
               type: 'number',
@@ -103,19 +98,13 @@ const options: swaggerJsdoc.Options = {
         },
         CreateTransactionRequest: {
           type: 'object',
-          required: ['type', 'category', 'amount', 'description', 'date'],
+          required: ['type', 'amount', 'description', 'date'],
           properties: {
             type: {
               type: 'string',
               enum: ['income', 'expense', 'savings'],
               description: 'Type of transaction',
               example: 'expense'
-            },
-            category: {
-              type: 'string',
-              minLength: 1,
-              description: 'Category of the transaction',
-              example: 'Food'
             },
             amount: {
               type: 'number',

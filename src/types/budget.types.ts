@@ -55,6 +55,7 @@ export interface AddIncomeItemBody {
   description: string
   amount: number
   type: IncomeType
+  accountId?: string
 }
 
 /**
@@ -74,6 +75,7 @@ export interface UpdateIncomeItemsBody {
     description: string
     amount: number
     type: IncomeType
+    accountId?: string
   }>
 }
 
@@ -95,6 +97,7 @@ export interface UpdateIncomeItemBody {
   description: string
   amount: number
   type: IncomeType
+  accountId?: string
 }
 
 /**

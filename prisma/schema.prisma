@@ -20,6 +20,25 @@ model User {
 
   transactions Transaction[]
   budgets      Budget[]
+  accounts     Account[]
+}
+
+model Account {
+  id           String        @id @default(uuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  name         String
+  type         String        // 'checking' | 'savings' | 'credit_card' | 'vales'
+  balance      Float         @default(0)
+  currency     String        @default("MXN")
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  transactions Transaction[]
+  incomeItems  IncomeItem[]
+
+  @@index([userId])
 }
 
 model Transaction {
@@ -27,16 +46,18 @@ model Transaction {
   userId           String
   user             User     @relation(fields: [userId], references: [id])
   accountId        String
+  account          Account  @relation(fields: [accountId], references: [id])
   date             DateTime
   amount           Float
   vendor           String
-  category         String
-  isInstallment    Boolean  @default(false)
-  owner            String
   description      String?
   type             String   // 'income' | 'expense'
   budgetId         String?
   budget           Budget?  @relation(fields: [budgetId], references: [id])
+  incomeItemId     String?
+  incomeItem       IncomeItem?  @relation(fields: [incomeItemId], references: [id])
+  expenseItemId    String?
+  expenseItem      ExpenseItem? @relation(fields: [expenseItemId], references: [id])
   
   // Installment info flattened
   installmentCurrent  Int?
@@ -48,12 +69,14 @@ model Transaction {
 
   @@index([userId, date])
   @@index([userId, type, date])
-  @@index([userId, category])
   @@index([budgetId])
+  @@index([incomeItemId])
+  @@index([expenseItemId])
+  @@index([accountId])
 }
 
 model Budget {
-  id           String   @id @default(uuid()) // Using UUID to match the "budget_YYYY_MM" pattern or just let it generate and use composite logic
+  id           String   @id @default(uuid())
   userId       String
   user         User     @relation(fields: [userId], references: [id])
   year         Int
@@ -71,21 +94,27 @@ model Budget {
 }
 
 model IncomeItem {
-  id          String   @id @default(uuid())
-  budgetId    String
-  budget      Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
-  description String
-  amount      Float
-  type        String   // Enum handled as string: 'Debit Card', etc.
+  id           String        @id @default(uuid())
+  budgetId     String
+  budget       Budget        @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  accountId    String?
+  account      Account?      @relation(fields: [accountId], references: [id])
+  description  String
+  amount       Float
+  type         String        // Enum handled as string: 'Debit Card', etc.
+  transactions Transaction[]
+
+  @@index([accountId])
 }
 
 model ExpenseItem {
-  id          String   @id @default(uuid())
-  budgetId    String
-  budget      Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
-  description String
-  amount      Float
-  type        String   // Enum handled as string: 'Fixed', 'Variable'
+  id           String        @id @default(uuid())
+  budgetId     String
+  budget       Budget        @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  description  String
+  amount       Float
+  type         String        // Enum handled as string: 'Fixed', 'Variable'
+  transactions Transaction[]
 }
 
 model BlacklistedToken {

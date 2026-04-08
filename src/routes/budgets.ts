@@ -1,5 +1,7 @@
 import express from 'express';
 import { budgetController } from '../controllers/budget.controller';
+import { incomeController } from '../controllers/income.controller';
+import { expenseController } from '../controllers/expense.controller';
 import { authenticateJWT } from './auth';
 import { validate } from '../middleware/validate';
 import {
@@ -87,7 +89,7 @@ router.get(
   authenticateJWT,
   budgetIdValidation,
   validate,
-  budgetController.getIncomeItems.bind(budgetController)
+  incomeController.getIncomeItems.bind(incomeController)
 );
 
 // Add a single income item
@@ -96,7 +98,7 @@ router.post(
   authenticateJWT,
   addIncomeItemValidation,
   validate,
-  budgetController.addIncomeItem.bind(budgetController)
+  incomeController.addIncomeItem.bind(incomeController)
 );
 
 // Update/replace all income items
@@ -105,7 +107,7 @@ router.patch(
   authenticateJWT,
   updateIncomeItemsValidation,
   validate,
-  budgetController.updateIncomeItems.bind(budgetController)
+  incomeController.updateIncomeItems.bind(incomeController)
 );
 
 // Update specific income item
@@ -114,7 +116,7 @@ router.put(
   authenticateJWT,
   updateIncomeItemValidation,
   validate,
-  budgetController.updateIncomeItem.bind(budgetController)
+  incomeController.updateIncomeItem.bind(incomeController)
 );
 
 // Delete specific income item
@@ -123,7 +125,7 @@ router.delete(
   authenticateJWT,
   deleteIncomeItemValidation,
   validate,
-  budgetController.deleteIncomeItem.bind(budgetController)
+  incomeController.deleteIncomeItem.bind(incomeController)
 );
 
 /**
@@ -137,7 +139,7 @@ router.get(
   authenticateJWT,
   budgetIdValidation,
   validate,
-  budgetController.getExpenseItems.bind(budgetController)
+  expenseController.getExpenseItems.bind(expenseController)
 );
 
 // Add a single expense item
@@ -146,7 +148,7 @@ router.post(
   authenticateJWT,
   addExpenseItemValidation,
   validate,
-  budgetController.addExpenseItem.bind(budgetController)
+  expenseController.addExpenseItem.bind(expenseController)
 );
 
 // Update/replace all expense items
@@ -155,7 +157,7 @@ router.patch(
   authenticateJWT,
   updateExpenseItemsValidation,
   validate,
-  budgetController.updateExpenseItems.bind(budgetController)
+  expenseController.updateExpenseItems.bind(expenseController)
 );
 
 // Update specific expense item
@@ -164,7 +166,7 @@ router.put(
   authenticateJWT,
   updateExpenseItemValidation,
   validate,
-  budgetController.updateExpenseItem.bind(budgetController)
+  expenseController.updateExpenseItem.bind(expenseController)
 );
 
 // Delete specific expense item
@@ -173,7 +175,7 @@ router.delete(
   authenticateJWT,
   deleteExpenseItemValidation,
   validate,
-  budgetController.deleteExpenseItem.bind(budgetController)
+  expenseController.deleteExpenseItem.bind(expenseController)
 );
 
 export { router as budgetRoutes };

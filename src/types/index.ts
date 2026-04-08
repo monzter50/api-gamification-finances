@@ -17,7 +17,6 @@ export interface IUser {
 export interface ITransaction {
   user: string
   type: 'income' | 'expense' | 'savings'
-  category: string
   amount: number
   description: string
   date: Date

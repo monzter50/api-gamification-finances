@@ -161,7 +161,6 @@ export interface paths {
           'application/json': {
             /** @enum {string} */
             type?: 'income' | 'expense' | 'savings'
-            category?: string
             amount?: number
             description?: string
             /** Format: date */
@@ -300,11 +299,6 @@ export interface components {
              */
       type: 'income' | 'expense' | 'savings'
       /**
-             * @description Category of the transaction
-             * @example Food
-             */
-      category: string
-      /**
              * Format: float
              * @description Amount in MXN
              * @example 150.5
@@ -334,11 +328,6 @@ export interface components {
              * @enum {string}
              */
       type: 'income' | 'expense' | 'savings'
-      /**
-             * @description Category of the transaction
-             * @example Food
-             */
-      category: string
       /**
              * Format: float
              * @description Amount in MXN
