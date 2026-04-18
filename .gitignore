@@ -121,3 +121,4 @@ public/uploads/
 # Build
 build/
 dist/ 
+.claude/*

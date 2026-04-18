@@ -52,7 +52,12 @@ export const createBudgetValidation = [
 ];
 
 /**
- * Validation for updating a budget
+ * Validation for updating a budget (Strategy B).
+ *
+ * Only scalar fields (year, month) are allowed. Income and expense items
+ * are managed exclusively through the dedicated nested endpoints. We reject
+ * `incomeItems` / `expenseItems` explicitly so API consumers get a loud,
+ * actionable error instead of silent stripping.
  */
 export const updateBudgetValidation = [
   param('id')
@@ -67,39 +72,13 @@ export const updateBudgetValidation = [
     .isInt({ min: 0, max: 11 })
     .withMessage('Month must be between 0 and 11'),
   body('incomeItems')
-    .optional()
-    .isArray()
-    .withMessage('Income items must be an array'),
-  body('incomeItems.*.description')
-    .optional()
-    .trim()
-    .notEmpty()
-    .withMessage('Income item description is required'),
-  body('incomeItems.*.amount')
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage('Income item amount must be a positive number'),
-  body('incomeItems.*.type')
-    .optional()
-    .isIn(INCOME_TYPES)
-    .withMessage('Invalid income type. Must be one of: Debit Card, Credit Card, Cash, Vales, Transfer, Check, Other'),
+    .not()
+    .exists()
+    .withMessage('incomeItems is not allowed here. Use POST/PUT/DELETE /api/budgets/:id/income to manage income items.'),
   body('expenseItems')
-    .optional()
-    .isArray()
-    .withMessage('Expense items must be an array'),
-  body('expenseItems.*.description')
-    .optional()
-    .trim()
-    .notEmpty()
-    .withMessage('Expense item description is required'),
-  body('expenseItems.*.amount')
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage('Expense item amount must be a positive number'),
-  body('expenseItems.*.type')
-    .optional()
-    .isIn(EXPENSE_TYPES)
-    .withMessage('Invalid expense type. Must be one of: Fixed, Variable')
+    .not()
+    .exists()
+    .withMessage('expenseItems is not allowed here. Use POST/PUT/DELETE /api/budgets/:id/expense to manage expense items.')
 ];
 
 /**

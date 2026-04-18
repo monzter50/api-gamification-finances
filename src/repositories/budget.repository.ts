@@ -1,5 +1,6 @@
 import { BaseRepository } from './base.repository';
 import { type Budget, type IncomeItem, type ExpenseItem } from '@prisma/client';
+import { type IncomeItemInput, type ExpenseItemInput } from '../types/budget.types';
 import prisma from '../config/database';
 
 export type EnhancedBudget = Budget & {
@@ -99,8 +100,8 @@ export class BudgetRepository extends BaseRepository<Budget> {
     userId: string
     year: number
     month: number
-    incomeItems?: Array<Omit<IncomeItem, 'id' | 'budgetId'>>
-    expenseItems?: Array<Omit<ExpenseItem, 'id' | 'budgetId'>>
+    incomeItems?: IncomeItemInput[]
+    expenseItems?: ExpenseItemInput[]
   }): Promise<EnhancedBudget> {
     // Check for duplicate
     const exists = await this.budgetExists(data.userId, data.year, data.month);
@@ -127,12 +128,24 @@ export class BudgetRepository extends BaseRepository<Budget> {
   }
 
   /**
-   * Update budget by ID (only if belongs to user)
+   * Update budget's OWN scalar fields only (year, month).
+   *
+   * Income and expense items must be managed through their dedicated
+   * repository methods (addIncomeItem, updateIncomeItem, removeIncomeItem,
+   * updateIncomeItems, and the expense equivalents).
+   *
+   * This is intentional: bulk-replacing items through this method would
+   * require deleting rows referenced by Transaction.incomeItemId /
+   * expenseItemId, causing either FK constraint errors or broken transaction
+   * history. See Strategy B design note for rationale.
    */
   async updateByIdAndUser (
     budgetId: string,
     userId: string,
-    data: Partial<Budget>
+    data: {
+      year?: number
+      month?: number
+    }
   ): Promise<EnhancedBudget | null> {
     // Ensure budget belongs to user first
     const exists = await this.model.findFirst({ where: { id: budgetId, userId } });
@@ -174,7 +187,7 @@ export class BudgetRepository extends BaseRepository<Budget> {
   async addIncomeItem (
     budgetId: string,
     userId: string,
-    incomeItem: Omit<IncomeItem, 'id' | 'budgetId'>
+    incomeItem: IncomeItemInput
   ): Promise<EnhancedBudget | null> {
     const exists = await this.model.findFirst({ where: { id: budgetId, userId } });
     if (!exists) return null;
@@ -200,7 +213,7 @@ export class BudgetRepository extends BaseRepository<Budget> {
   async updateIncomeItems (
     budgetId: string,
     userId: string,
-    incomeItems: Array<Omit<IncomeItem, 'id' | 'budgetId'>>
+    incomeItems: IncomeItemInput[]
   ): Promise<EnhancedBudget | null> {
     const exists = await this.model.findFirst({ where: { id: budgetId, userId } });
     if (!exists) return null;
@@ -256,7 +269,7 @@ export class BudgetRepository extends BaseRepository<Budget> {
   async addExpenseItem (
     budgetId: string,
     userId: string,
-    expenseItem: Omit<ExpenseItem, 'id' | 'budgetId'>
+    expenseItem: ExpenseItemInput
   ): Promise<EnhancedBudget | null> {
     const exists = await this.model.findFirst({ where: { id: budgetId, userId } });
     if (!exists) return null;
@@ -280,7 +293,7 @@ export class BudgetRepository extends BaseRepository<Budget> {
   async updateExpenseItems (
     budgetId: string,
     userId: string,
-    expenseItems: Array<Omit<ExpenseItem, 'id' | 'budgetId'>>
+    expenseItems: ExpenseItemInput[]
   ): Promise<EnhancedBudget | null> {
     const exists = await this.model.findFirst({ where: { id: budgetId, userId } });
     if (!exists) return null;

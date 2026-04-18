@@ -179,13 +179,14 @@ export class BudgetController {
       }
 
       const userId = req.user!.userId;
-      const { year, month, incomeItems, expenseItems } = req.body;
+      // Strategy B: PUT /budgets only touches budget's own scalar fields.
+      // Income / expense items are managed exclusively through the nested
+      // /income and /expense endpoints — see budget.validator for the guard.
+      const { year, month } = req.body;
 
       const budget = await budgetService.updateBudget(id, userId, {
         year,
-        month,
-        ...(incomeItems && { incomeItems }),
-        ...(expenseItems && { expenseItems })
+        month
       });
 
       res.status(200).json({

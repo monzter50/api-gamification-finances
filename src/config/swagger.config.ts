@@ -194,6 +194,174 @@ const options: swaggerJsdoc.Options = {
               example: 400
             }
           }
+        },
+        Pagination: {
+          type: 'object',
+          properties: {
+            page: { type: 'integer', example: 1 },
+            limit: { type: 'integer', example: 10 },
+            total: { type: 'integer', example: 25 },
+            pages: { type: 'integer', example: 3 }
+          }
+        },
+        IncomeItem: {
+          type: 'object',
+          required: ['id', 'description', 'amount', 'type'],
+          properties: {
+            id: {
+              type: 'string',
+              description: 'Unique identifier of the income item',
+              example: 'inc_01HX5A2B3C4D5E6F'
+            },
+            description: {
+              type: 'string',
+              description: 'Description of the income item',
+              example: 'Monthly salary'
+            },
+            amount: {
+              type: 'number',
+              format: 'float',
+              minimum: 0.01,
+              description: 'Amount in MXN',
+              example: 25000.00
+            },
+            type: {
+              type: 'string',
+              enum: ['Debit Card', 'Credit Card', 'Cash', 'Vales', 'Transfer', 'Check', 'Other'],
+              description: 'Payment/receipt method',
+              example: 'Transfer'
+            },
+            accountId: {
+              type: 'string',
+              nullable: true,
+              description: 'ID of the account this income is deposited into',
+              example: 'acc_01HX5A2B3C4D5E6F'
+            }
+          }
+        },
+        ExpenseItem: {
+          type: 'object',
+          required: ['id', 'description', 'amount', 'type'],
+          properties: {
+            id: {
+              type: 'string',
+              description: 'Unique identifier of the expense item',
+              example: 'exp_01HX5A2B3C4D5E6F'
+            },
+            description: {
+              type: 'string',
+              description: 'Description of the expense item',
+              example: 'Rent'
+            },
+            amount: {
+              type: 'number',
+              format: 'float',
+              minimum: 0.01,
+              description: 'Amount in MXN',
+              example: 1200.00
+            },
+            type: {
+              type: 'string',
+              enum: ['Fixed', 'Variable'],
+              description: 'Expense classification',
+              example: 'Fixed'
+            }
+          }
+        },
+        AddIncomeItemRequest: {
+          type: 'object',
+          required: ['description', 'amount', 'type'],
+          properties: {
+            description: { type: 'string', minLength: 1, example: 'Monthly salary' },
+            amount: { type: 'number', format: 'float', minimum: 0.01, example: 25000 },
+            type: {
+              type: 'string',
+              enum: ['Debit Card', 'Credit Card', 'Cash', 'Vales', 'Transfer', 'Check', 'Other'],
+              example: 'Transfer'
+            },
+            accountId: {
+              type: 'string',
+              nullable: true,
+              description: 'Optional — links income to a user account',
+              example: 'acc_01HX5A2B3C4D5E6F'
+            }
+          }
+        },
+        AddExpenseItemRequest: {
+          type: 'object',
+          required: ['description', 'amount', 'type'],
+          properties: {
+            description: { type: 'string', minLength: 1, example: 'Rent' },
+            amount: { type: 'number', format: 'float', minimum: 0.01, example: 1200 },
+            type: {
+              type: 'string',
+              enum: ['Fixed', 'Variable'],
+              example: 'Fixed'
+            }
+          }
+        },
+        UpdateIncomeItemsRequest: {
+          type: 'object',
+          required: ['incomeItems'],
+          properties: {
+            incomeItems: {
+              type: 'array',
+              description: 'Full replacement of the income list for this budget',
+              items: { $ref: '#/components/schemas/AddIncomeItemRequest' }
+            }
+          }
+        },
+        UpdateExpenseItemsRequest: {
+          type: 'object',
+          required: ['expenseItems'],
+          properties: {
+            expenseItems: {
+              type: 'array',
+              description: 'Full replacement of the expense list for this budget',
+              items: { $ref: '#/components/schemas/AddExpenseItemRequest' }
+            }
+          }
+        },
+        BudgetMutationResponse: {
+          type: 'object',
+          description: 'Shape returned by every mutating income/expense endpoint',
+          properties: {
+            success: { type: 'boolean', example: true },
+            data: {
+              type: 'object',
+              description: 'Updated budget document'
+            },
+            message: { type: 'string', example: 'Income item added successfully' }
+          }
+        },
+        PaginatedIncomeResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: true },
+            data: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/IncomeItem' }
+            },
+            accounts: {
+              type: 'array',
+              description: 'User accounts (used to resolve accountId)',
+              items: { type: 'object' }
+            },
+            pagination: { $ref: '#/components/schemas/Pagination' },
+            message: { type: 'string', example: 'Income items retrieved successfully' }
+          }
+        },
+        PaginatedExpenseResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: true },
+            data: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/ExpenseItem' }
+            },
+            pagination: { $ref: '#/components/schemas/Pagination' },
+            message: { type: 'string', example: 'Expense items retrieved successfully' }
+          }
         }
       },
       responses: {
@@ -261,6 +429,14 @@ const options: swaggerJsdoc.Options = {
       {
         name: 'Authentication',
         description: 'User authentication endpoints'
+      },
+      {
+        name: 'Income',
+        description: 'Income items nested under a budget (/api/budgets/{id}/income)'
+      },
+      {
+        name: 'Expense',
+        description: 'Expense items nested under a budget (/api/budgets/{id}/expense)'
       }
     ]
   },

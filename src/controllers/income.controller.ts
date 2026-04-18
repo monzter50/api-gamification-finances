@@ -104,7 +104,11 @@ export class IncomeController {
       const userId = req.user!.userId;
       const { incomeItems } = req.body;
 
-      const budget = await budgetService.updateIncomeItems(id, userId, incomeItems.map((item: { description: string; amount: number; type: string; accountId?: string }) => ({ ...item, accountId: item.accountId ?? null })));
+      const budget = await budgetService.updateIncomeItems(
+        id,
+        userId,
+        incomeItems.map((item) => ({ ...item, accountId: item.accountId ?? null }))
+      );
 
       res.status(200).json({
         success: true,
