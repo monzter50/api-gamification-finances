@@ -206,7 +206,7 @@ const options: swaggerJsdoc.Options = {
         },
         IncomeItem: {
           type: 'object',
-          required: ['id', 'description', 'amount', 'type'],
+          required: ['id', 'description', 'amount', 'type', 'accountId'],
           properties: {
             id: {
               type: 'string',
@@ -233,8 +233,8 @@ const options: swaggerJsdoc.Options = {
             },
             accountId: {
               type: 'string',
-              nullable: true,
-              description: 'ID of the account this income is deposited into',
+              format: 'uuid',
+              description: 'ID of the account this planned income will be deposited into. Required as of PR 1.',
               example: 'acc_01HX5A2B3C4D5E6F'
             }
           }
@@ -270,7 +270,7 @@ const options: swaggerJsdoc.Options = {
         },
         AddIncomeItemRequest: {
           type: 'object',
-          required: ['description', 'amount', 'type'],
+          required: ['description', 'amount', 'type', 'accountId'],
           properties: {
             description: { type: 'string', minLength: 1, example: 'Monthly salary' },
             amount: { type: 'number', format: 'float', minimum: 0.01, example: 25000 },
@@ -281,8 +281,8 @@ const options: swaggerJsdoc.Options = {
             },
             accountId: {
               type: 'string',
-              nullable: true,
-              description: 'Optional — links income to a user account',
+              format: 'uuid',
+              description: 'Required. Must be an account owned by the authenticated user. Response 400 if the account does not belong to this user.',
               example: 'acc_01HX5A2B3C4D5E6F'
             }
           }

@@ -46,17 +46,16 @@ export interface ItemRemovalResult {
 /**
  * Domain-level input shapes for creating/updating budget items.
  *
- * We use these INSTEAD of `Omit<IncomeItem, ...>` from Prisma because Prisma
- * generates nullable scalars as `T | null` (required) rather than `T?`
- * (optional). Our API contract says `accountId` is optional on input, so the
- * types must reflect that — otherwise every caller has to pass `accountId:
- * null` just to satisfy the compiler.
+ * We use these INSTEAD of `Omit<IncomeItem, ...>` from Prisma because we want
+ * the API contract to drive the shape, not the storage. In particular:
+ *   - `accountId` is REQUIRED on income (planning income without a
+ *     destination account is meaningless — see PR 1 design note).
  */
 export interface IncomeItemInput {
   description: string
   amount: number
   type: IncomeType
-  accountId?: string | null
+  accountId: string
 }
 
 export interface ExpenseItemInput {
@@ -85,6 +84,7 @@ export interface CreateBudgetBody {
     description: string
     amount: number
     type: IncomeType
+    accountId: string
   }>
   expenseItems?: Array<{
     description: string
@@ -103,6 +103,7 @@ export interface UpdateBudgetBody {
     description: string
     amount: number
     type: IncomeType
+    accountId: string
   }>
   expenseItems?: Array<{
     description: string
@@ -118,7 +119,7 @@ export interface AddIncomeItemBody {
   description: string
   amount: number
   type: IncomeType
-  accountId?: string
+  accountId: string
 }
 
 /**
@@ -138,7 +139,7 @@ export interface UpdateIncomeItemsBody {
     description: string
     amount: number
     type: IncomeType
-    accountId?: string
+    accountId: string
   }>
 }
 
@@ -160,7 +161,7 @@ export interface UpdateIncomeItemBody {
   description: string
   amount: number
   type: IncomeType
-  accountId?: string
+  accountId: string
 }
 
 /**

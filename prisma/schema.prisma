@@ -97,8 +97,8 @@ model IncomeItem {
   id           String        @id @default(uuid())
   budgetId     String
   budget       Budget        @relation(fields: [budgetId], references: [id], onDelete: Cascade)
-  accountId    String?
-  account      Account?      @relation(fields: [accountId], references: [id])
+  accountId    String
+  account      Account       @relation(fields: [accountId], references: [id])
   description  String
   amount       Float
   type         String        // Enum handled as string: 'Debit Card', etc.

@@ -1,4 +1,5 @@
 import { budgetRepository, type EnhancedBudget } from '../repositories/budget.repository';
+import { accountRepository } from '../repositories/account.repository';
 import {
   type IncomeItemInput,
   type ExpenseItemInput,
@@ -80,6 +81,15 @@ export class BudgetService {
       throw new Error(
         `Budget for ${data.year}-${data.month + 1} already exists`
       );
+    }
+
+    // Validate every income item's accountId belongs to this user BEFORE
+    // attempting the create. We do this here (not in the repo) because
+    // account ownership is a cross-aggregate concern — the repo shouldn't
+    // know about Account semantics.
+    const incomeAccountIds = Array.from(new Set((data.incomeItems ?? []).map(i => i.accountId)));
+    for (const accountId of incomeAccountIds) {
+      await this.assertAccountBelongsToUser(accountId, data.userId);
     }
 
     try {
@@ -172,6 +182,12 @@ export class BudgetService {
     // Validate income items
     this.validateItems(incomeItems, 'income');
 
+    // Every accountId must belong to this user
+    const incomeAccountIds = Array.from(new Set(incomeItems.map(i => i.accountId)));
+    for (const accountId of incomeAccountIds) {
+      await this.assertAccountBelongsToUser(accountId, userId);
+    }
+
     const updatedBudget = await budgetRepository.updateIncomeItems(
       budgetId,
       userId,
@@ -199,6 +215,9 @@ export class BudgetService {
 
     // Validate item
     this.validateItem(incomeItem, 'income');
+
+    // accountId is now required — make sure it belongs to this user
+    await this.assertAccountBelongsToUser(incomeItem.accountId, userId);
 
     const result = await budgetRepository.addIncomeItem(
       budgetId,
@@ -372,6 +391,10 @@ export class BudgetService {
     // Validate item
     this.validateItem(incomeItem, 'income');
 
+    // accountId is required — verify it belongs to this user (also guards
+    // against reassigning income to an account the user does not own)
+    await this.assertAccountBelongsToUser(incomeItem.accountId, userId);
+
     const result = await budgetRepository.updateIncomeItem(
       budgetId,
       userId,
@@ -420,6 +443,18 @@ export class BudgetService {
   }
 
   /**
+   * Verify an account belongs to the given user. Throws a consistent error
+   * so callers can map it to a 400 response. Deduplicates the same check
+   * across income add/update/replace flows.
+   */
+  private async assertAccountBelongsToUser(accountId: string, userId: string): Promise<void> {
+    const account = await accountRepository.findByIdAndUser(accountId, userId);
+    if (!account) {
+      throw new Error(`Account ${accountId} not found or does not belong to user`);
+    }
+  }
+
+  /**
    * Validate single item
    */
   private validateItem(
@@ -446,6 +481,9 @@ export class BudgetService {
       }
       if (!INCOME_TYPES.includes(incomeItem.type as IncomeType)) {
         throw new Error(`Invalid income type. Must be one of: ${INCOME_TYPES.join(', ')}`);
+      }
+      if (!incomeItem.accountId) {
+        throw new Error('Income accountId is required');
       }
     }
 

@@ -232,7 +232,7 @@ export class BudgetRepository extends BaseRepository<Budget> {
         description: incomeItem.description,
         amount: incomeItem.amount,
         type: incomeItem.type,
-        accountId: incomeItem.accountId ?? null,
+        accountId: incomeItem.accountId,
         budgetId
       }
     });
@@ -519,7 +519,7 @@ export class BudgetRepository extends BaseRepository<Budget> {
         description: incomeItem.description,
         amount: incomeItem.amount,
         type: incomeItem.type,
-        accountId: incomeItem.accountId ?? null
+        accountId: incomeItem.accountId
       }
     });
     if (result.count === 0) return null;
