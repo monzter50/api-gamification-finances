@@ -199,7 +199,7 @@ router.get(
  *         description: Income item added successfully
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/BudgetMutationResponse' }
+ *             schema: { $ref: '#/components/schemas/IncomeItemMutationResponse' }
  *       400: { $ref: '#/components/responses/BadRequestError' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
  *       403:
@@ -282,7 +282,7 @@ router.patch(
  *         description: Income item updated successfully
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/BudgetMutationResponse' }
+ *             schema: { $ref: '#/components/schemas/IncomeItemMutationResponse' }
  *       400: { $ref: '#/components/responses/BadRequestError' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
  *       403:
@@ -319,7 +319,7 @@ router.put(
  *         description: Income item deleted successfully
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/BudgetMutationResponse' }
+ *             schema: { $ref: '#/components/schemas/ItemRemovalResponse' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
  *       403:
  *         description: Unauthorized access to budget
@@ -402,7 +402,7 @@ router.get(
  *         description: Expense item added successfully
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/BudgetMutationResponse' }
+ *             schema: { $ref: '#/components/schemas/ExpenseItemMutationResponse' }
  *       400: { $ref: '#/components/responses/BadRequestError' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
  *       403:
@@ -485,7 +485,7 @@ router.patch(
  *         description: Expense item updated successfully
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/BudgetMutationResponse' }
+ *             schema: { $ref: '#/components/schemas/ExpenseItemMutationResponse' }
  *       400: { $ref: '#/components/responses/BadRequestError' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
  *       403:
@@ -522,7 +522,7 @@ router.put(
  *         description: Expense item deleted successfully
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/BudgetMutationResponse' }
+ *             schema: { $ref: '#/components/schemas/ItemRemovalResponse' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
  *       403:
  *         description: Unauthorized access to budget

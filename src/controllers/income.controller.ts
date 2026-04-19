@@ -66,11 +66,11 @@ export class IncomeController {
       const userId = req.user!.userId;
       const { description, amount, type, accountId } = req.body;
 
-      const budget = await budgetService.addIncomeItem(id, userId, { description, amount, type, accountId: accountId ?? null });
+      const result = await budgetService.addIncomeItem(id, userId, { description, amount, type, accountId: accountId ?? null });
 
       res.status(201).json({
         success: true,
-        data: budget,
+        data: result,
         message: 'Income item added successfully'
       });
     } catch (error) {
@@ -147,11 +147,11 @@ export class IncomeController {
       const userId = req.user!.userId;
       const { description, amount, type, accountId } = req.body;
 
-      const budget = await budgetService.updateIncomeItem(id, userId, incomeId, { description, amount, type, accountId: accountId ?? null });
+      const result = await budgetService.updateIncomeItem(id, userId, incomeId, { description, amount, type, accountId: accountId ?? null });
 
       res.status(200).json({
         success: true,
-        data: budget,
+        data: result,
         message: 'Income item updated successfully'
       });
     } catch (error) {
@@ -179,11 +179,11 @@ export class IncomeController {
       const incomeId = req.params.incomeId as string;
       const userId = req.user!.userId;
 
-      const budget = await budgetService.removeIncomeItem(id, userId, incomeId);
+      const result = await budgetService.removeIncomeItem(id, userId, incomeId);
 
       res.status(200).json({
         success: true,
-        data: budget,
+        data: result,
         message: 'Income item deleted successfully'
       });
     } catch (error) {

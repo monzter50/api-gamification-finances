@@ -61,11 +61,11 @@ export class ExpenseController {
       const userId = req.user!.userId;
       const { description, amount, type } = req.body;
 
-      const budget = await budgetService.addExpenseItem(id, userId, { description, amount, type });
+      const result = await budgetService.addExpenseItem(id, userId, { description, amount, type });
 
       res.status(201).json({
         success: true,
-        data: budget,
+        data: result,
         message: 'Expense item added successfully'
       });
     } catch (error) {
@@ -137,11 +137,11 @@ export class ExpenseController {
       const userId = req.user!.userId;
       const { description, amount, type } = req.body;
 
-      const budget = await budgetService.updateExpenseItem(id, userId, expenseId, { description, amount, type });
+      const result = await budgetService.updateExpenseItem(id, userId, expenseId, { description, amount, type });
 
       res.status(200).json({
         success: true,
-        data: budget,
+        data: result,
         message: 'Expense item updated successfully'
       });
     } catch (error) {
@@ -168,11 +168,11 @@ export class ExpenseController {
       const { id, expenseId } = req.params;
       const userId = req.user!.userId;
 
-      const budget = await budgetService.removeExpenseItem(id, userId, expenseId);
+      const result = await budgetService.removeExpenseItem(id, userId, expenseId);
 
       res.status(200).json({
         success: true,
-        data: budget,
+        data: result,
         message: 'Expense item deleted successfully'
       });
     } catch (error) {

@@ -1,6 +1,13 @@
 import { BaseRepository } from './base.repository';
 import { type Budget, type IncomeItem, type ExpenseItem } from '@prisma/client';
-import { type IncomeItemInput, type ExpenseItemInput } from '../types/budget.types';
+import {
+  type IncomeItemInput,
+  type ExpenseItemInput,
+  type BudgetTotals,
+  type IncomeItemMutationResult,
+  type ExpenseItemMutationResult,
+  type ItemRemovalResult
+} from '../types/budget.types';
 import prisma from '../config/database';
 
 export type EnhancedBudget = Budget & {
@@ -35,6 +42,32 @@ export class BudgetRepository extends BaseRepository<Budget> {
       netSavings,
       savingsRate
     };
+  }
+
+  /**
+   * Compute aggregate totals for a budget WITHOUT loading the item rows.
+   *
+   * Used by item-level mutation endpoints (Option B) so a single-item change
+   * costs O(1) rows instead of re-fetching the entire budget graph.
+   */
+  private async computeBudgetTotals (budgetId: string): Promise<BudgetTotals> {
+    const [income, expense] = await Promise.all([
+      prisma.incomeItem.aggregate({
+        where: { budgetId },
+        _sum: { amount: true }
+      }),
+      prisma.expenseItem.aggregate({
+        where: { budgetId },
+        _sum: { amount: true }
+      })
+    ]);
+
+    const totalIncome = income._sum.amount ?? 0;
+    const totalExpense = expense._sum.amount ?? 0;
+    const netSavings = totalIncome - totalExpense;
+    const savingsRate = totalIncome === 0 ? 0 : (netSavings / totalIncome) * 100;
+
+    return { totalIncome, totalExpense, netSavings, savingsRate };
   }
 
   /**
@@ -182,28 +215,30 @@ export class BudgetRepository extends BaseRepository<Budget> {
   }
 
   /**
-   * Add income item to budget
+   * Add income item to budget (Option B).
+   *
+   * Returns the CREATED item + recomputed totals — NOT the full parent budget.
    */
   async addIncomeItem (
     budgetId: string,
     userId: string,
     incomeItem: IncomeItemInput
-  ): Promise<EnhancedBudget | null> {
+  ): Promise<IncomeItemMutationResult | null> {
     const exists = await this.model.findFirst({ where: { id: budgetId, userId } });
     if (!exists) return null;
 
-    // Use prisma.incomeItem directly or update budget with nested create
-    const budget = await this.model.update({
-      where: { id: budgetId },
+    const created = await prisma.incomeItem.create({
       data: {
-        incomeItems: {
-          create: incomeItem
-        }
-      },
-      include: { incomeItems: true, expenseItems: true }
+        description: incomeItem.description,
+        amount: incomeItem.amount,
+        type: incomeItem.type,
+        accountId: incomeItem.accountId ?? null,
+        budgetId
+      }
     });
 
-    return this.enrichBudget(budget);
+    const totals = await this.computeBudgetTotals(budgetId);
+    return { item: created, totals };
   }
 
   /**
@@ -236,23 +271,26 @@ export class BudgetRepository extends BaseRepository<Budget> {
   }
 
   /**
-   * Remove income item from budget
+   * Remove income item from budget (Option B).
+   *
+   * Returns recomputed totals only — the item no longer exists.
+   * Returns null if the budget doesn't belong to the user. If the item is
+   * already gone, the delete is idempotent and totals still come back.
    */
   async removeIncomeItem (
     budgetId: string,
     userId: string,
     itemId: string
-  ): Promise<EnhancedBudget | null> {
+  ): Promise<ItemRemovalResult | null> {
     const exists = await this.model.findFirst({ where: { id: budgetId, userId } });
     if (!exists) return null;
 
-    // Delete the item directly. We need to verify item belongs to budget too.
     await prisma.incomeItem.deleteMany({
       where: { id: itemId, budgetId }
     });
 
-    // Fetches fresh budget
-    return await (this.findById(budgetId));
+    const totals = await this.computeBudgetTotals(budgetId);
+    return { totals };
   }
 
   override async findById (id: string): Promise<EnhancedBudget | null> {
@@ -264,27 +302,29 @@ export class BudgetRepository extends BaseRepository<Budget> {
   }
 
   /**
-   * Add expense item to budget
+   * Add expense item to budget (Option B).
+   *
+   * Returns the CREATED item + recomputed totals — NOT the full parent budget.
    */
   async addExpenseItem (
     budgetId: string,
     userId: string,
     expenseItem: ExpenseItemInput
-  ): Promise<EnhancedBudget | null> {
+  ): Promise<ExpenseItemMutationResult | null> {
     const exists = await this.model.findFirst({ where: { id: budgetId, userId } });
     if (!exists) return null;
 
-    const budget = await this.model.update({
-      where: { id: budgetId },
+    const created = await prisma.expenseItem.create({
       data: {
-        expenseItems: {
-          create: expenseItem
-        }
-      },
-      include: { incomeItems: true, expenseItems: true }
+        description: expenseItem.description,
+        amount: expenseItem.amount,
+        type: expenseItem.type,
+        budgetId
+      }
     });
 
-    return this.enrichBudget(budget);
+    const totals = await this.computeBudgetTotals(budgetId);
+    return { item: created, totals };
   }
 
   /**
@@ -315,13 +355,15 @@ export class BudgetRepository extends BaseRepository<Budget> {
   }
 
   /**
-   * Remove expense item from budget
+   * Remove expense item from budget (Option B).
+   *
+   * Returns recomputed totals only — the item no longer exists.
    */
   async removeExpenseItem (
     budgetId: string,
     userId: string,
     itemId: string
-  ): Promise<EnhancedBudget | null> {
+  ): Promise<ItemRemovalResult | null> {
     const exists = await this.model.findFirst({ where: { id: budgetId, userId } });
     if (!exists) return null;
 
@@ -329,7 +371,8 @@ export class BudgetRepository extends BaseRepository<Budget> {
       where: { id: itemId, budgetId }
     });
 
-    return await (this.findById(budgetId));
+    const totals = await this.computeBudgetTotals(budgetId);
+    return { totals };
   }
 
   /**
@@ -455,43 +498,68 @@ export class BudgetRepository extends BaseRepository<Budget> {
   }
 
   /**
-   * Update a single income item
+   * Update a single income item (Option B).
+   *
+   * Returns the UPDATED item + recomputed totals — NOT the full parent budget.
+   * Returns null if the budget doesn't belong to the user OR the item is not
+   * found within the budget.
    */
   async updateIncomeItem (
     budgetId: string,
     userId: string,
     incomeId: string,
-    incomeItem: Partial<IncomeItem>
-  ): Promise<EnhancedBudget | null> {
+    incomeItem: IncomeItemInput
+  ): Promise<IncomeItemMutationResult | null> {
     const exists = await this.model.findFirst({ where: { id: budgetId, userId } });
-    if (!exists) throw new Error('Budget not found');
+    if (!exists) return null;
 
-    await prisma.incomeItem.updateMany({
+    const result = await prisma.incomeItem.updateMany({
       where: { id: incomeId, budgetId },
-      data: incomeItem
+      data: {
+        description: incomeItem.description,
+        amount: incomeItem.amount,
+        type: incomeItem.type,
+        accountId: incomeItem.accountId ?? null
+      }
     });
+    if (result.count === 0) return null;
 
-    return await (this.findById(budgetId));
+    const updated = await prisma.incomeItem.findUnique({ where: { id: incomeId } });
+    if (!updated) return null;
+
+    const totals = await this.computeBudgetTotals(budgetId);
+    return { item: updated, totals };
   }
 
   /**
-   * Update a single expense item
+   * Update a single expense item (Option B).
+   *
+   * Returns the UPDATED item + recomputed totals — NOT the full parent budget.
    */
   async updateExpenseItem (
     budgetId: string,
     userId: string,
     expenseId: string,
-    expenseItem: Partial<ExpenseItem>
-  ): Promise<EnhancedBudget | null> {
+    expenseItem: ExpenseItemInput
+  ): Promise<ExpenseItemMutationResult | null> {
     const exists = await this.model.findFirst({ where: { id: budgetId, userId } });
-    if (!exists) throw new Error('Budget not found');
+    if (!exists) return null;
 
-    await prisma.expenseItem.updateMany({
+    const result = await prisma.expenseItem.updateMany({
       where: { id: expenseId, budgetId },
-      data: expenseItem
+      data: {
+        description: expenseItem.description,
+        amount: expenseItem.amount,
+        type: expenseItem.type
+      }
     });
+    if (result.count === 0) return null;
 
-    return await (this.findById(budgetId));
+    const updated = await prisma.expenseItem.findUnique({ where: { id: expenseId } });
+    if (!updated) return null;
+
+    const totals = await this.computeBudgetTotals(budgetId);
+    return { item: updated, totals };
   }
 }
 

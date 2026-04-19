@@ -324,14 +324,72 @@ const options: swaggerJsdoc.Options = {
         },
         BudgetMutationResponse: {
           type: 'object',
-          description: 'Shape returned by every mutating income/expense endpoint',
+          description: 'Shape returned by bulk replace-all endpoints (PATCH /income, PATCH /expense). Includes the full enriched budget with both item lists.',
           properties: {
             success: { type: 'boolean', example: true },
             data: {
               type: 'object',
-              description: 'Updated budget document'
+              description: 'Updated budget document with incomeItems[], expenseItems[], and derived totals'
+            },
+            message: { type: 'string', example: 'Income items updated successfully' }
+          }
+        },
+        BudgetTotals: {
+          type: 'object',
+          description: 'Aggregate counters recomputed after any item-level mutation.',
+          required: ['totalIncome', 'totalExpense', 'netSavings', 'savingsRate'],
+          properties: {
+            totalIncome: { type: 'number', format: 'float', example: 25000 },
+            totalExpense: { type: 'number', format: 'float', example: 12000 },
+            netSavings: { type: 'number', format: 'float', example: 13000 },
+            savingsRate: { type: 'number', format: 'float', description: 'Percent (0-100)', example: 52 }
+          }
+        },
+        IncomeItemMutationResponse: {
+          type: 'object',
+          description: 'Returned by POST /income and PUT /income/:incomeId. Includes ONLY the touched item plus recomputed totals — NOT the full parent budget.',
+          properties: {
+            success: { type: 'boolean', example: true },
+            data: {
+              type: 'object',
+              required: ['item', 'totals'],
+              properties: {
+                item: { $ref: '#/components/schemas/IncomeItem' },
+                totals: { $ref: '#/components/schemas/BudgetTotals' }
+              }
             },
             message: { type: 'string', example: 'Income item added successfully' }
+          }
+        },
+        ExpenseItemMutationResponse: {
+          type: 'object',
+          description: 'Returned by POST /expense and PUT /expense/:expenseId. Includes ONLY the touched item plus recomputed totals.',
+          properties: {
+            success: { type: 'boolean', example: true },
+            data: {
+              type: 'object',
+              required: ['item', 'totals'],
+              properties: {
+                item: { $ref: '#/components/schemas/ExpenseItem' },
+                totals: { $ref: '#/components/schemas/BudgetTotals' }
+              }
+            },
+            message: { type: 'string', example: 'Expense item added successfully' }
+          }
+        },
+        ItemRemovalResponse: {
+          type: 'object',
+          description: 'Returned by DELETE /income/:incomeId and DELETE /expense/:expenseId. The item no longer exists, so only the recomputed totals are returned.',
+          properties: {
+            success: { type: 'boolean', example: true },
+            data: {
+              type: 'object',
+              required: ['totals'],
+              properties: {
+                totals: { $ref: '#/components/schemas/BudgetTotals' }
+              }
+            },
+            message: { type: 'string', example: 'Income item deleted successfully' }
           }
         },
         PaginatedIncomeResponse: {

@@ -1,5 +1,11 @@
 import { budgetRepository, type EnhancedBudget } from '../repositories/budget.repository';
-import { type IncomeItemInput, type ExpenseItemInput } from '../types/budget.types';
+import {
+  type IncomeItemInput,
+  type ExpenseItemInput,
+  type IncomeItemMutationResult,
+  type ExpenseItemMutationResult,
+  type ItemRemovalResult
+} from '../types/budget.types';
 import { type IncomeType, type ExpenseType, INCOME_TYPES, EXPENSE_TYPES } from '../constants/budget.constants';
 import { logger } from '../config/logger';
 
@@ -181,56 +187,56 @@ export class BudgetService {
   }
 
   /**
-   * Add single income item
+   * Add single income item (Option B: returns { item, totals })
    */
   async addIncomeItem(
     budgetId: string,
     userId: string,
     incomeItem: IncomeItemInput
-  ): Promise<EnhancedBudget> {
-    // Verify budget exists and belongs to user
+  ): Promise<IncomeItemMutationResult> {
+    // Verify budget exists and belongs to user (throws on miss/unauthorized)
     await this.getBudgetById(budgetId, userId);
 
     // Validate item
     this.validateItem(incomeItem, 'income');
 
-    const updatedBudget = await budgetRepository.addIncomeItem(
+    const result = await budgetRepository.addIncomeItem(
       budgetId,
       userId,
       incomeItem
     );
 
-    if (!updatedBudget) {
+    if (!result) {
       throw new Error('Failed to add income item');
     }
 
     logger.info(`Income item added to budget: ${budgetId}`);
-    return updatedBudget;
+    return result;
   }
 
   /**
-   * Remove income item
+   * Remove income item (Option B: returns { totals } only)
    */
   async removeIncomeItem(
     budgetId: string,
     userId: string,
     itemId: string
-  ): Promise<EnhancedBudget> {
+  ): Promise<ItemRemovalResult> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
-    const updatedBudget = await budgetRepository.removeIncomeItem(
+    const result = await budgetRepository.removeIncomeItem(
       budgetId,
       userId,
       itemId
     );
 
-    if (!updatedBudget) {
+    if (!result) {
       throw new Error('Failed to remove income item');
     }
 
     logger.info(`Income item removed from budget: ${budgetId}`);
-    return updatedBudget;
+    return result;
   }
 
   /**
@@ -262,56 +268,56 @@ export class BudgetService {
   }
 
   /**
-   * Add single expense item
+   * Add single expense item (Option B: returns { item, totals })
    */
   async addExpenseItem(
     budgetId: string,
     userId: string,
     expenseItem: ExpenseItemInput
-  ): Promise<EnhancedBudget> {
+  ): Promise<ExpenseItemMutationResult> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
     // Validate item
     this.validateItem(expenseItem, 'expense');
 
-    const updatedBudget = await budgetRepository.addExpenseItem(
+    const result = await budgetRepository.addExpenseItem(
       budgetId,
       userId,
       expenseItem
     );
 
-    if (!updatedBudget) {
+    if (!result) {
       throw new Error('Failed to add expense item');
     }
 
     logger.info(`Expense item added to budget: ${budgetId}`);
-    return updatedBudget;
+    return result;
   }
 
   /**
-   * Remove expense item
+   * Remove expense item (Option B: returns { totals } only)
    */
   async removeExpenseItem(
     budgetId: string,
     userId: string,
     itemId: string
-  ): Promise<EnhancedBudget> {
+  ): Promise<ItemRemovalResult> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
-    const updatedBudget = await budgetRepository.removeExpenseItem(
+    const result = await budgetRepository.removeExpenseItem(
       budgetId,
       userId,
       itemId
     );
 
-    if (!updatedBudget) {
+    if (!result) {
       throw new Error('Failed to remove expense item');
     }
 
     logger.info(`Expense item removed from budget: ${budgetId}`);
-    return updatedBudget;
+    return result;
   }
 
   /**
@@ -352,63 +358,65 @@ export class BudgetService {
   }
 
   /**
-   * Update a single income item
+   * Update a single income item (Option B: returns { item, totals })
    */
   async updateIncomeItem(
     budgetId: string,
     userId: string,
     incomeId: string,
     incomeItem: IncomeItemInput
-  ): Promise<EnhancedBudget> {
+  ): Promise<IncomeItemMutationResult> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
     // Validate item
     this.validateItem(incomeItem, 'income');
 
-    const updatedBudget = await budgetRepository.updateIncomeItem(
+    const result = await budgetRepository.updateIncomeItem(
       budgetId,
       userId,
       incomeId,
       incomeItem
     );
 
-    if (!updatedBudget) {
-      throw new Error('Failed to update income item');
+    // Budget ownership was verified above, so a null here means the item row
+    // is not in this budget — surface as 404 via the controller.
+    if (!result) {
+      throw new Error('Income item not found');
     }
 
     logger.info(`Income item ${incomeId} updated in budget: ${budgetId}`);
-    return updatedBudget;
+    return result;
   }
 
   /**
-   * Update a single expense item
+   * Update a single expense item (Option B: returns { item, totals })
    */
   async updateExpenseItem(
     budgetId: string,
     userId: string,
     expenseId: string,
     expenseItem: ExpenseItemInput
-  ): Promise<EnhancedBudget> {
+  ): Promise<ExpenseItemMutationResult> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
     // Validate item
     this.validateItem(expenseItem, 'expense');
 
-    const updatedBudget = await budgetRepository.updateExpenseItem(
+    const result = await budgetRepository.updateExpenseItem(
       budgetId,
       userId,
       expenseId,
       expenseItem
     );
 
-    if (!updatedBudget) {
-      throw new Error('Failed to update expense item');
+    if (!result) {
+      throw new Error('Expense item not found');
     }
 
     logger.info(`Expense item ${expenseId} updated in budget: ${budgetId}`);
-    return updatedBudget;
+    return result;
   }
 
   /**

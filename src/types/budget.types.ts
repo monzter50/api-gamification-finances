@@ -1,6 +1,47 @@
 import { type Request } from 'express';
+import { type IncomeItem, type ExpenseItem } from '@prisma/client';
 import { type JWTPayload } from './index';
 import { type IncomeType, type ExpenseType } from '../constants/budget.constants';
+
+/**
+ * Totals recomputed on every item-level mutation.
+ *
+ * Clients that just added/updated/removed a single item use this to refresh
+ * the parent-level aggregate counters WITHOUT refetching the full budget.
+ */
+export interface BudgetTotals {
+  totalIncome: number
+  totalExpense: number
+  netSavings: number
+  savingsRate: number
+}
+
+/**
+ * Response shape for item-level CREATE and UPDATE endpoints.
+ *
+ * - `item`:   the resource the caller actually created/updated (the REST-correct body).
+ * - `totals`: recomputed parent-level aggregates so the UI does not need a second GET.
+ *
+ * See Option B design note.
+ */
+export interface IncomeItemMutationResult {
+  item: IncomeItem
+  totals: BudgetTotals
+}
+
+export interface ExpenseItemMutationResult {
+  item: ExpenseItem
+  totals: BudgetTotals
+}
+
+/**
+ * Response shape for item-level DELETE endpoints.
+ *
+ * The item no longer exists, so only totals are returned.
+ */
+export interface ItemRemovalResult {
+  totals: BudgetTotals
+}
 
 /**
  * Domain-level input shapes for creating/updating budget items.
