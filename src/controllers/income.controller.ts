@@ -6,7 +6,6 @@ import {
   type UpdateIncomeItemBody
 } from '../types/budget.types';
 import { budgetService } from '../services/budget.service';
-import { accountService } from '../services/account.service';
 import { logger } from '../config/logger';
 import { validationResult } from 'express-validator';
 
@@ -22,15 +21,11 @@ export class IncomeController {
       const page = req.query.page ? parseInt(req.query.page as string) : 1;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
 
-      const [result, accounts] = await Promise.all([
-        budgetService.getPaginatedIncomeItems(id, userId, page, limit),
-        accountService.getUserAccounts(userId)
-      ]);
+      const result = await budgetService.getPaginatedIncomeItems(id, userId, page, limit);
 
       res.status(200).json({
         success: true,
         data: result.items,
-        accounts,
         pagination: {
           page: result.page,
           limit: result.limit,

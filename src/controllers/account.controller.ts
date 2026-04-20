@@ -8,6 +8,13 @@ export class AccountController {
     try {
       const userId = req.user!.userId;
       const accounts = await accountService.getUserAccounts(userId);
+
+      // Per-user, short-lived browser cache. `private` keeps it out of any
+      // shared/CDN cache (balances are user-scoped). 60s is enough to absorb
+      // a form re-open burst but short enough that a stale balance heals
+      // quickly on its own even if the client forgets to invalidate.
+      res.set('Cache-Control', 'private, max-age=60');
+
       res.status(200).json({
         success: true,
         data: accounts,
