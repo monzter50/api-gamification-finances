@@ -30,7 +30,7 @@ export type EnhancedTransaction = Transaction & {
   } | null
 };
 
-const transactionIncludes = {
+export const transactionIncludes = {
   account: {
     select: { id: true, name: true, type: true, currency: true }
   },

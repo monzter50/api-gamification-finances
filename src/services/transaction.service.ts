@@ -1,15 +1,49 @@
-import { transactionRepository, type EnhancedTransaction } from '../repositories/transaction.repository';
+import { transactionRepository, transactionIncludes, type EnhancedTransaction } from '../repositories/transaction.repository';
 import { budgetRepository } from '../repositories/budget.repository';
+import { accountRepository } from '../repositories/account.repository';
+import prisma from '../config/database';
 import { logger } from '../config/logger';
 
 /**
  * Transaction Service
- * Handles business logic for transaction operations
+ *
+ * Owns the business rules around money movement:
+ *  - Transactions are the only primitive that moves `Account.balance`.
+ *  - IncomeItem / ExpenseItem are *planning* artifacts (forecast / limit).
+ *  - Every create / update / delete is wrapped in `prisma.$transaction` so
+ *    the row mutation and the balance delta either both commit or both roll
+ *    back. There is no "transaction created but balance not updated" state.
  */
 export class TransactionService {
     /**
-     * Create a new transaction
-     * Validates budget ownership and enforces budget limits
+     * Signed delta this transaction applies to its account's balance.
+     *  - income  → +amount (credit)
+     *  - expense → -amount (debit)
+     * Anything else (e.g. 'savings' / 'transfer') is rejected — transfers
+     * touch two accounts and need their own primitive, not this one.
+     */
+    private balanceDeltaForType(type: string, amount: number): number {
+        if (type === 'income') return amount;
+        if (type === 'expense') return -amount;
+        throw new Error(
+            `Unsupported transaction type "${type}" for balance update. Expected 'income' or 'expense'.`
+        );
+    }
+
+    /**
+     * Defense-in-depth: refuse to touch an account the caller doesn't own.
+     * Cheap read; cost is dwarfed by the write it guards.
+     */
+    private async assertAccountBelongsToUser(accountId: string, userId: string): Promise<void> {
+        const account = await accountRepository.findByIdAndUser(accountId, userId);
+        if (!account) {
+            throw new Error(`Account ${accountId} not found or does not belong to user`);
+        }
+    }
+
+    /**
+     * Create a new transaction.
+     * Atomically: insert the transaction row + credit/debit the account.
      */
     async createTransaction(userId: string, data: {
         budgetId: string
@@ -34,14 +68,16 @@ export class TransactionService {
             throw new Error('Unauthorized access to budget');
         }
 
-        // 2. Validate incomeItemId belongs to this budget
+        // 2. Verify account belongs to the same user (prevents cross-user balance writes)
+        await this.assertAccountBelongsToUser(data.accountId, userId);
+
+        // 3. Validate incomeItemId belongs to this budget and respects planned limits
         if (data.incomeItemId) {
             const incomeItem = budget.incomeItems.find(i => i.id === data.incomeItemId);
             if (!incomeItem) {
                 throw new Error('Income item not found in this budget');
             }
 
-            // Check remaining balance on the income item
             const usedAmount = await transactionRepository.getUsedForIncomeItem(data.incomeItemId);
             const remaining = incomeItem.amount - usedAmount;
             if (data.amount > remaining) {
@@ -51,14 +87,13 @@ export class TransactionService {
             }
         }
 
-        // 3. Validate expenseItemId belongs to this budget
+        // 4. Validate expenseItemId belongs to this budget and respects planned limits
         if (data.expenseItemId) {
             const expenseItem = budget.expenseItems.find(e => e.id === data.expenseItemId);
             if (!expenseItem) {
                 throw new Error('Expense item not found in this budget');
             }
 
-            // Check remaining budget for this expense category
             const spentAmount = await transactionRepository.getSpentForExpenseItem(data.expenseItemId);
             const remaining = expenseItem.amount - spentAmount;
             if (data.amount > remaining) {
@@ -68,8 +103,11 @@ export class TransactionService {
             }
         }
 
-        // 4. Build transaction data, only including defined optional fields
-        const txData: Parameters<typeof transactionRepository.createTransaction>[0] = {
+        // 5. Compute the balance delta up front so we fail fast on unsupported types
+        const delta = this.balanceDeltaForType(data.type, Number(data.amount));
+
+        // 6. Build the transaction row payload
+        const txData: any = {
             userId,
             budgetId: data.budgetId,
             date: new Date(data.date),
@@ -78,7 +116,6 @@ export class TransactionService {
             type: data.type,
             accountId: data.accountId
         };
-
         if (data.description !== undefined) txData.description = data.description;
         if (data.incomeItemId !== undefined) txData.incomeItemId = data.incomeItemId;
         if (data.expenseItemId !== undefined) txData.expenseItemId = data.expenseItemId;
@@ -86,9 +123,20 @@ export class TransactionService {
         if (data.installmentTotal !== undefined) txData.installmentTotal = data.installmentTotal;
         if (data.installmentOriginal !== undefined) txData.installmentOriginal = data.installmentOriginal;
 
-        const transaction = await transactionRepository.createTransaction(txData);
+        // 7. Atomic: row insert + balance update commit or roll back together
+        const transaction = await prisma.$transaction(async (tx) => {
+            const created = await tx.transaction.create({
+                data: txData,
+                include: transactionIncludes
+            });
+            await tx.account.update({
+                where: { id: data.accountId },
+                data: { balance: { increment: delta } }
+            });
+            return created;
+        });
 
-        logger.info(`Transaction created: ${transaction.id} for budget ${data.budgetId}`);
+        logger.info(`Transaction created: ${transaction.id} (account ${data.accountId} delta ${delta})`);
         return transaction;
     }
 
@@ -135,7 +183,13 @@ export class TransactionService {
     }
 
     /**
-     * Update a transaction
+     * Update a transaction.
+     *
+     * Balance strategy: reverse the old effect fully, then apply the new
+     * effect fully. This covers every case (amount change, type flip,
+     * account change, or any combination) with one uniform pair of updates,
+     * and stays correct when the old and new accounts differ. All of it
+     * commits atomically with the row update.
      */
     async updateTransaction(
         id: string,
@@ -154,17 +208,16 @@ export class TransactionService {
             installmentOriginal?: number
         }
     ): Promise<EnhancedTransaction> {
-        // Verify transaction exists and belongs to user
+        // 1. Verify transaction exists and belongs to user
         const existing = await this.getTransactionById(id, userId);
 
-        // If changing budget-related items, re-validate
+        // 2. Re-validate budget-limit invariants if the caller changed anything that moves them
         const budgetId = existing.budgetId;
 
         if (budgetId && (data.incomeItemId !== undefined || data.expenseItemId !== undefined || data.amount !== undefined)) {
             const budget = await budgetRepository.findById(budgetId);
             if (!budget) throw new Error('Budget not found');
 
-            // Validate income item if being set
             const existingIncomeItemId = (existing as any).incomeItemId as string | null;
             const newIncomeItemId = data.incomeItemId !== undefined ? data.incomeItemId : existingIncomeItemId;
             if (newIncomeItemId) {
@@ -172,8 +225,10 @@ export class TransactionService {
                 if (!incomeItem) throw new Error('Income item not found in this budget');
 
                 const usedAmount = await transactionRepository.getUsedForIncomeItem(newIncomeItemId);
-                // Subtract the current transaction's contribution since we're updating
-                const usedExcludingCurrent = usedAmount - existing.amount;
+                // Exclude the current row's contribution since we're updating it in place
+                const usedExcludingCurrent = newIncomeItemId === existingIncomeItemId
+                    ? usedAmount - existing.amount
+                    : usedAmount;
                 const newAmount = data.amount ?? existing.amount;
                 const remaining = incomeItem.amount - usedExcludingCurrent;
 
@@ -184,7 +239,6 @@ export class TransactionService {
                 }
             }
 
-            // Validate expense item if being set
             const existingExpenseItemId = (existing as any).expenseItemId as string | null;
             const newExpenseItemId = data.expenseItemId !== undefined ? data.expenseItemId : existingExpenseItemId;
             if (newExpenseItemId) {
@@ -192,7 +246,9 @@ export class TransactionService {
                 if (!expenseItem) throw new Error('Expense item not found in this budget');
 
                 const spentAmount = await transactionRepository.getSpentForExpenseItem(newExpenseItemId);
-                const spentExcludingCurrent = spentAmount - existing.amount;
+                const spentExcludingCurrent = newExpenseItemId === existingExpenseItemId
+                    ? spentAmount - existing.amount
+                    : spentAmount;
                 const newAmount = data.amount ?? existing.amount;
                 const remaining = expenseItem.amount - spentExcludingCurrent;
 
@@ -204,34 +260,70 @@ export class TransactionService {
             }
         }
 
+        // 3. Resolve effective values for balance math
+        const newAccountId = data.accountId ?? existing.accountId;
+        const newType = data.type ?? existing.type;
+        const newAmount = data.amount !== undefined ? Number(data.amount) : existing.amount;
+
+        // 4. If the account is changing, make sure the target belongs to this user
+        if (data.accountId && data.accountId !== existing.accountId) {
+            await this.assertAccountBelongsToUser(data.accountId, userId);
+        }
+
+        // 5. Compute deltas: reverse old effect, apply new effect
+        const oldDelta = this.balanceDeltaForType(existing.type, existing.amount);
+        const newDelta = this.balanceDeltaForType(newType, newAmount);
+
+        // 6. Build update payload (convert date string if present)
         const updateData: any = { ...data };
         if (data.date) updateData.date = new Date(data.date);
 
-        const updated = await transactionRepository.updateByIdAndUser(id, userId, updateData);
+        // 7. Atomic: balance reversal on old account + balance apply on new account + row update
+        const updated = await prisma.$transaction(async (tx) => {
+            // Reverse old effect on old account
+            await tx.account.update({
+                where: { id: existing.accountId },
+                data: { balance: { increment: -oldDelta } }
+            });
+            // Apply new effect on (possibly different) new account
+            await tx.account.update({
+                where: { id: newAccountId },
+                data: { balance: { increment: newDelta } }
+            });
+            // Update the transaction row
+            return await tx.transaction.update({
+                where: { id },
+                data: updateData,
+                include: transactionIncludes
+            });
+        });
 
-        if (!updated) {
-            throw new Error('Failed to update transaction');
-        }
-
-        logger.info(`Transaction updated: ${id}`);
+        logger.info(
+            `Transaction updated: ${id} (reversed ${oldDelta} on ${existing.accountId}, applied ${newDelta} on ${newAccountId})`
+        );
         return updated;
     }
 
     /**
-     * Delete a transaction
-     * This effectively "restores" the budget amount
+     * Delete a transaction.
+     * Atomically: remove the row + reverse its balance effect.
      */
     async deleteTransaction(id: string, userId: string): Promise<void> {
-        // Verify transaction exists and belongs to user
-        await this.getTransactionById(id, userId);
+        const existing = await this.getTransactionById(id, userId);
 
-        const deleted = await transactionRepository.deleteByIdAndUser(id, userId);
+        const delta = this.balanceDeltaForType(existing.type, existing.amount);
 
-        if (!deleted) {
-            throw new Error('Failed to delete transaction');
-        }
+        await prisma.$transaction(async (tx) => {
+            await tx.account.update({
+                where: { id: existing.accountId },
+                data: { balance: { increment: -delta } }
+            });
+            await tx.transaction.delete({
+                where: { id }
+            });
+        });
 
-        logger.info(`Transaction deleted: ${id} (budget amount restored)`);
+        logger.info(`Transaction deleted: ${id} (reversed ${delta} on account ${existing.accountId})`);
     }
 
     /**
