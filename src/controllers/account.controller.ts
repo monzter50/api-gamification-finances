@@ -1,5 +1,6 @@
 import { type Response } from 'express';
 import { validationResult } from 'express-validator';
+import crypto from 'crypto';
 import { accountService } from '../services/account.service';
 import { type AccountRequest, type CreateAccountBody, type UpdateAccountBody } from '../types/account.types';
 
@@ -9,11 +10,31 @@ export class AccountController {
       const userId = req.user!.userId;
       const accounts = await accountService.getUserAccounts(userId);
 
+      // Weak ETag derived from the account data only (not the response
+      // envelope). Hashing the data — which includes `balance` — means the
+      // tag flips the moment any transaction moves a balance, so the client
+      // can't get stuck on a stale 304 after a mutation. SHA-1 is fine here:
+      // this is a cache key, not a security primitive.
+      const etag = 'W/"' + crypto
+        .createHash('sha1')
+        .update(JSON.stringify(accounts))
+        .digest('hex') + '"';
+
       // Per-user, short-lived browser cache. `private` keeps it out of any
       // shared/CDN cache (balances are user-scoped). 60s is enough to absorb
-      // a form re-open burst but short enough that a stale balance heals
-      // quickly on its own even if the client forgets to invalidate.
+      // a form re-open burst; after that, the client revalidates via ETag
+      // and usually gets an empty 304.
       res.set('Cache-Control', 'private, max-age=60');
+      res.set('ETag', etag);
+
+      // Client already has this version — skip the body entirely.
+      // Short-circuit here (rather than leaning on Express's auto-304)
+      // because ETag is disabled globally in development (see server.ts)
+      // and this must work in both environments.
+      if (req.get('If-None-Match') === etag) {
+        res.status(304).end();
+        return;
+      }
 
       res.status(200).json({
         success: true,
