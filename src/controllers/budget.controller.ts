@@ -50,7 +50,7 @@ export class BudgetController {
    */
   async getBudgetById (req: BudgetRequest, res: Response): Promise<void> {
     try {
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       if (!id) {
         res.status(400).json({
           success: false,
@@ -168,7 +168,7 @@ export class BudgetController {
         return;
       }
 
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       if (!id) {
         res.status(400).json({
           success: false,
@@ -230,7 +230,7 @@ export class BudgetController {
    */
   async deleteBudget (req: BudgetRequest, res: Response): Promise<void> {
     try {
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       if (!id) {
         res.status(400).json({
           success: false,

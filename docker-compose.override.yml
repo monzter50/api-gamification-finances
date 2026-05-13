@@ -1,0 +1,51 @@
+# =============================================================================
+# Development overrides — auto-loaded by `docker compose up`.
+# Hot-reload via tsx --watch, source mounted as a volume, debug logging.
+# Reads from .env (Compose default).
+# =============================================================================
+
+services:
+  api:
+    image: node:20-alpine
+    build: !reset null          # don't build — run from node:20-alpine directly
+    working_dir: /app
+    command: >
+      sh -c "
+        yarn install &&
+        yarn prisma generate &&
+        yarn prisma migrate deploy &&
+        yarn dev:watch
+      "
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: debug
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+
+  postgres:
+    # Expose on host for local Prisma Studio / psql access
+    ports:
+      - "5432:5432"
+
+  # pgAdmin for visual DB browsing — opt-in via profile
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: gamification-pgadmin
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@local.dev
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - gamification-network
+    profiles:
+      - tools
+
+volumes:
+  node_modules:

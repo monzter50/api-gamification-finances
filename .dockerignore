@@ -38,6 +38,18 @@ README.md
 *.md
 
 # Otros
-.DS_Store
 *.log
+
+# macOS metadata (project lives on external/exFAT drive — AppleDouble files
+# break BuildKit with "failed to xattr" if not excluded)
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+.fseventsd
+.TemporaryItems
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
 

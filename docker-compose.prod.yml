@@ -1,0 +1,60 @@
+# =============================================================================
+# Production overrides.
+# ASSUMES: managed external Postgres (Neon, Supabase, RDS, Cloud SQL, ...).
+# DATABASE_URL must be injected via .env.production or your secrets manager.
+# Run with:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#     --env-file .env.production up -d
+# =============================================================================
+
+services:
+  api:
+    restart: always
+    # `container_name` is incompatible with `replicas` (names must be unique).
+    # Compose will auto-name replicas as <project>-api-1, <project>-api-2.
+    container_name: !reset null
+    # Production uses an external managed Postgres, so the api service
+    # no longer depends on the in-cluster `postgres` service.
+    depends_on: !reset []
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: info
+    deploy:
+      # Replicas dropped to 1 because the base file maps a fixed host port
+      # (3000:3000), and Compose can't bind two containers to the same host
+      # port. Real horizontal scaling needs Swarm/K8s + a load balancer; revisit
+      # when you move off `docker compose up`.
+      replicas: 1
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+      restart_policy:
+        # `max_attempts` is only valid with `condition: on-failure`.
+        # We restart only on non-zero exits — clean shutdowns are respected.
+        condition: on-failure
+        delay: 5s
+        max_attempts: 5
+        window: 120s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "10"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Disable the in-cluster Postgres — production uses a managed DB.
+  # The `never` profile guarantees this service is never started.
+  # If you genuinely need an embedded DB, delete this `postgres` block
+  # to re-enable the one defined in docker-compose.yml.
+  postgres:
+    profiles:
+      - never

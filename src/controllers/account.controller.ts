@@ -55,7 +55,7 @@ export class AccountController {
 
     try {
       const userId = req.user!.userId;
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       const account = await accountService.getAccountById(id, userId);
       res.status(200).json({
         success: true,
@@ -101,7 +101,7 @@ export class AccountController {
 
     try {
       const userId = req.user!.userId;
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       const account = await accountService.updateAccount(id, userId, req.body);
       res.status(200).json({
         success: true,
@@ -127,7 +127,7 @@ export class AccountController {
 
     try {
       const userId = req.user!.userId;
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       const account = await accountService.deleteAccount(id, userId);
       res.status(200).json({
         success: true,

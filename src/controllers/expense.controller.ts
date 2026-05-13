@@ -16,7 +16,7 @@ export class ExpenseController {
    */
   async getExpenseItems (req: BudgetRequest, res: Response): Promise<void> {
     try {
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       const userId = req.user!.userId;
       const page = req.query.page ? parseInt(req.query.page as string) : 1;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
@@ -57,7 +57,7 @@ export class ExpenseController {
     }
 
     try {
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       const userId = req.user!.userId;
       const { description, amount, type } = req.body;
 
@@ -95,7 +95,7 @@ export class ExpenseController {
     }
 
     try {
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       const userId = req.user!.userId;
       const { expenseItems } = req.body;
 
@@ -133,7 +133,7 @@ export class ExpenseController {
     }
 
     try {
-      const { id, expenseId } = req.params;
+      const { id, expenseId } = req.params as { id: string; expenseId: string };
       const userId = req.user!.userId;
       const { description, amount, type } = req.body;
 
@@ -165,7 +165,7 @@ export class ExpenseController {
    */
   async deleteExpenseItem (req: BudgetRequest, res: Response): Promise<void> {
     try {
-      const { id, expenseId } = req.params;
+      const { id, expenseId } = req.params as { id: string; expenseId: string };
       const userId = req.user!.userId;
 
       const result = await budgetService.removeExpenseItem(id, userId, expenseId);

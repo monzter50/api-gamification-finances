@@ -18,7 +18,16 @@
     "test:db": "tsx --env-file=.env src/scripts/testConnection.ts",
     "docs": "echo 'OpenAPI docs: http://localhost:3000/api-docs'",
     "export:schema": "tsx src/scripts/exportOpenApi.ts",
-    "generate:client": "yarn run tsx src/scripts/exportOpenApi.ts && yarn run openapi-typescript openapi-schema.json -o src/types/openapi.d.ts"
+    "generate:client": "yarn run tsx src/scripts/exportOpenApi.ts && yarn run openapi-typescript openapi-schema.json -o src/types/openapi.d.ts",
+    "clean:macos": "dot_clean -m . 2>/dev/null || true",
+    "compose:dev": "yarn clean:macos && COPYFILE_DISABLE=1 docker compose up",
+    "compose:dev:tools": "yarn clean:macos && COPYFILE_DISABLE=1 docker compose --profile tools up",
+    "compose:dev:down": "docker compose down",
+    "compose:staging": "yarn clean:macos && COPYFILE_DISABLE=1 docker compose -f docker-compose.yml -f docker-compose.staging.yml --env-file .env.staging up -d",
+    "compose:staging:down": "docker compose -f docker-compose.yml -f docker-compose.staging.yml --env-file .env.staging down",
+    "compose:prod": "yarn clean:macos && COPYFILE_DISABLE=1 docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production up -d",
+    "compose:prod:down": "docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production down",
+    "compose:logs": "docker compose logs -f api"
   },
   "keywords": [
     "gamification",
