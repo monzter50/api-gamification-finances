@@ -14,7 +14,7 @@
 FROM node:20-slim AS deps
 WORKDIR /app
 COPY package.json yarn.lock ./
-RUN --mount=type=cache,target=/usr/local/share/.cache/yarn,sharing=locked \
+RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
     yarn install --frozen-lockfile
 
 # ---- Stage 2: build TypeScript + generate Prisma client (uses full deps) ----
@@ -29,7 +29,7 @@ RUN yarn build
 # Inherits from `deps`, so packages are already extracted on disk.
 # `--prefer-offline` hits the cache instead of the registry — fast.
 FROM deps AS pruned
-RUN --mount=type=cache,target=/usr/local/share/.cache/yarn,sharing=locked \
+RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
     yarn install --frozen-lockfile --production --prefer-offline && \
     yarn cache clean
 
