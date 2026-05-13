@@ -62,7 +62,8 @@ USER nodejs
 
 EXPOSE 3000
 
-# Apply migrations on container start, then run the server.
-# In production with a managed DB and multiple replicas, prefer running
-# migrations as a separate one-shot job to avoid race conditions.
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
+# Migrations run as a separate pre-deploy step (see railway.json or your
+# deploy pipeline), NOT on container start. This avoids race conditions
+# when running multiple replicas and lets a failed migration block the
+# rollout instead of crashing every replica into a restart loop.
+CMD ["node", "dist/server.js"]
