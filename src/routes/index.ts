@@ -3,10 +3,8 @@ import type { Request, Response } from 'express';
 import { authRoutes } from './auth';
 import { userRoutes } from './users';
 import { transactionRoutes } from './transactions';
-import { achievementRoutes } from './achievements';
-import { gamificationRoutes } from './gamification';
-import { badgeRoutes } from './badges';
 import { budgetRoutes } from './budgets';
+import { accountRoutes } from './accounts';
 
 const router = express.Router();
 
@@ -42,13 +40,14 @@ router.get('/docs', (req: Request, res: Response) => {
         'GET /users/stats': 'Obtener estadísticas del usuario'
       },
       transactions: {
-        'GET /transactions': 'Obtener todas las transacciones del usuario',
-        'POST /transactions': 'Crear nueva transacción',
-        'GET /transactions/:id': 'Obtener transacción específica',
-        'PUT /transactions/:id': 'Actualizar transacción',
-        'DELETE /transactions/:id': 'Eliminar transacción',
-        'GET /transactions/summary': 'Obtener resumen financiero',
-        'GET /transactions/monthly/:year/:month': 'Obtener resumen mensual'
+        'GET /transactions': 'Get all transactions (paginated, with optional filters)',
+        'POST /transactions': 'Create new transaction (budget-aware)',
+        'GET /transactions/summary': 'Get financial summary',
+        'GET /transactions/monthly/:year/:month': 'Get monthly summary with category breakdown',
+        'GET /transactions/budget/:budgetId/balance': 'Get budget balance breakdown',
+        'GET /transactions/:id': 'Get transaction by ID',
+        'PUT /transactions/:id': 'Update transaction',
+        'DELETE /transactions/:id': 'Delete transaction (restores budget)'
       },
       achievements: {
         'GET /achievements': 'Obtener todos los logros',
@@ -96,9 +95,7 @@ router.get('/docs', (req: Request, res: Response) => {
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/transactions', transactionRoutes);
-router.use('/achievements', achievementRoutes);
-router.use('/gamification', gamificationRoutes);
-router.use('/badges', badgeRoutes);
 router.use('/budgets', budgetRoutes);
+router.use('/accounts', accountRoutes);
 
-export { router as routes }; 
+export { router as routes };

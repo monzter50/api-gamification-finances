@@ -1,12 +1,8 @@
 import type { Response } from 'express';
 import {
-  BudgetRequest,
-  CreateBudgetBody,
-  UpdateBudgetBody,
-  AddIncomeItemBody,
-  AddExpenseItemBody,
-  UpdateIncomeItemsBody,
-  UpdateExpenseItemsBody
+  type BudgetRequest,
+  type CreateBudgetBody,
+  type UpdateBudgetBody
 } from '../types/budget.types';
 import { budgetService } from '../services/budget.service';
 import { logger } from '../config/logger';
@@ -21,13 +17,13 @@ export class BudgetController {
    * GET /api/budgets
    * Get all budgets for authenticated user
    */
-  async getAllBudgets(req: BudgetRequest, res: Response): Promise<void> {
+  async getAllBudgets (req: BudgetRequest, res: Response): Promise<void> {
     try {
       const userId = req.user!.userId;
       const year = req.query.year ? parseInt(req.query.year as string) : undefined;
       const month = req.query.month ? parseInt(req.query.month as string) : undefined;
 
-      const filters: { year?: number; month?: number } = {};
+      const filters: { year?: number, month?: number } = {};
       if (year !== undefined) filters.year = year;
       if (month !== undefined) filters.month = month;
 
@@ -52,9 +48,9 @@ export class BudgetController {
    * GET /api/budgets/:id
    * Get budget by ID
    */
-  async getBudgetById(req: BudgetRequest, res: Response): Promise<void> {
+  async getBudgetById (req: BudgetRequest, res: Response): Promise<void> {
     try {
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       if (!id) {
         res.status(400).json({
           success: false,
@@ -105,9 +101,8 @@ export class BudgetController {
    * POST /api/budgets
    * Create new budget
    */
-  async createBudget(req: BudgetRequest<CreateBudgetBody>, res: Response): Promise<void> {
+  async createBudget (req: BudgetRequest<CreateBudgetBody>, res: Response): Promise<void> {
     try {
-      // Validate request
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         res.status(400).json({
@@ -160,9 +155,8 @@ export class BudgetController {
    * PUT /api/budgets/:id
    * Update entire budget
    */
-  async updateBudget(req: BudgetRequest<UpdateBudgetBody>, res: Response): Promise<void> {
+  async updateBudget (req: BudgetRequest<UpdateBudgetBody>, res: Response): Promise<void> {
     try {
-      // Validate request
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         res.status(400).json({
@@ -174,7 +168,7 @@ export class BudgetController {
         return;
       }
 
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       if (!id) {
         res.status(400).json({
           success: false,
@@ -185,13 +179,14 @@ export class BudgetController {
       }
 
       const userId = req.user!.userId;
-      const { year, month, incomeItems, expenseItems } = req.body;
+      // Strategy B: PUT /budgets only touches budget's own scalar fields.
+      // Income / expense items are managed exclusively through the nested
+      // /income and /expense endpoints — see budget.validator for the guard.
+      const { year, month } = req.body;
 
       const budget = await budgetService.updateBudget(id, userId, {
         year,
-        month,
-        ...(incomeItems && { incomeItems }),
-        ...(expenseItems && { expenseItems })
+        month
       });
 
       res.status(200).json({
@@ -233,9 +228,9 @@ export class BudgetController {
    * DELETE /api/budgets/:id
    * Delete budget
    */
-  async deleteBudget(req: BudgetRequest, res: Response): Promise<void> {
+  async deleteBudget (req: BudgetRequest, res: Response): Promise<void> {
     try {
-      const { id } = req.params;
+      const { id } = req.params as { id: string };
       if (!id) {
         res.status(400).json({
           success: false,
@@ -283,406 +278,10 @@ export class BudgetController {
   }
 
   /**
-   * PATCH /api/budgets/:id/income
-   * Update income items
-   */
-  async updateIncomeItems(req: BudgetRequest<UpdateIncomeItemsBody>, res: Response): Promise<void> {
-    try {
-      // Validate request
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        res.status(400).json({
-          success: false,
-          error: 'Validation error',
-          errors: errors.array(),
-          statusCode: 400
-        });
-        return;
-      }
-
-      const { id } = req.params;
-      if (!id) {
-        res.status(400).json({
-          success: false,
-          error: 'Budget ID is required',
-          statusCode: 400
-        });
-        return;
-      }
-
-      const userId = req.user!.userId;
-      const { incomeItems } = req.body;
-
-      const budget = await budgetService.updateIncomeItems(id, userId, incomeItems);
-
-      res.status(200).json({
-        success: true,
-        data: budget,
-        message: 'Income items updated successfully'
-      });
-    } catch (error) {
-      logger.error('Error updating income items:', error);
-
-      const errorMessage = (error as Error).message;
-      if (errorMessage === 'Budget not found') {
-        res.status(404).json({
-          success: false,
-          error: 'Budget not found',
-          statusCode: 404
-        });
-        return;
-      }
-
-      if (errorMessage === 'Unauthorized access to budget') {
-        res.status(403).json({
-          success: false,
-          error: 'Unauthorized access to budget',
-          statusCode: 403
-        });
-        return;
-      }
-
-      res.status(400).json({
-        success: false,
-        error: errorMessage,
-        statusCode: 400
-      });
-    }
-  }
-
-  /**
-   * PATCH /api/budgets/:id/expense
-   * Update expense items
-   */
-  async updateExpenseItems(req: BudgetRequest<UpdateExpenseItemsBody>, res: Response): Promise<void> {
-    try {
-      // Validate request
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        res.status(400).json({
-          success: false,
-          error: 'Validation error',
-          errors: errors.array(),
-          statusCode: 400
-        });
-        return;
-      }
-
-      const { id } = req.params;
-      if (!id) {
-        res.status(400).json({
-          success: false,
-          error: 'Budget ID is required',
-          statusCode: 400
-        });
-        return;
-      }
-
-      const userId = req.user!.userId;
-      const { expenseItems } = req.body;
-
-      const budget = await budgetService.updateExpenseItems(id, userId, expenseItems);
-
-      res.status(200).json({
-        success: true,
-        data: budget,
-        message: 'Expense items updated successfully'
-      });
-    } catch (error) {
-      logger.error('Error updating expense items:', error);
-
-      const errorMessage = (error as Error).message;
-      if (errorMessage === 'Budget not found') {
-        res.status(404).json({
-          success: false,
-          error: 'Budget not found',
-          statusCode: 404
-        });
-        return;
-      }
-
-      if (errorMessage === 'Unauthorized access to budget') {
-        res.status(403).json({
-          success: false,
-          error: 'Unauthorized access to budget',
-          statusCode: 403
-        });
-        return;
-      }
-
-      res.status(400).json({
-        success: false,
-        error: errorMessage,
-        statusCode: 400
-      });
-    }
-  }
-
-  /**
-   * DELETE /api/budgets/:id/income/:itemId
-   * Delete income item
-   */
-  async deleteIncomeItem(req: BudgetRequest, res: Response): Promise<void> {
-    try {
-      const { id, itemId } = req.params;
-      if (!id) {
-        res.status(400).json({
-          success: false,
-          error: 'Budget ID is required',
-          statusCode: 400
-        });
-        return;
-      }
-      if (!itemId) {
-        res.status(400).json({
-          success: false,
-          error: 'Item ID is required',
-          statusCode: 400
-        });
-        return;
-      }
-
-      const userId = req.user!.userId;
-      const budget = await budgetService.removeIncomeItem(id, userId, itemId);
-
-      res.status(200).json({
-        success: true,
-        data: budget,
-        message: 'Income item deleted successfully'
-      });
-    } catch (error) {
-      logger.error('Error deleting income item:', error);
-
-      const errorMessage = (error as Error).message;
-      if (errorMessage === 'Budget not found') {
-        res.status(404).json({
-          success: false,
-          error: 'Budget not found',
-          statusCode: 404
-        });
-        return;
-      }
-
-      if (errorMessage === 'Unauthorized access to budget') {
-        res.status(403).json({
-          success: false,
-          error: 'Unauthorized access to budget',
-          statusCode: 403
-        });
-        return;
-      }
-
-      res.status(500).json({
-        success: false,
-        error: 'Error deleting income item',
-        statusCode: 500
-      });
-    }
-  }
-
-  /**
-   * DELETE /api/budgets/:id/expense/:itemId
-   * Delete expense item
-   */
-  async deleteExpenseItem(req: BudgetRequest, res: Response): Promise<void> {
-    try {
-      const { id, itemId } = req.params;
-      if (!id) {
-        res.status(400).json({
-          success: false,
-          error: 'Budget ID is required',
-          statusCode: 400
-        });
-        return;
-      }
-      if (!itemId) {
-        res.status(400).json({
-          success: false,
-          error: 'Item ID is required',
-          statusCode: 400
-        });
-        return;
-      }
-
-      const userId = req.user!.userId;
-      const budget = await budgetService.removeExpenseItem(id, userId, itemId);
-
-      res.status(200).json({
-        success: true,
-        data: budget,
-        message: 'Expense item deleted successfully'
-      });
-    } catch (error) {
-      logger.error('Error deleting expense item:', error);
-
-      const errorMessage = (error as Error).message;
-      if (errorMessage === 'Budget not found') {
-        res.status(404).json({
-          success: false,
-          error: 'Budget not found',
-          statusCode: 404
-        });
-        return;
-      }
-
-      if (errorMessage === 'Unauthorized access to budget') {
-        res.status(403).json({
-          success: false,
-          error: 'Unauthorized access to budget',
-          statusCode: 403
-        });
-        return;
-      }
-
-      res.status(500).json({
-        success: false,
-        error: 'Error deleting expense item',
-        statusCode: 500
-      });
-    }
-  }
-
-  /**
-   * POST /api/budgets/:id/income
-   * Add a single income item
-   */
-  async addIncomeItem(req: BudgetRequest<AddIncomeItemBody>, res: Response): Promise<void> {
-    try {
-      // Validate request
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        res.status(400).json({
-          success: false,
-          error: 'Validation error',
-          errors: errors.array(),
-          statusCode: 400
-        });
-        return;
-      }
-
-      const { id } = req.params;
-      if (!id) {
-        res.status(400).json({
-          success: false,
-          error: 'Budget ID is required',
-          statusCode: 400
-        });
-        return;
-      }
-
-      const userId = req.user!.userId;
-      const { description, amount, type } = req.body;
-
-      const budget = await budgetService.addIncomeItem(id, userId, { description, amount, type });
-
-      res.status(201).json({
-        success: true,
-        data: budget,
-        message: 'Income item added successfully'
-      });
-    } catch (error) {
-      logger.error('Error adding income item:', error);
-
-      const errorMessage = (error as Error).message;
-      if (errorMessage === 'Budget not found') {
-        res.status(404).json({
-          success: false,
-          error: 'Budget not found',
-          statusCode: 404
-        });
-        return;
-      }
-
-      if (errorMessage === 'Unauthorized access to budget') {
-        res.status(403).json({
-          success: false,
-          error: 'Unauthorized access to budget',
-          statusCode: 403
-        });
-        return;
-      }
-
-      res.status(400).json({
-        success: false,
-        error: errorMessage,
-        statusCode: 400
-      });
-    }
-  }
-
-  /**
-   * POST /api/budgets/:id/expense
-   * Add a single expense item
-   */
-  async addExpenseItem(req: BudgetRequest<AddExpenseItemBody>, res: Response): Promise<void> {
-    try {
-      // Validate request
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        res.status(400).json({
-          success: false,
-          error: 'Validation error',
-          errors: errors.array(),
-          statusCode: 400
-        });
-        return;
-      }
-
-      const { id } = req.params;
-      if (!id) {
-        res.status(400).json({
-          success: false,
-          error: 'Budget ID is required',
-          statusCode: 400
-        });
-        return;
-      }
-
-      const userId = req.user!.userId;
-      const { description, amount } = req.body;
-
-      const budget = await budgetService.addExpenseItem(id, userId, { description, amount });
-
-      res.status(201).json({
-        success: true,
-        data: budget,
-        message: 'Expense item added successfully'
-      });
-    } catch (error) {
-      logger.error('Error adding expense item:', error);
-
-      const errorMessage = (error as Error).message;
-      if (errorMessage === 'Budget not found') {
-        res.status(404).json({
-          success: false,
-          error: 'Budget not found',
-          statusCode: 404
-        });
-        return;
-      }
-
-      if (errorMessage === 'Unauthorized access to budget') {
-        res.status(403).json({
-          success: false,
-          error: 'Unauthorized access to budget',
-          statusCode: 403
-        });
-        return;
-      }
-
-      res.status(400).json({
-        success: false,
-        error: errorMessage,
-        statusCode: 400
-      });
-    }
-  }
-
-  /**
    * GET /api/budgets/stats
    * Get budget statistics for user
    */
-  async getUserStats(req: BudgetRequest, res: Response): Promise<void> {
+  async getUserStats (req: BudgetRequest, res: Response): Promise<void> {
     try {
       const userId = req.user!.userId;
       const stats = await budgetService.getUserBudgetStats(userId);
@@ -703,5 +302,4 @@ export class BudgetController {
   }
 }
 
-// Export singleton instance
 export const budgetController = new BudgetController();

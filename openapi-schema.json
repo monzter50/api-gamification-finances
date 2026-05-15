@@ -1,0 +1,1287 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Gamification Finances API",
+    "version": "1.0.0",
+    "description": "API para gestión de finanzas personales con gamificación",
+    "contact": {
+      "name": "API Support",
+      "email": "support@example.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Development server"
+    },
+    {
+      "url": "https://api.production.com",
+      "description": "Production server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Enter your JWT token in the format: Bearer <token>"
+      }
+    },
+    "schemas": {
+      "ApiResponse": {
+        "type": "object",
+        "properties": {
+          "response": {
+            "description": "The actual data returned"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "error"
+            ],
+            "description": "Status of the response"
+          },
+          "statusCode": {
+            "type": "number",
+            "description": "HTTP status code"
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Transaction": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "amount",
+          "description",
+          "date",
+          "userId"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "income",
+              "expense",
+              "savings"
+            ],
+            "description": "Type of transaction",
+            "example": "expense"
+          },
+          "amount": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0.01,
+            "description": "Amount in MXN",
+            "example": 150.5
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Description of the transaction",
+            "example": "Grocery shopping at supermarket"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Date of the transaction (ISO 8601)",
+            "example": "2025-12-29"
+          },
+          "userId": {
+            "type": "string",
+            "description": "ID of the user who owns this transaction",
+            "example": "507f1f77bcf86cd799439011"
+          }
+        }
+      },
+      "CreateTransactionRequest": {
+        "type": "object",
+        "required": [
+          "type",
+          "amount",
+          "description",
+          "date"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "income",
+              "expense",
+              "savings"
+            ],
+            "description": "Type of transaction",
+            "example": "expense"
+          },
+          "amount": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0.01,
+            "description": "Amount in MXN",
+            "example": 150.5
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Description of the transaction",
+            "example": "Grocery shopping at supermarket"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Date of the transaction (ISO 8601)",
+            "example": "2025-12-29"
+          }
+        }
+      },
+      "TransactionSummary": {
+        "type": "object",
+        "properties": {
+          "income": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "number",
+                "example": 50000
+              },
+              "count": {
+                "type": "number",
+                "example": 5
+              },
+              "experience": {
+                "type": "number",
+                "example": 100
+              },
+              "coins": {
+                "type": "number",
+                "example": 50
+              }
+            }
+          },
+          "expense": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "number",
+                "example": 30000
+              },
+              "count": {
+                "type": "number",
+                "example": 15
+              },
+              "experience": {
+                "type": "number",
+                "example": 75
+              },
+              "coins": {
+                "type": "number",
+                "example": 30
+              }
+            }
+          },
+          "savings": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "number",
+                "example": 20000
+              },
+              "count": {
+                "type": "number",
+                "example": 3
+              },
+              "experience": {
+                "type": "number",
+                "example": 50
+              },
+              "coins": {
+                "type": "number",
+                "example": 20
+              }
+            }
+          },
+          "netWorth": {
+            "type": "number",
+            "description": "Income - Expense",
+            "example": 20000
+          },
+          "savingsProgress": {
+            "type": "number",
+            "description": "Percentage of savings goal achieved",
+            "example": 65.5
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "response": {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string",
+                "example": "An error occurred"
+              },
+              "error": {
+                "type": "string",
+                "example": "Detailed error message"
+              }
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "error"
+            ]
+          },
+          "statusCode": {
+            "type": "number",
+            "example": 400
+          }
+        }
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "example": 1
+          },
+          "limit": {
+            "type": "integer",
+            "example": 10
+          },
+          "total": {
+            "type": "integer",
+            "example": 25
+          },
+          "pages": {
+            "type": "integer",
+            "example": 3
+          }
+        }
+      },
+      "IncomeItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "description",
+          "amount",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier of the income item",
+            "example": "inc_01HX5A2B3C4D5E6F"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the income item",
+            "example": "Monthly salary"
+          },
+          "amount": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0.01,
+            "description": "Amount in MXN",
+            "example": 25000
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "Debit Card",
+              "Credit Card",
+              "Cash",
+              "Vales",
+              "Transfer",
+              "Check",
+              "Other"
+            ],
+            "description": "Payment/receipt method",
+            "example": "Transfer"
+          },
+          "accountId": {
+            "type": "string",
+            "nullable": true,
+            "description": "ID of the account this income is deposited into",
+            "example": "acc_01HX5A2B3C4D5E6F"
+          }
+        }
+      },
+      "ExpenseItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "description",
+          "amount",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier of the expense item",
+            "example": "exp_01HX5A2B3C4D5E6F"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the expense item",
+            "example": "Rent"
+          },
+          "amount": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0.01,
+            "description": "Amount in MXN",
+            "example": 1200
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "Fixed",
+              "Variable"
+            ],
+            "description": "Expense classification",
+            "example": "Fixed"
+          }
+        }
+      },
+      "AddIncomeItemRequest": {
+        "type": "object",
+        "required": [
+          "description",
+          "amount",
+          "type"
+        ],
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "example": "Monthly salary"
+          },
+          "amount": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0.01,
+            "example": 25000
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "Debit Card",
+              "Credit Card",
+              "Cash",
+              "Vales",
+              "Transfer",
+              "Check",
+              "Other"
+            ],
+            "example": "Transfer"
+          },
+          "accountId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Optional — links income to a user account",
+            "example": "acc_01HX5A2B3C4D5E6F"
+          }
+        }
+      },
+      "AddExpenseItemRequest": {
+        "type": "object",
+        "required": [
+          "description",
+          "amount",
+          "type"
+        ],
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "example": "Rent"
+          },
+          "amount": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0.01,
+            "example": 1200
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "Fixed",
+              "Variable"
+            ],
+            "example": "Fixed"
+          }
+        }
+      },
+      "UpdateIncomeItemsRequest": {
+        "type": "object",
+        "required": [
+          "incomeItems"
+        ],
+        "properties": {
+          "incomeItems": {
+            "type": "array",
+            "description": "Full replacement of the income list for this budget",
+            "items": {
+              "$ref": "#/components/schemas/AddIncomeItemRequest"
+            }
+          }
+        }
+      },
+      "UpdateExpenseItemsRequest": {
+        "type": "object",
+        "required": [
+          "expenseItems"
+        ],
+        "properties": {
+          "expenseItems": {
+            "type": "array",
+            "description": "Full replacement of the expense list for this budget",
+            "items": {
+              "$ref": "#/components/schemas/AddExpenseItemRequest"
+            }
+          }
+        }
+      },
+      "BudgetMutationResponse": {
+        "type": "object",
+        "description": "Shape returned by every mutating income/expense endpoint",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "description": "Updated budget document"
+          },
+          "message": {
+            "type": "string",
+            "example": "Income item added successfully"
+          }
+        }
+      },
+      "PaginatedIncomeResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncomeItem"
+            }
+          },
+          "accounts": {
+            "type": "array",
+            "description": "User accounts (used to resolve accountId)",
+            "items": {
+              "type": "object"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          },
+          "message": {
+            "type": "string",
+            "example": "Income items retrieved successfully"
+          }
+        }
+      },
+      "PaginatedExpenseResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExpenseItem"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          },
+          "message": {
+            "type": "string",
+            "example": "Expense items retrieved successfully"
+          }
+        }
+      }
+    },
+    "responses": {
+      "UnauthorizedError": {
+        "description": "Access token is missing or invalid",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "response": {
+                "message": "Unauthorized",
+                "error": "No authentication token found"
+              },
+              "status": "error",
+              "statusCode": 401
+            }
+          }
+        }
+      },
+      "NotFoundError": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "response": {
+                "message": "Not Found",
+                "error": "Transaction not found"
+              },
+              "status": "error",
+              "statusCode": 404
+            }
+          }
+        }
+      },
+      "BadRequestError": {
+        "description": "Invalid request data",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "response": {
+                "message": "Bad Request",
+                "error": "Amount must be greater than 0"
+              },
+              "status": "error",
+              "statusCode": 400
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Transactions",
+      "description": "Transaction management endpoints"
+    },
+    {
+      "name": "Authentication",
+      "description": "User authentication endpoints"
+    },
+    {
+      "name": "Income",
+      "description": "Income items nested under a budget (/api/budgets/{id}/income)"
+    },
+    {
+      "name": "Expense",
+      "description": "Expense items nested under a budget (/api/budgets/{id}/expense)"
+    }
+  ],
+  "paths": {
+    "/api/budgets/{id}": {
+      "put": {
+        "tags": [
+          "Budgets"
+        ],
+        "summary": "Update budget scalar fields (year, month)",
+        "description": "Updates ONLY the budget's own scalar fields. Income and expense items\n**must** be managed via the dedicated nested endpoints:\n\n- `/api/budgets/{id}/income` — add, update, or delete income items\n- `/api/budgets/{id}/expense` — add, update, or delete expense items\n\nSending `incomeItems` or `expenseItems` in this body returns `400`.\nRationale: bulk-replacing items would delete rows referenced by\nTransaction.incomeItemId / expenseItemId, breaking transaction history.\n",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "year": {
+                    "type": "integer",
+                    "minimum": 2000,
+                    "maximum": 2100,
+                    "example": 2026
+                  },
+                  "month": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 11,
+                    "example": 3
+                  }
+                }
+              },
+              "example": {
+                "year": 2026,
+                "month": 3
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Budget updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "description": "Updated budget"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Budget updated successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/api/budgets/{id}/income": {
+      "get": {
+        "tags": [
+          "Income"
+        ],
+        "summary": "List income items (paginated)",
+        "description": "Returns the paginated income items for the given budget, plus the user's accounts (useful to resolve `accountId`).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Budget ID"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Income items retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedIncomeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Income"
+        ],
+        "summary": "Add a single income item",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddIncomeItemRequest"
+              },
+              "example": {
+                "description": "Monthly salary",
+                "amount": 25000,
+                "type": "Transfer",
+                "accountId": "acc_01HX5A2B3C4D5E6F"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Income item added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "description": "Unauthorized access to budget"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Income"
+        ],
+        "summary": "Replace all income items for this budget",
+        "description": "Overwrites the full income list. To add/update a single item, prefer POST or PUT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIncomeItemsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Income items updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "description": "Unauthorized access to budget"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/api/budgets/{id}/income/{incomeId}": {
+      "put": {
+        "tags": [
+          "Income"
+        ],
+        "summary": "Update a single income item",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Budget ID"
+          },
+          {
+            "in": "path",
+            "name": "incomeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Income item ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddIncomeItemRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Income item updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "description": "Unauthorized access to budget"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Income"
+        ],
+        "summary": "Delete a single income item",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "incomeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Income item deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetMutationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "description": "Unauthorized access to budget"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/api/budgets/{id}/expense": {
+      "get": {
+        "tags": [
+          "Expense"
+        ],
+        "summary": "List expense items (paginated)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Budget ID"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Expense items retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedExpenseResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Expense"
+        ],
+        "summary": "Add a single expense item",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddExpenseItemRequest"
+              },
+              "example": {
+                "description": "Rent",
+                "amount": 1200,
+                "type": "Fixed"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Expense item added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "description": "Unauthorized access to budget"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Expense"
+        ],
+        "summary": "Replace all expense items for this budget",
+        "description": "Overwrites the full expense list. To add/update a single item, prefer POST or PUT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateExpenseItemsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Expense items updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "description": "Unauthorized access to budget"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/api/budgets/{id}/expense/{expenseId}": {
+      "put": {
+        "tags": [
+          "Expense"
+        ],
+        "summary": "Update a single expense item",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Budget ID"
+          },
+          {
+            "in": "path",
+            "name": "expenseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Expense item ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddExpenseItemRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Expense item updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "description": "Unauthorized access to budget"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Expense"
+        ],
+        "summary": "Delete a single expense item",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "expenseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Expense item deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetMutationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "description": "Unauthorized access to budget"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    }
+  }
+}

@@ -7,9 +7,14 @@ yarn-error.log*
 # Environment variables
 .env
 .env.local
+.env.development
 .env.development.local
-.env.test.local
+.env.staging
+.env.staging.local
+.env.production
 .env.production.local
+.env.test.local
+._*
 
 # Logs
 logs
@@ -67,8 +72,8 @@ typings/
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variables file
-.env.test
+# env.test is committed (safe defaults for local tests)
+# .env.test is gitignored above as a *.local override
 
 # parcel-bundler cache
 .cache
@@ -120,3 +125,4 @@ public/uploads/
 # Build
 build/
 dist/ 
+.claude/*

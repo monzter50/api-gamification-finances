@@ -1,0 +1,700 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-04-16T00:00:00.000Z",
+  "__export_source": "manual.budget-backend:v2",
+  "resources": [
+    {
+      "_id": "wrk_8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b",
+      "_type": "workspace",
+      "parentId": null,
+      "name": "Gamification Finances API",
+      "description": "Insomnia workspace for the Gamification Finances API. The JWT token is auto-extracted from the Login response and injected into every protected request.",
+      "scope": "collection"
+    },
+
+    {
+      "_id": "env_1111aaaabbbb2222ccccdddd3333eeee",
+      "_type": "environment",
+      "parentId": "wrk_8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b",
+      "name": "Base Environment",
+      "color": null,
+      "isPrivate": false,
+      "data": {
+        "base_url": "http://localhost:3000",
+        "email": "jglez.dev@gmail.com",
+        "password": "Sinmiedo02",
+        "budget_id": "REPLACE_BUDGET_ID",
+        "income_item_id": "REPLACE_INCOME_ITEM_ID",
+        "expense_item_id": "REPLACE_EXPENSE_ITEM_ID",
+        "account_id": "REPLACE_ACCOUNT_ID",
+        "transaction_id": "REPLACE_TRANSACTION_ID"
+      },
+      "dataPropertyOrder": {
+        "&": ["base_url", "email", "password", "budget_id", "income_item_id", "expense_item_id", "account_id", "transaction_id"]
+      }
+    },
+
+    {
+      "_id": "env_2222aaaabbbb3333ccccdddd4444eeee",
+      "_type": "environment",
+      "parentId": "env_1111aaaabbbb2222ccccdddd3333eeee",
+      "name": "Local",
+      "color": "#7d69cb",
+      "isPrivate": false,
+      "data": {
+        "base_url": "http://localhost:3000"
+      },
+      "dataPropertyOrder": {
+        "&": ["base_url"]
+      }
+    },
+
+    {
+      "_id": "env_3333aaaabbbb4444ccccdddd5555eeee",
+      "_type": "environment",
+      "parentId": "env_1111aaaabbbb2222ccccdddd3333eeee",
+      "name": "Production",
+      "color": "#d9534f",
+      "isPrivate": false,
+      "data": {
+        "base_url": "https://api.production.com"
+      },
+      "dataPropertyOrder": {
+        "&": ["base_url"]
+      }
+    },
+
+    {
+      "_id": "fld_a1a1a1a1b2b2b2b2c3c3c3c3d4d4d4d4",
+      "_type": "request_group",
+      "parentId": "wrk_8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b",
+      "name": "Auth",
+      "description": "Authentication endpoints. Run **Login** once — every other protected request will auto-extract the token from this response.",
+      "metaSortKey": -1000
+    },
+    {
+      "_id": "req_loginaaaa1111bbbb2222cccc3333",
+      "_type": "request",
+      "parentId": "fld_a1a1a1a1b2b2b2b2c3c3c3c3d4d4d4d4",
+      "name": "Login",
+      "description": "Logs in and returns a JWT token. All protected requests reference THIS request via response chaining.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/auth/login",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"{{ _.email }}\",\n  \"password\": \"{{ _.password }}\"\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "authentication": {},
+      "metaSortKey": -1050
+    },
+    {
+      "_id": "req_registeraaaa1111bbbb2222ccc3",
+      "_type": "request",
+      "parentId": "fld_a1a1a1a1b2b2b2b2c3c3c3c3d4d4d4d4",
+      "name": "Register",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/auth/register",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"{{ _.email }}\",\n  \"password\": \"{{ _.password }}\",\n  \"name\": \"Test User\"\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "authentication": {},
+      "metaSortKey": -1100
+    },
+    {
+      "_id": "req_meaaaa1111bbbb2222cccc3333dd",
+      "_type": "request",
+      "parentId": "fld_a1a1a1a1b2b2b2b2c3c3c3c3d4d4d4d4",
+      "name": "Get Current User",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/auth/me",
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": -1000
+    },
+    {
+      "_id": "req_logoutaaaa1111bbbb2222cccc33",
+      "_type": "request",
+      "parentId": "fld_a1a1a1a1b2b2b2b2c3c3c3c3d4d4d4d4",
+      "name": "Logout",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/auth/logout",
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}",
+        "disabled": false
+      },
+      "metaSortKey": -950
+    },
+
+    {
+      "_id": "fld_b2b2b2b2c3c3c3c3d4d4d4d4e5e5e5e5",
+      "_type": "request_group",
+      "parentId": "wrk_8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b",
+      "name": "Users",
+      "metaSortKey": -900
+    },
+    {
+      "_id": "req_usrprof1111bbbb2222cccc3333dd",
+      "_type": "request",
+      "parentId": "fld_b2b2b2b2c3c3c3c3d4d4d4d4e5e5e5e5",
+      "name": "Get Profile",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/users/profile",
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": -900
+    },
+    {
+      "_id": "req_usrupd1111bbbb2222cccc3333dde",
+      "_type": "request",
+      "parentId": "fld_b2b2b2b2c3c3c3c3d4d4d4d4e5e5e5e5",
+      "name": "Update Profile",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/users/profile",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"New Name\"\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": -850
+    },
+    {
+      "_id": "req_usrstat1111bbbb2222cccc3333d",
+      "_type": "request",
+      "parentId": "fld_b2b2b2b2c3c3c3c3d4d4d4d4e5e5e5e5",
+      "name": "Get Stats",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/users/stats",
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": -800
+    },
+
+    {
+      "_id": "fld_c3c3c3c3d4d4d4d4e5e5e5e5f6f6f6f6",
+      "_type": "request_group",
+      "parentId": "wrk_8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b",
+      "name": "Transactions",
+      "metaSortKey": -700
+    },
+    {
+      "_id": "req_txlist111bbbb2222cccc3333ddde",
+      "_type": "request",
+      "parentId": "fld_c3c3c3c3d4d4d4d4e5e5e5e5f6f6f6f6",
+      "name": "List Transactions",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/transactions",
+      "parameters": [
+        { "name": "page", "value": "1", "disabled": true },
+        { "name": "limit", "value": "20", "disabled": true },
+        { "name": "type", "value": "expense", "disabled": true }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": -700
+    },
+    {
+      "_id": "req_txcreat11bbbb2222cccc3333dde",
+      "_type": "request",
+      "parentId": "fld_c3c3c3c3d4d4d4d4e5e5e5e5f6f6f6f6",
+      "name": "Create Transaction",
+      "description": "Required: budgetId, date (ISO 8601), amount, vendor, type (income|expense), accountId. Optional: description, incomeItemId, expenseItemId, installment* fields.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/transactions",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"budgetId\": \"{{ _.budget_id }}\",\n  \"date\": \"2026-04-17\",\n  \"amount\": 150.5,\n  \"vendor\": \"Soriana\",\n  \"type\": \"expense\",\n  \"accountId\": \"{{ _.account_id }}\",\n  \"description\": \"Grocery shopping\",\n  \"expenseItemId\": \"{{ _.expense_item_id }}\"\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": -650
+    },
+    {
+      "_id": "req_txsum1111bbbb2222cccc3333ddd",
+      "_type": "request",
+      "parentId": "fld_c3c3c3c3d4d4d4d4e5e5e5e5f6f6f6f6",
+      "name": "Get Summary",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/transactions/summary",
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": -600
+    },
+    {
+      "_id": "req_txmonth11bbbb2222cccc3333dde",
+      "_type": "request",
+      "parentId": "fld_c3c3c3c3d4d4d4d4e5e5e5e5f6f6f6f6",
+      "name": "Monthly Summary",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/transactions/monthly/2026/3",
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": -550
+    },
+    {
+      "_id": "req_txbyid11bbbb2222cccc3333ddde",
+      "_type": "request",
+      "parentId": "fld_c3c3c3c3d4d4d4d4e5e5e5e5f6f6f6f6",
+      "name": "Get Transaction By ID",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/transactions/{{ _.transaction_id }}",
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": -500
+    },
+    {
+      "_id": "req_txupd11bbbb2222cccc3333ddddee",
+      "_type": "request",
+      "parentId": "fld_c3c3c3c3d4d4d4d4e5e5e5e5f6f6f6f6",
+      "name": "Update Transaction",
+      "description": "All fields are optional — partial update. Uses `{{ _.transaction_id }}` from environment.",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/transactions/{{ _.transaction_id }}",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"amount\": 200,\n  \"vendor\": \"Walmart\",\n  \"description\": \"Updated description\",\n  \"date\": \"2026-04-17\"\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": -450
+    },
+    {
+      "_id": "req_txdel11bbbb2222cccc3333ddddee",
+      "_type": "request",
+      "parentId": "fld_c3c3c3c3d4d4d4d4e5e5e5e5f6f6f6f6",
+      "name": "Delete Transaction",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/transactions/{{ _.transaction_id }}",
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": -400
+    },
+
+    {
+      "_id": "fld_d4d4d4d4e5e5e5e5f6f6f6f60707070707",
+      "_type": "request_group",
+      "parentId": "wrk_8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b",
+      "name": "Budgets",
+      "metaSortKey": -300
+    },
+    {
+      "_id": "req_bdglist11bbbb2222cccc3333ddde",
+      "_type": "request",
+      "parentId": "fld_d4d4d4d4e5e5e5e5f6f6f6f60707070707",
+      "name": "List Budgets",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/budgets",
+      "parameters": [
+        { "name": "year", "value": "2026", "disabled": true },
+        { "name": "month", "value": "4", "disabled": true }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": -300
+    },
+    {
+      "_id": "req_bdgcr11bbbb2222cccc3333ddddee",
+      "_type": "request",
+      "parentId": "fld_d4d4d4d4e5e5e5e5f6f6f6f60707070707",
+      "name": "Create Budget",
+      "description": "Creates a budget. `month` is 0-indexed (0 = January, 11 = December). `incomeItems` and `expenseItems` are optional — you can add them later via the Income/Expense endpoints.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/budgets",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"year\": 2026,\n  \"month\": 3,\n  \"incomeItems\": [\n    {\n      \"description\": \"Monthly salary\",\n      \"amount\": 25000,\n      \"type\": \"Transfer\"\n    }\n  ],\n  \"expenseItems\": [\n    {\n      \"description\": \"Rent\",\n      \"amount\": 1200,\n      \"type\": \"Fixed\"\n    }\n  ]\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": -250
+    },
+    {
+      "_id": "req_bdgst11bbbb2222cccc3333ddddee",
+      "_type": "request",
+      "parentId": "fld_d4d4d4d4e5e5e5e5f6f6f6f60707070707",
+      "name": "Budget Stats",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/budgets/stats",
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": -200
+    },
+    {
+      "_id": "req_bdgid11bbbb2222cccc3333ddddee",
+      "_type": "request",
+      "parentId": "fld_d4d4d4d4e5e5e5e5f6f6f6f60707070707",
+      "name": "Get Budget By ID",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/budgets/{{ _.budget_id }}",
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": -150
+    },
+    {
+      "_id": "req_bdgupd11bbbb2222cccc3333ddde",
+      "_type": "request",
+      "parentId": "fld_d4d4d4d4e5e5e5e5f6f6f6f60707070707",
+      "name": "Update Budget",
+      "description": "Updates ONLY budget scalar fields (year, month). To change income or expense items, use the Income or Expense folders — those endpoints manage items surgically without breaking transaction history. Sending incomeItems/expenseItems here returns 400.",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/budgets/{{ _.budget_id }}",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"year\": 2026,\n  \"month\": 3\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": -100
+    },
+    {
+      "_id": "req_bdgdel11bbbb2222cccc3333ddde",
+      "_type": "request",
+      "parentId": "fld_d4d4d4d4e5e5e5e5f6f6f6f60707070707",
+      "name": "Delete Budget",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/budgets/{{ _.budget_id }}",
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": -50
+    },
+
+    {
+      "_id": "fld_e5e5e5e5f6f6f6f60707070708080808",
+      "_type": "request_group",
+      "parentId": "wrk_8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b",
+      "name": "Accounts",
+      "metaSortKey": 0
+    },
+    {
+      "_id": "req_acclist11bbbb2222cccc3333ddd",
+      "_type": "request",
+      "parentId": "fld_e5e5e5e5f6f6f6f60707070708080808",
+      "name": "List Accounts",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/accounts",
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": 0
+    },
+    {
+      "_id": "req_acccr11bbbb2222cccc3333dddee",
+      "_type": "request",
+      "parentId": "fld_e5e5e5e5f6f6f6f60707070708080808",
+      "name": "Create Account",
+      "description": "Creates an account. `type` must be one of: checking, savings, credit_card, vales. `currency` must be a 3-letter code (e.g. MXN, USD). `balance` and `isActive` are optional.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/accounts",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Main Account\",\n  \"type\": \"checking\",\n  \"balance\": 0,\n  \"currency\": \"MXN\",\n  \"isActive\": true\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": 50
+    },
+    {
+      "_id": "req_accbyid1111bbbb2222cccc3333dd",
+      "_type": "request",
+      "parentId": "fld_e5e5e5e5f6f6f6f60707070708080808",
+      "name": "Get Account By ID",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/accounts/{{ _.account_id }}",
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": 55
+    },
+    {
+      "_id": "req_accupd1111bbbb2222cccc3333dde",
+      "_type": "request",
+      "parentId": "fld_e5e5e5e5f6f6f6f60707070708080808",
+      "name": "Update Account",
+      "description": "All fields are optional — partial update.",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/accounts/{{ _.account_id }}",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Main Account (renamed)\",\n  \"balance\": 5000,\n  \"currency\": \"MXN\",\n  \"isActive\": true\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": 57
+    },
+    {
+      "_id": "req_accdel1111bbbb2222cccc3333dde",
+      "_type": "request",
+      "parentId": "fld_e5e5e5e5f6f6f6f60707070708080808",
+      "name": "Delete Account",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/accounts/{{ _.account_id }}",
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": 58
+    },
+
+    {
+      "_id": "fld_incomeaaaa1111bbbb2222cccc3333",
+      "_type": "request_group",
+      "parentId": "wrk_8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b",
+      "name": "Income (nested under Budget)",
+      "description": "Income items nested under /api/budgets/{budget_id}/income. Set `budget_id` and `income_item_id` in the environment before use.",
+      "metaSortKey": 60
+    },
+    {
+      "_id": "req_inclist1111aaaabbbb2222cccc33",
+      "_type": "request",
+      "parentId": "fld_incomeaaaa1111bbbb2222cccc3333",
+      "name": "List Income Items",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/budgets/{{ _.budget_id }}/income",
+      "parameters": [
+        { "name": "page", "value": "1", "disabled": true },
+        { "name": "limit", "value": "10", "disabled": true }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": 60
+    },
+    {
+      "_id": "req_incadd1111aaaabbbb2222cccc333",
+      "_type": "request",
+      "parentId": "fld_incomeaaaa1111bbbb2222cccc3333",
+      "name": "Add Income Item",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/budgets/{{ _.budget_id }}/income",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"description\": \"Monthly salary\",\n  \"amount\": 25000,\n  \"type\": \"Transfer\",\n  \"accountId\": null\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": 65
+    },
+    {
+      "_id": "req_increplace1111aaaabbbb2222ccc",
+      "_type": "request",
+      "parentId": "fld_incomeaaaa1111bbbb2222cccc3333",
+      "name": "Replace All Income Items (PATCH)",
+      "description": "Replaces the full income list. Prefer POST/PUT for single-item changes.",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/api/budgets/{{ _.budget_id }}/income",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"incomeItems\": [\n    {\n      \"description\": \"Salary\",\n      \"amount\": 25000,\n      \"type\": \"Transfer\",\n      \"accountId\": null\n    },\n    {\n      \"description\": \"Freelance\",\n      \"amount\": 5000,\n      \"type\": \"Cash\"\n    }\n  ]\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": 70
+    },
+    {
+      "_id": "req_incupd1111aaaabbbb2222cccc333",
+      "_type": "request",
+      "parentId": "fld_incomeaaaa1111bbbb2222cccc3333",
+      "name": "Update Income Item",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/budgets/{{ _.budget_id }}/income/{{ _.income_item_id }}",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"description\": \"Salary (updated)\",\n  \"amount\": 27000,\n  \"type\": \"Transfer\",\n  \"accountId\": null\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": 75
+    },
+    {
+      "_id": "req_incdel1111aaaabbbb2222cccc333",
+      "_type": "request",
+      "parentId": "fld_incomeaaaa1111bbbb2222cccc3333",
+      "name": "Delete Income Item",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/budgets/{{ _.budget_id }}/income/{{ _.income_item_id }}",
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": 80
+    },
+
+    {
+      "_id": "fld_expenseaaa1111bbbb2222cccc3333",
+      "_type": "request_group",
+      "parentId": "wrk_8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b",
+      "name": "Expense (nested under Budget)",
+      "description": "Expense items nested under /api/budgets/{budget_id}/expense. Set `budget_id` and `expense_item_id` in the environment before use.",
+      "metaSortKey": 85
+    },
+    {
+      "_id": "req_explist1111aaaabbbb2222cccc33",
+      "_type": "request",
+      "parentId": "fld_expenseaaa1111bbbb2222cccc3333",
+      "name": "List Expense Items",
+      "method": "GET",
+      "url": "{{ _.base_url }}/api/budgets/{{ _.budget_id }}/expense",
+      "parameters": [
+        { "name": "page", "value": "1", "disabled": true },
+        { "name": "limit", "value": "10", "disabled": true }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": 85
+    },
+    {
+      "_id": "req_expadd1111aaaabbbb2222cccc333",
+      "_type": "request",
+      "parentId": "fld_expenseaaa1111bbbb2222cccc3333",
+      "name": "Add Expense Item",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/budgets/{{ _.budget_id }}/expense",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"description\": \"Rent\",\n  \"amount\": 1200,\n  \"type\": \"Fixed\"\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": 90
+    },
+    {
+      "_id": "req_expreplace1111aaaabbbb2222cc",
+      "_type": "request",
+      "parentId": "fld_expenseaaa1111bbbb2222cccc3333",
+      "name": "Replace All Expense Items (PATCH)",
+      "description": "Replaces the full expense list. Prefer POST/PUT for single-item changes.",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/api/budgets/{{ _.budget_id }}/expense",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"expenseItems\": [\n    {\n      \"description\": \"Rent\",\n      \"amount\": 1200,\n      \"type\": \"Fixed\"\n    },\n    {\n      \"description\": \"Groceries\",\n      \"amount\": 400,\n      \"type\": \"Variable\"\n    }\n  ]\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": 95
+    },
+    {
+      "_id": "req_expupd1111aaaabbbb2222cccc333",
+      "_type": "request",
+      "parentId": "fld_expenseaaa1111bbbb2222cccc3333",
+      "name": "Update Expense Item",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/api/budgets/{{ _.budget_id }}/expense/{{ _.expense_item_id }}",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"description\": \"Rent (updated)\",\n  \"amount\": 1300,\n  \"type\": \"Fixed\"\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": 97
+    },
+    {
+      "_id": "req_expdel1111aaaabbbb2222cccc333",
+      "_type": "request",
+      "parentId": "fld_expenseaaa1111bbbb2222cccc3333",
+      "name": "Delete Expense Item",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/api/budgets/{{ _.budget_id }}/expense/{{ _.expense_item_id }}",
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": 99
+    },
+
+    {
+      "_id": "fld_f6f6f6f60707070708080808090909",
+      "_type": "request_group",
+      "parentId": "wrk_8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b",
+      "name": "Health",
+      "metaSortKey": 100
+    },
+    {
+      "_id": "req_health11bbbb2222cccc3333dddee",
+      "_type": "request",
+      "parentId": "fld_f6f6f6f60707070708080808090909",
+      "name": "Health Check",
+      "method": "GET",
+      "url": "{{ _.base_url }}/health",
+      "metaSortKey": 100
+    }
+  ]
+}

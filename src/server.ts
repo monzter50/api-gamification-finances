@@ -1,4 +1,6 @@
-import express, { Application, Request, Response, NextFunction } from 'express';
+import express, { type Application, type Request, type Response, NextFunction } from 'express';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger.config';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -12,6 +14,25 @@ import { logger } from './config/logger';
 
 const app: Application = express();
 const PORT: number = parseInt(process.env.PORT || '3000', 10);
+
+// Trust the reverse proxy in front of the app (Railway / Render / Nginx / etc).
+// Without this, `req.ip` is the proxy's IP — making `X-Forwarded-For` headers
+// untrusted, which breaks `express-rate-limit` (it refuses to lump all users
+// behind a single proxy IP into one bucket).
+//
+// The value is the NUMBER OF PROXY HOPS between the internet and this app:
+//   - Railway alone                : 1
+//   - Cloudflare → Railway         : 2
+//   - No proxy (bare metal / dev)  : 0 (default, equivalent to `false`)
+//
+// Driven by env var so each deploy environment configures it explicitly.
+// Setting `true` (boolean) is INSECURE — it lets any client spoof their IP
+// via headers. Always use a finite number or a specific IP/CIDR list.
+const trustProxyHops = parseInt(process.env.TRUST_PROXY_HOPS || '0', 10);
+if (trustProxyHops > 0) {
+  app.set('trust proxy', trustProxyHops);
+  logger.info(`🛡️  trust proxy = ${trustProxyHops} hop(s)`);
+}
 
 // Disable ETag in development to prevent 304 responses
 if (process.env.NODE_ENV === 'development') {
@@ -64,6 +85,19 @@ app.get('/health', (_req: Request, res: Response) => {
   });
 });
 
+// Swagger UI
+app.use('/api-docs', swaggerUi.serve as any, swaggerUi.setup(swaggerSpec, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Gamification Finances API Docs'
+}) as any);
+
+// Endpoint para obtener el schema JSON (para generar tipos en frontend)
+app.get('/api/schema.json', (req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+
 // API routes
 app.use('/api', routes);
 
@@ -80,7 +114,7 @@ app.use('*', (req: Request, res: Response) => {
 app.use(errorHandler);
 
 // Start server function
-async function startServer() {
+async function startServer () {
   try {
     // Connect to database based on environment
     const environment = (process.env.NODE_ENV as 'development' | 'test' | 'production') || 'development';
@@ -92,7 +126,7 @@ async function startServer() {
       logger.info(`🚀 Servidor corriendo en puerto ${PORT}`);
       logger.info(`📊 Ambiente: ${process.env.NODE_ENV}`);
       logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
-      logger.info(`📚 API docs: http://localhost:${PORT}/api/docs`);
+      logger.info(`📚 API docs: http://localhost:${PORT}/api-docs`);
     });
   } catch (error) {
     logger.error('Error al iniciar el servidor:', error);
@@ -103,4 +137,4 @@ async function startServer() {
 // Initialize server
 startServer();
 
-export default app; 
+export default app;

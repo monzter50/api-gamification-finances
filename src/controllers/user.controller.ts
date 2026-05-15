@@ -1,6 +1,6 @@
 import type { Response } from 'express';
 import { userService } from '../services/user.service';
-import { AuthenticatedRequest } from '../types';
+import { type AuthenticatedRequest } from '../types';
 
 /**
  * User Controller
@@ -58,29 +58,6 @@ export class UserController {
     }
   }
 
-  /**
-   * Get user statistics
-   * GET /api/users/stats
-   */
-  async getStats(req: AuthenticatedRequest, res: Response): Promise<void> {
-    try {
-      const userId = req.user!.id;
-      const stats = await userService.getUserStats(userId);
-
-      res.status(200).json({
-        success: true,
-        data: stats
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error al obtener las estadísticas del usuario';
-      const statusCode = message.includes('not found') ? 404 : 500;
-
-      res.status(statusCode).json({
-        success: false,
-        message
-      });
-    }
-  }
 }
 
 // Export singleton instance

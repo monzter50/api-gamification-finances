@@ -1,5 +1,5 @@
 import { body, param, query } from 'express-validator';
-import { INCOME_TYPES } from '../models/Budget';
+import { INCOME_TYPES, EXPENSE_TYPES } from '../constants/budget.constants';
 
 /**
  * Validation schemas for budget endpoints
@@ -32,6 +32,10 @@ export const createBudgetValidation = [
     .optional()
     .isIn(INCOME_TYPES)
     .withMessage('Invalid income type. Must be one of: Debit Card, Credit Card, Cash, Vales, Transfer, Check, Other'),
+  body('incomeItems.*.accountId')
+    .if(body('incomeItems').exists())
+    .isUUID()
+    .withMessage('Income item accountId is required and must be a valid UUID'),
   body('expenseItems')
     .optional()
     .isArray()
@@ -44,15 +48,24 @@ export const createBudgetValidation = [
   body('expenseItems.*.amount')
     .optional()
     .isFloat({ min: 0 })
-    .withMessage('Expense item amount must be a positive number')
+    .withMessage('Expense item amount must be a positive number'),
+  body('expenseItems.*.type')
+    .optional()
+    .isIn(EXPENSE_TYPES)
+    .withMessage('Invalid expense type. Must be one of: Fixed, Variable')
 ];
 
 /**
- * Validation for updating a budget
+ * Validation for updating a budget (Strategy B).
+ *
+ * Only scalar fields (year, month) are allowed. Income and expense items
+ * are managed exclusively through the dedicated nested endpoints. We reject
+ * `incomeItems` / `expenseItems` explicitly so API consumers get a loud,
+ * actionable error instead of silent stripping.
  */
 export const updateBudgetValidation = [
   param('id')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid budget ID'),
   body('year')
     .optional()
@@ -63,35 +76,13 @@ export const updateBudgetValidation = [
     .isInt({ min: 0, max: 11 })
     .withMessage('Month must be between 0 and 11'),
   body('incomeItems')
-    .optional()
-    .isArray()
-    .withMessage('Income items must be an array'),
-  body('incomeItems.*.description')
-    .optional()
-    .trim()
-    .notEmpty()
-    .withMessage('Income item description is required'),
-  body('incomeItems.*.amount')
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage('Income item amount must be a positive number'),
-  body('incomeItems.*.type')
-    .optional()
-    .isIn(INCOME_TYPES)
-    .withMessage('Invalid income type. Must be one of: Debit Card, Credit Card, Cash, Vales, Transfer, Check, Other'),
+    .not()
+    .exists()
+    .withMessage('incomeItems is not allowed here. Use POST/PUT/DELETE /api/budgets/:id/income to manage income items.'),
   body('expenseItems')
-    .optional()
-    .isArray()
-    .withMessage('Expense items must be an array'),
-  body('expenseItems.*.description')
-    .optional()
-    .trim()
-    .notEmpty()
-    .withMessage('Expense item description is required'),
-  body('expenseItems.*.amount')
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage('Expense item amount must be a positive number')
+    .not()
+    .exists()
+    .withMessage('expenseItems is not allowed here. Use POST/PUT/DELETE /api/budgets/:id/expense to manage expense items.')
 ];
 
 /**
@@ -99,7 +90,7 @@ export const updateBudgetValidation = [
  */
 export const updateIncomeItemsValidation = [
   param('id')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid budget ID'),
   body('incomeItems')
     .isArray({ min: 0 })
@@ -113,7 +104,10 @@ export const updateIncomeItemsValidation = [
     .withMessage('Income item amount must be a positive number'),
   body('incomeItems.*.type')
     .isIn(INCOME_TYPES)
-    .withMessage('Invalid income type. Must be one of: Debit Card, Credit Card, Cash, Vales, Transfer, Check, Other')
+    .withMessage('Invalid income type. Must be one of: Debit Card, Credit Card, Cash, Vales, Transfer, Check, Other'),
+  body('incomeItems.*.accountId')
+    .isUUID()
+    .withMessage('Income item accountId is required and must be a valid UUID')
 ];
 
 /**
@@ -121,7 +115,7 @@ export const updateIncomeItemsValidation = [
  */
 export const updateExpenseItemsValidation = [
   param('id')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid budget ID'),
   body('expenseItems')
     .isArray({ min: 0 })
@@ -132,7 +126,10 @@ export const updateExpenseItemsValidation = [
     .withMessage('Expense item description is required'),
   body('expenseItems.*.amount')
     .isFloat({ min: 0 })
-    .withMessage('Expense item amount must be a positive number')
+    .withMessage('Expense item amount must be a positive number'),
+  body('expenseItems.*.type')
+    .isIn(EXPENSE_TYPES)
+    .withMessage('Invalid expense type. Must be one of: Fixed, Variable')
 ];
 
 /**
@@ -140,20 +137,44 @@ export const updateExpenseItemsValidation = [
  */
 export const budgetIdValidation = [
   param('id')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid budget ID')
 ];
 
 /**
- * Validation for item ID parameter
+ * Validation for item ID parameter (deprecated - use specific validators)
  */
 export const itemIdValidation = [
   param('id')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid budget ID'),
   param('itemId')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid item ID')
+];
+
+/**
+ * Validation for income ID parameter (DELETE)
+ */
+export const deleteIncomeItemValidation = [
+  param('id')
+    .isUUID()
+    .withMessage('Invalid budget ID'),
+  param('incomeId')
+    .isUUID()
+    .withMessage('Invalid income ID')
+];
+
+/**
+ * Validation for expense ID parameter (DELETE)
+ */
+export const deleteExpenseItemValidation = [
+  param('id')
+    .isUUID()
+    .withMessage('Invalid budget ID'),
+  param('expenseId')
+    .isUUID()
+    .withMessage('Invalid expense ID')
 ];
 
 /**
@@ -175,7 +196,7 @@ export const budgetQueryValidation = [
  */
 export const addIncomeItemValidation = [
   param('id')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid budget ID'),
   body('description')
     .trim()
@@ -186,7 +207,10 @@ export const addIncomeItemValidation = [
     .withMessage('Amount must be a positive number'),
   body('type')
     .isIn(INCOME_TYPES)
-    .withMessage('Invalid income type. Must be one of: Debit Card, Credit Card, Cash, Vales, Transfer, Check, Other')
+    .withMessage('Invalid income type. Must be one of: Debit Card, Credit Card, Cash, Vales, Transfer, Check, Other'),
+  body('accountId')
+    .isUUID()
+    .withMessage('accountId is required and must be a valid UUID')
 ];
 
 /**
@@ -194,7 +218,7 @@ export const addIncomeItemValidation = [
  */
 export const addExpenseItemValidation = [
   param('id')
-    .isMongoId()
+    .isUUID()
     .withMessage('Invalid budget ID'),
   body('description')
     .trim()
@@ -202,5 +226,55 @@ export const addExpenseItemValidation = [
     .withMessage('Description is required'),
   body('amount')
     .isFloat({ min: 0 })
-    .withMessage('Amount must be a positive number')
+    .withMessage('Amount must be a positive number'),
+  body('type')
+    .isIn(EXPENSE_TYPES)
+    .withMessage('Invalid expense type. Must be one of: Fixed, Variable')
+];
+
+/**
+ * Validation for updating a single income item
+ */
+export const updateIncomeItemValidation = [
+  param('id')
+    .isUUID()
+    .withMessage('Invalid budget ID'),
+  param('incomeId')
+    .isUUID()
+    .withMessage('Invalid income ID'),
+  body('description')
+    .trim()
+    .notEmpty()
+    .withMessage('Description is required'),
+  body('amount')
+    .isFloat({ min: 0 })
+    .withMessage('Amount must be a positive number'),
+  body('type')
+    .isIn(INCOME_TYPES)
+    .withMessage('Invalid income type. Must be one of: Debit Card, Credit Card, Cash, Vales, Transfer, Check, Other'),
+  body('accountId')
+    .isUUID()
+    .withMessage('accountId is required and must be a valid UUID')
+];
+
+/**
+ * Validation for updating a single expense item
+ */
+export const updateExpenseItemValidation = [
+  param('id')
+    .isUUID()
+    .withMessage('Invalid budget ID'),
+  param('expenseId')
+    .isUUID()
+    .withMessage('Invalid expense ID'),
+  body('description')
+    .trim()
+    .notEmpty()
+    .withMessage('Description is required'),
+  body('amount')
+    .isFloat({ min: 0 })
+    .withMessage('Amount must be a positive number'),
+  body('type')
+    .isIn(EXPENSE_TYPES)
+    .withMessage('Invalid expense type. Must be one of: Fixed, Variable')
 ];

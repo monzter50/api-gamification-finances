@@ -1,19 +1,20 @@
-import { connectDB } from '../config/database';
-import { User } from '../models/User';
+import { PrismaClient } from '@prisma/client';
 import { BlacklistedToken } from '../models/BlacklistedToken';
 import jwt from 'jsonwebtoken';
 import { logger } from '../config/logger';
 
 const JWT_SECRET = process.env.JWT_SECRET ?? 'default_secret';
+const prisma = new PrismaClient();
 
-async function testLogout() {
+async function testLogout () {
   try {
-    // Connect to database
-    await connectDB();
     logger.info('✅ Connected to database');
 
-    // Create a test user
-    const testUser = await User.findOne({ email: 'test@example.com' });
+    // Find a test user
+    const testUser = await prisma.user.findFirst({
+      where: { email: 'test@example.com' }
+    });
+
     if (!testUser) {
       logger.info('❌ Test user not found. Please create a user first.');
       return;
@@ -21,10 +22,10 @@ async function testLogout() {
 
     // Generate a token
     const token = jwt.sign(
-      { 
-        id: (testUser._id as any).toString(), 
-        email: testUser.email, 
-        name: testUser.name 
+      {
+        id: testUser.id,
+        email: testUser.email,
+        name: testUser.name
       },
       JWT_SECRET,
       { expiresIn: '1h' }
@@ -38,7 +39,7 @@ async function testLogout() {
 
     // Simulate logout by blacklisting the token
     const expiration = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
-    await BlacklistedToken.blacklistToken(token, (testUser._id as any).toString(), expiration);
+    await BlacklistedToken.blacklistToken(token, testUser.id, expiration);
     logger.info('✅ Token blacklisted successfully');
 
     // Check if token is blacklisted (should be true)
@@ -53,9 +54,10 @@ async function testLogout() {
   } catch (error) {
     logger.error('❌ Error during logout test:', error);
   } finally {
+    await prisma.$disconnect();
     process.exit(0);
   }
 }
 
 // Run the test
-testLogout(); 
+testLogout();

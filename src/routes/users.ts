@@ -12,7 +12,4 @@ router.get('/profile', authenticateJWT, userController.getProfile.bind(userContr
 // Update user profile
 router.put('/profile', authenticateJWT, updateProfileValidation, validate, userController.updateProfile.bind(userController));
 
-// Get user stats
-router.get('/stats', authenticateJWT, userController.getStats.bind(userController));
-
-export { router as userRoutes }; 
+export { router as userRoutes };

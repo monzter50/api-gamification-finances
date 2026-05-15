@@ -1,35 +1,56 @@
-import { Model, Document, FilterQuery, UpdateQuery, QueryOptions } from 'mongoose';
+import prisma from '../config/database';
 
 /**
- * Base Repository Pattern
+ * Base Repository Pattern with Prisma
  * Provides common CRUD operations for all repositories
  */
-export abstract class BaseRepository<T extends Document> {
-  constructor(protected model: Model<T>) {}
+export abstract class BaseRepository<T> {
+  protected modelName: string;
 
-  async findById(id: string): Promise<T | null> {
-    return this.model.findById(id).exec();
+  constructor (modelName: string) {
+    this.modelName = modelName;
   }
 
-  async findOne(filter: FilterQuery<T>): Promise<T | null> {
-    return this.model.findOne(filter).exec();
+  protected get model (): any {
+    // @ts-expect-error
+    return prisma[this.modelName];
   }
 
-  async find(filter: FilterQuery<T> = {}): Promise<T[]> {
-    return this.model.find(filter).exec();
+  async findById (id: string): Promise<T | null> {
+    return this.model.findUnique({
+      where: { id }
+    });
   }
 
-  async findWithPagination(
-    filter: FilterQuery<T> = {},
+  async findOne (filter: any): Promise<T | null> {
+    return this.model.findFirst({
+      where: filter
+    });
+  }
+
+  async find (filter: any = {}): Promise<T[]> {
+    return this.model.findMany({
+      where: filter,
+      orderBy: { createdAt: 'desc' } // Default sort, might need adjustment
+    });
+  }
+
+  async findWithPagination (
+    filter: any = {},
     page: number = 1,
     limit: number = 10,
-    sort: Record<string, 1 | -1> = { createdAt: -1 }
-  ): Promise<{ data: T[]; total: number; page: number; totalPages: number }> {
+    orderBy: any = { createdAt: 'desc' }
+  ): Promise<{ data: T[], total: number, page: number, totalPages: number }> {
     const skip = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
-      this.model.find(filter).sort(sort).skip(skip).limit(limit).exec(),
-      this.model.countDocuments(filter).exec()
+      this.model.findMany({
+        where: filter,
+        skip,
+        take: limit,
+        orderBy
+      }),
+      this.model.count({ where: filter })
     ]);
 
     return {
@@ -40,34 +61,52 @@ export abstract class BaseRepository<T extends Document> {
     };
   }
 
-  async create(data: Partial<T>): Promise<T> {
-    const entity = new this.model(data);
-    return entity.save();
+  async create (data: any): Promise<T> {
+    return this.model.create({
+      data
+    });
   }
 
-  async updateById(id: string, data: UpdateQuery<T>): Promise<T | null> {
-    return this.model.findByIdAndUpdate(id, data, { new: true, runValidators: true }).exec();
+  async updateById (id: string, data: any): Promise<T | null> {
+    return this.model.update({
+      where: { id },
+      data
+    });
   }
 
-  async update(filter: FilterQuery<T>, data: UpdateQuery<T>, options?: QueryOptions): Promise<T | null> {
-    return this.model.findOneAndUpdate(filter, data, { new: true, runValidators: true, ...options }).exec();
+  async update (filter: any, data: any): Promise<T | null> {
+    // Prisma doesn't support updateMany with returning the document easily, nor findOneAndUpdate directly
+    // We simulate findOneAndUpdate by finding first, then updating by ID
+    const found = await this.findOne(filter);
+    if (!found) return null;
+
+    // @ts-expect-error
+    return await this.updateById(found.id, data);
   }
 
-  async deleteById(id: string): Promise<T | null> {
-    return this.model.findByIdAndDelete(id).exec();
+  async deleteById (id: string): Promise<T | null> {
+    return this.model.delete({
+      where: { id }
+    });
   }
 
-  async delete(filter: FilterQuery<T>): Promise<{ deletedCount: number }> {
-    const result = await this.model.deleteMany(filter).exec();
-    return { deletedCount: result.deletedCount || 0 };
+  async delete (filter: any): Promise<{ deletedCount: number }> {
+    const result = await this.model.deleteMany({
+      where: filter
+    });
+    return { deletedCount: result.count };
   }
 
-  async exists(filter: FilterQuery<T>): Promise<boolean> {
-    const result = await this.model.exists(filter);
-    return result !== null;
+  async exists (filter: any): Promise<boolean> {
+    const count = await this.model.count({
+      where: filter
+    });
+    return count > 0;
   }
 
-  async count(filter: FilterQuery<T> = {}): Promise<number> {
-    return this.model.countDocuments(filter).exec();
+  async count (filter: any = {}): Promise<number> {
+    return this.model.count({
+      where: filter
+    });
   }
 }

@@ -1,6 +1,13 @@
-import { budgetRepository } from '../repositories/budget.repository';
-import { IBudget, IIncomeItem, IExpenseItem, IncomeType, INCOME_TYPES } from '../models/Budget';
-import { Types } from 'mongoose';
+import { budgetRepository, type EnhancedBudget } from '../repositories/budget.repository';
+import { accountRepository } from '../repositories/account.repository';
+import {
+  type IncomeItemInput,
+  type ExpenseItemInput,
+  type IncomeItemMutationResult,
+  type ExpenseItemMutationResult,
+  type ItemRemovalResult
+} from '../types/budget.types';
+import { type IncomeType, type ExpenseType, INCOME_TYPES, EXPENSE_TYPES } from '../constants/budget.constants';
 import { logger } from '../config/logger';
 
 /**
@@ -13,15 +20,16 @@ export class BudgetService {
    */
   async getUserBudgets(
     userId: string,
-    filters?: { year?: number; month?: number }
-  ): Promise<IBudget[]> {
-    return budgetRepository.findByUser(userId, filters);
+    filters?: { year?: number, month?: number }
+  ): Promise<EnhancedBudget[]> {
+    const budget = await budgetRepository.findByUser(userId, filters);
+    return budget;
   }
 
   /**
    * Get budget by ID
    */
-  async getBudgetById(budgetId: string, userId: string): Promise<IBudget> {
+  async getBudgetById(budgetId: string, userId: string): Promise<EnhancedBudget> {
     const budget = await budgetRepository.findById(budgetId);
 
     if (!budget) {
@@ -43,20 +51,20 @@ export class BudgetService {
     userId: string,
     year: number,
     month: number
-  ): Promise<IBudget | null> {
-    return budgetRepository.findByUserAndPeriod(userId, year, month);
+  ): Promise<EnhancedBudget | null> {
+    return await budgetRepository.findByUserAndPeriod(userId, year, month);
   }
 
   /**
    * Create new budget
    */
   async createBudget(data: {
-    userId: string;
-    year: number;
-    month: number;
-    incomeItems?: IIncomeItem[];
-    expenseItems?: IExpenseItem[];
-  }): Promise<IBudget> {
+    userId: string
+    year: number
+    month: number
+    incomeItems?: IncomeItemInput[]
+    expenseItems?: ExpenseItemInput[]
+  }): Promise<EnhancedBudget> {
     // Validate month range (0-11)
     if (data.month < 0 || data.month > 11) {
       throw new Error('Month must be between 0 and 11');
@@ -75,6 +83,15 @@ export class BudgetService {
       );
     }
 
+    // Validate every income item's accountId belongs to this user BEFORE
+    // attempting the create. We do this here (not in the repo) because
+    // account ownership is a cross-aggregate concern — the repo shouldn't
+    // know about Account semantics.
+    const incomeAccountIds = Array.from(new Set((data.incomeItems ?? []).map(i => i.accountId)));
+    for (const accountId of incomeAccountIds) {
+      await this.assertAccountBelongsToUser(accountId, data.userId);
+    }
+
     try {
       const budget = await budgetRepository.createBudget({
         userId: data.userId,
@@ -84,7 +101,7 @@ export class BudgetService {
         expenseItems: data.expenseItems || []
       });
 
-      logger.info(`Budget created for user ${data.userId}: ${budget._id}`);
+      logger.info(`Budget created for user ${data.userId}: ${budget.id}`);
       return budget;
     } catch (error) {
       logger.error('Error creating budget:', error);
@@ -93,18 +110,23 @@ export class BudgetService {
   }
 
   /**
-   * Update budget
+   * Update budget's scalar fields (year, month) only.
+   *
+   * Income/expense items must be managed through the dedicated nested
+   * endpoints:
+   *   - POST/PUT/DELETE /api/budgets/:id/income[/:incomeId]
+   *   - POST/PUT/DELETE /api/budgets/:id/expense[/:expenseId]
+   *
+   * See Strategy B design note.
    */
   async updateBudget(
     budgetId: string,
     userId: string,
     data: {
-      year?: number;
-      month?: number;
-      incomeItems?: IIncomeItem[];
-      expenseItems?: IExpenseItem[];
+      year?: number
+      month?: number
     }
-  ): Promise<IBudget> {
+  ): Promise<EnhancedBudget> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
@@ -152,13 +174,19 @@ export class BudgetService {
   async updateIncomeItems(
     budgetId: string,
     userId: string,
-    incomeItems: IIncomeItem[]
-  ): Promise<IBudget> {
+    incomeItems: IncomeItemInput[]
+  ): Promise<EnhancedBudget> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
     // Validate income items
     this.validateItems(incomeItems, 'income');
+
+    // Every accountId must belong to this user
+    const incomeAccountIds = Array.from(new Set(incomeItems.map(i => i.accountId)));
+    for (const accountId of incomeAccountIds) {
+      await this.assertAccountBelongsToUser(accountId, userId);
+    }
 
     const updatedBudget = await budgetRepository.updateIncomeItems(
       budgetId,
@@ -175,56 +203,59 @@ export class BudgetService {
   }
 
   /**
-   * Add single income item
+   * Add single income item (Option B: returns { item, totals })
    */
   async addIncomeItem(
     budgetId: string,
     userId: string,
-    incomeItem: IIncomeItem
-  ): Promise<IBudget> {
-    // Verify budget exists and belongs to user
+    incomeItem: IncomeItemInput
+  ): Promise<IncomeItemMutationResult> {
+    // Verify budget exists and belongs to user (throws on miss/unauthorized)
     await this.getBudgetById(budgetId, userId);
 
     // Validate item
     this.validateItem(incomeItem, 'income');
 
-    const updatedBudget = await budgetRepository.addIncomeItem(
+    // accountId is now required — make sure it belongs to this user
+    await this.assertAccountBelongsToUser(incomeItem.accountId, userId);
+
+    const result = await budgetRepository.addIncomeItem(
       budgetId,
       userId,
       incomeItem
     );
 
-    if (!updatedBudget) {
+    if (!result) {
       throw new Error('Failed to add income item');
     }
 
     logger.info(`Income item added to budget: ${budgetId}`);
-    return updatedBudget;
+    return result;
   }
 
   /**
-   * Remove income item
+   * Remove income item (Option B: returns { totals } only)
    */
   async removeIncomeItem(
     budgetId: string,
     userId: string,
     itemId: string
-  ): Promise<IBudget> {
+  ): Promise<ItemRemovalResult> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
-    const updatedBudget = await budgetRepository.removeIncomeItem(
+    const result = await budgetRepository.removeIncomeItem(
       budgetId,
       userId,
       itemId
     );
 
-    if (!updatedBudget) {
+    if (!result) {
       throw new Error('Failed to remove income item');
     }
 
     logger.info(`Income item removed from budget: ${budgetId}`);
-    return updatedBudget;
+    return result;
   }
 
   /**
@@ -233,8 +264,8 @@ export class BudgetService {
   async updateExpenseItems(
     budgetId: string,
     userId: string,
-    expenseItems: IExpenseItem[]
-  ): Promise<IBudget> {
+    expenseItems: ExpenseItemInput[]
+  ): Promise<EnhancedBudget> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
@@ -256,70 +287,178 @@ export class BudgetService {
   }
 
   /**
-   * Add single expense item
+   * Add single expense item (Option B: returns { item, totals })
    */
   async addExpenseItem(
     budgetId: string,
     userId: string,
-    expenseItem: IExpenseItem
-  ): Promise<IBudget> {
+    expenseItem: ExpenseItemInput
+  ): Promise<ExpenseItemMutationResult> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
     // Validate item
     this.validateItem(expenseItem, 'expense');
 
-    const updatedBudget = await budgetRepository.addExpenseItem(
+    const result = await budgetRepository.addExpenseItem(
       budgetId,
       userId,
       expenseItem
     );
 
-    if (!updatedBudget) {
+    if (!result) {
       throw new Error('Failed to add expense item');
     }
 
     logger.info(`Expense item added to budget: ${budgetId}`);
-    return updatedBudget;
+    return result;
   }
 
   /**
-   * Remove expense item
+   * Remove expense item (Option B: returns { totals } only)
    */
   async removeExpenseItem(
     budgetId: string,
     userId: string,
     itemId: string
-  ): Promise<IBudget> {
+  ): Promise<ItemRemovalResult> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
-    const updatedBudget = await budgetRepository.removeExpenseItem(
+    const result = await budgetRepository.removeExpenseItem(
       budgetId,
       userId,
       itemId
     );
 
-    if (!updatedBudget) {
+    if (!result) {
       throw new Error('Failed to remove expense item');
     }
 
     logger.info(`Expense item removed from budget: ${budgetId}`);
-    return updatedBudget;
+    return result;
   }
 
   /**
    * Get budget statistics for a user
    */
   async getUserBudgetStats(userId: string) {
-    return budgetRepository.getUserBudgetStats(userId);
+    return await budgetRepository.getUserBudgetStats(userId);
+  }
+
+  /**
+   * Get paginated income items
+   */
+  async getPaginatedIncomeItems(
+    budgetId: string,
+    userId: string,
+    page: number = 1,
+    limit: number = 10
+  ) {
+    // Verify budget exists and belongs to user
+    await this.getBudgetById(budgetId, userId);
+
+    return await budgetRepository.getPaginatedIncomeItems(budgetId, userId, page, limit);
+  }
+
+  /**
+   * Get paginated expense items
+   */
+  async getPaginatedExpenseItems(
+    budgetId: string,
+    userId: string,
+    page: number = 1,
+    limit: number = 10
+  ) {
+    // Verify budget exists and belongs to user
+    await this.getBudgetById(budgetId, userId);
+
+    return await budgetRepository.getPaginatedExpenseItems(budgetId, userId, page, limit);
+  }
+
+  /**
+   * Update a single income item (Option B: returns { item, totals })
+   */
+  async updateIncomeItem(
+    budgetId: string,
+    userId: string,
+    incomeId: string,
+    incomeItem: IncomeItemInput
+  ): Promise<IncomeItemMutationResult> {
+    // Verify budget exists and belongs to user
+    await this.getBudgetById(budgetId, userId);
+
+    // Validate item
+    this.validateItem(incomeItem, 'income');
+
+    // accountId is required — verify it belongs to this user (also guards
+    // against reassigning income to an account the user does not own)
+    await this.assertAccountBelongsToUser(incomeItem.accountId, userId);
+
+    const result = await budgetRepository.updateIncomeItem(
+      budgetId,
+      userId,
+      incomeId,
+      incomeItem
+    );
+
+    // Budget ownership was verified above, so a null here means the item row
+    // is not in this budget — surface as 404 via the controller.
+    if (!result) {
+      throw new Error('Income item not found');
+    }
+
+    logger.info(`Income item ${incomeId} updated in budget: ${budgetId}`);
+    return result;
+  }
+
+  /**
+   * Update a single expense item (Option B: returns { item, totals })
+   */
+  async updateExpenseItem(
+    budgetId: string,
+    userId: string,
+    expenseId: string,
+    expenseItem: ExpenseItemInput
+  ): Promise<ExpenseItemMutationResult> {
+    // Verify budget exists and belongs to user
+    await this.getBudgetById(budgetId, userId);
+
+    // Validate item
+    this.validateItem(expenseItem, 'expense');
+
+    const result = await budgetRepository.updateExpenseItem(
+      budgetId,
+      userId,
+      expenseId,
+      expenseItem
+    );
+
+    if (!result) {
+      throw new Error('Expense item not found');
+    }
+
+    logger.info(`Expense item ${expenseId} updated in budget: ${budgetId}`);
+    return result;
+  }
+
+  /**
+   * Verify an account belongs to the given user. Throws a consistent error
+   * so callers can map it to a 400 response. Deduplicates the same check
+   * across income add/update/replace flows.
+   */
+  private async assertAccountBelongsToUser(accountId: string, userId: string): Promise<void> {
+    const account = await accountRepository.findByIdAndUser(accountId, userId);
+    if (!account) {
+      throw new Error(`Account ${accountId} not found or does not belong to user`);
+    }
   }
 
   /**
    * Validate single item
    */
   private validateItem(
-    item: IIncomeItem | IExpenseItem,
+    item: IncomeItemInput | ExpenseItemInput,
     type: 'income' | 'expense'
   ): void {
     if (!item.description || item.description.trim() === '') {
@@ -336,12 +475,26 @@ export class BudgetService {
 
     // Validate income type if it's an income item
     if (type === 'income' && 'type' in item) {
-      const incomeItem = item as IIncomeItem;
+      const incomeItem = item as IncomeItemInput;
       if (!incomeItem.type) {
         throw new Error('Income type is required');
       }
-      if (!INCOME_TYPES.includes(incomeItem.type)) {
+      if (!INCOME_TYPES.includes(incomeItem.type as IncomeType)) {
         throw new Error(`Invalid income type. Must be one of: ${INCOME_TYPES.join(', ')}`);
+      }
+      if (!incomeItem.accountId) {
+        throw new Error('Income accountId is required');
+      }
+    }
+
+    // Validate expense type if it's an expense item
+    if (type === 'expense' && 'type' in item) {
+      const expenseItem = item as ExpenseItemInput;
+      if (!expenseItem.type) {
+        throw new Error('Expense type is required');
+      }
+      if (!EXPENSE_TYPES.includes(expenseItem.type as ExpenseType)) {
+        throw new Error(`Invalid expense type. Must be one of: ${EXPENSE_TYPES.join(', ')}`);
       }
     }
   }
@@ -350,7 +503,7 @@ export class BudgetService {
    * Validate multiple items
    */
   private validateItems(
-    items: (IIncomeItem | IExpenseItem)[],
+    items: Array<IncomeItemInput | ExpenseItemInput>,
     type: 'income' | 'expense'
   ): void {
     if (!Array.isArray(items)) {
