@@ -15,6 +15,25 @@ import { logger } from './config/logger';
 const app: Application = express();
 const PORT: number = parseInt(process.env.PORT || '3000', 10);
 
+// Trust the reverse proxy in front of the app (Railway / Render / Nginx / etc).
+// Without this, `req.ip` is the proxy's IP — making `X-Forwarded-For` headers
+// untrusted, which breaks `express-rate-limit` (it refuses to lump all users
+// behind a single proxy IP into one bucket).
+//
+// The value is the NUMBER OF PROXY HOPS between the internet and this app:
+//   - Railway alone                : 1
+//   - Cloudflare → Railway         : 2
+//   - No proxy (bare metal / dev)  : 0 (default, equivalent to `false`)
+//
+// Driven by env var so each deploy environment configures it explicitly.
+// Setting `true` (boolean) is INSECURE — it lets any client spoof their IP
+// via headers. Always use a finite number or a specific IP/CIDR list.
+const trustProxyHops = parseInt(process.env.TRUST_PROXY_HOPS || '0', 10);
+if (trustProxyHops > 0) {
+  app.set('trust proxy', trustProxyHops);
+  logger.info(`🛡️  trust proxy = ${trustProxyHops} hop(s)`);
+}
+
 // Disable ETag in development to prevent 304 responses
 if (process.env.NODE_ENV === 'development') {
   app.set('etag', false);
