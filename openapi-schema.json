@@ -280,7 +280,8 @@
           "id",
           "description",
           "amount",
-          "type"
+          "type",
+          "accountId"
         ],
         "properties": {
           "id": {
@@ -316,8 +317,8 @@
           },
           "accountId": {
             "type": "string",
-            "nullable": true,
-            "description": "ID of the account this income is deposited into",
+            "format": "uuid",
+            "description": "ID of the account this planned income will be deposited into. Required as of PR 1.",
             "example": "acc_01HX5A2B3C4D5E6F"
           }
         }
@@ -364,7 +365,8 @@
         "required": [
           "description",
           "amount",
-          "type"
+          "type",
+          "accountId"
         ],
         "properties": {
           "description": {
@@ -393,8 +395,8 @@
           },
           "accountId": {
             "type": "string",
-            "nullable": true,
-            "description": "Optional — links income to a user account",
+            "format": "uuid",
+            "description": "Required. Must be an account owned by the authenticated user. Response 400 if the account does not belong to this user.",
             "example": "acc_01HX5A2B3C4D5E6F"
           }
         }
@@ -460,7 +462,7 @@
       },
       "BudgetMutationResponse": {
         "type": "object",
-        "description": "Shape returned by every mutating income/expense endpoint",
+        "description": "Shape returned by bulk replace-all endpoints (PATCH /income, PATCH /expense). Includes the full enriched budget with both item lists.",
         "properties": {
           "success": {
             "type": "boolean",
@@ -468,11 +470,127 @@
           },
           "data": {
             "type": "object",
-            "description": "Updated budget document"
+            "description": "Updated budget document with incomeItems[], expenseItems[], and derived totals"
+          },
+          "message": {
+            "type": "string",
+            "example": "Income items updated successfully"
+          }
+        }
+      },
+      "BudgetTotals": {
+        "type": "object",
+        "description": "Aggregate counters recomputed after any item-level mutation.",
+        "required": [
+          "totalIncome",
+          "totalExpense",
+          "netSavings",
+          "savingsRate"
+        ],
+        "properties": {
+          "totalIncome": {
+            "type": "number",
+            "format": "float",
+            "example": 25000
+          },
+          "totalExpense": {
+            "type": "number",
+            "format": "float",
+            "example": 12000
+          },
+          "netSavings": {
+            "type": "number",
+            "format": "float",
+            "example": 13000
+          },
+          "savingsRate": {
+            "type": "number",
+            "format": "float",
+            "description": "Percent (0-100)",
+            "example": 52
+          }
+        }
+      },
+      "IncomeItemMutationResponse": {
+        "type": "object",
+        "description": "Returned by POST /income and PUT /income/:incomeId. Includes ONLY the touched item plus recomputed totals — NOT the full parent budget.",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "required": [
+              "item",
+              "totals"
+            ],
+            "properties": {
+              "item": {
+                "$ref": "#/components/schemas/IncomeItem"
+              },
+              "totals": {
+                "$ref": "#/components/schemas/BudgetTotals"
+              }
+            }
           },
           "message": {
             "type": "string",
             "example": "Income item added successfully"
+          }
+        }
+      },
+      "ExpenseItemMutationResponse": {
+        "type": "object",
+        "description": "Returned by POST /expense and PUT /expense/:expenseId. Includes ONLY the touched item plus recomputed totals.",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "required": [
+              "item",
+              "totals"
+            ],
+            "properties": {
+              "item": {
+                "$ref": "#/components/schemas/ExpenseItem"
+              },
+              "totals": {
+                "$ref": "#/components/schemas/BudgetTotals"
+              }
+            }
+          },
+          "message": {
+            "type": "string",
+            "example": "Expense item added successfully"
+          }
+        }
+      },
+      "ItemRemovalResponse": {
+        "type": "object",
+        "description": "Returned by DELETE /income/:incomeId and DELETE /expense/:expenseId. The item no longer exists, so only the recomputed totals are returned.",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "required": [
+              "totals"
+            ],
+            "properties": {
+              "totals": {
+                "$ref": "#/components/schemas/BudgetTotals"
+              }
+            }
+          },
+          "message": {
+            "type": "string",
+            "example": "Income item deleted successfully"
           }
         }
       },
@@ -502,6 +620,205 @@
           "message": {
             "type": "string",
             "example": "Income items retrieved successfully"
+          }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password",
+          "name"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "jane@example.com"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "minLength": 6,
+            "example": "hunter2!"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 50,
+            "example": "Jane Doe"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "jane@example.com"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "example": "hunter2!"
+          }
+        }
+      },
+      "UserBasicInfo": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "name",
+          "role"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "usr_01HX5A2B3C4D5E6F"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "jane@example.com"
+          },
+          "name": {
+            "type": "string",
+            "example": "Jane Doe"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "admin"
+            ],
+            "example": "user"
+          }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "description": "Canonical auth payload. LoginResponse and RegisterResponse are name-aliases of this shape so codegen tools generate distinct named types; they remain free to diverge later without breaking the shared contract.",
+        "required": [
+          "success",
+          "token",
+          "expiresIn",
+          "user"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Login successful"
+          },
+          "token": {
+            "type": "string",
+            "description": "JWT access token. Send as `Authorization: Bearer <token>` on subsequent requests.",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          },
+          "expiresIn": {
+            "type": "integer",
+            "description": "Token lifetime in seconds from issue.",
+            "example": 86400
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserBasicInfo"
+          }
+        }
+      },
+      "LoginResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AuthResponse"
+          }
+        ],
+        "description": "Response shape for POST /api/auth/login. Identical to AuthResponse today; named separately to allow independent evolution."
+      },
+      "RegisterResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AuthResponse"
+          }
+        ],
+        "description": "Response shape for POST /api/auth/register. Identical to AuthResponse today; named separately to allow independent evolution."
+      },
+      "UserProfile": {
+        "type": "object",
+        "description": "Returned by GET /api/auth/me. Full profile (no password hash).",
+        "required": [
+          "id",
+          "email",
+          "name",
+          "role",
+          "isActive"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "usr_01HX5A2B3C4D5E6F"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "jane@example.com"
+          },
+          "name": {
+            "type": "string",
+            "example": "Jane Doe"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "admin"
+            ],
+            "example": "user"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          },
+          "lastLogin": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-05-18T14:23:00.000Z"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-11-02T08:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-05-19T09:00:00.000Z"
+          }
+        }
+      },
+      "LogoutResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Logged out successfully"
           }
         }
       },
@@ -604,6 +921,200 @@
     }
   ],
   "paths": {
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Register a new user",
+        "description": "Creates a new user account and returns a JWT for immediate use — the\nclient does not need to call `/auth/login` after a successful register.\nEmail is normalized (lowercased + trimmed) by validation before storage.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "409": {
+            "description": "A user with this email already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "success": false,
+                  "message": "User with this email already exists",
+                  "errorCode": "USER_ALREADY_EXISTS"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Log in with email + password",
+        "description": "Returns a JWT on success. **Both \"user not found\" and \"wrong password\"\nintentionally return 401 with the same `INVALID_CREDENTIALS` errorCode**\nto avoid leaking which emails are registered. Do not surface a\ndifferent UX for the two cases on the frontend.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "description": "Invalid credentials (user not found OR wrong password)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Invalid email or password",
+                  "errorCode": "INVALID_CREDENTIALS"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account is deactivated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Account is deactivated. Please contact support.",
+                  "errorCode": "ACCOUNT_DEACTIVATED"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Log out (blacklist the current token)",
+        "description": "Adds the bearer token to a DB-backed blacklist so it cannot be reused,\neven before its natural expiry. Subsequent requests with the same\ntoken receive 401 `TOKEN_BLACKLISTED` from `authenticateJWT`.\n",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logged out successfully; token has been invalidated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Get the authenticated user's profile",
+        "description": "Returns the full profile of the user identified by the bearer token.\nUse this on app startup to hydrate the auth store after a page refresh.\n",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profile retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "example": true
+                        }
+                      }
+                    },
+                    {
+                      "$ref": "#/components/schemas/UserProfile"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "description": "Authenticated user no longer exists in the database",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/budgets/{id}": {
       "put": {
         "tags": [
@@ -796,7 +1307,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BudgetMutationResponse"
+                  "$ref": "#/components/schemas/IncomeItemMutationResponse"
                 }
               }
             }
@@ -919,7 +1430,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BudgetMutationResponse"
+                  "$ref": "#/components/schemas/IncomeItemMutationResponse"
                 }
               }
             }
@@ -972,7 +1483,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BudgetMutationResponse"
+                  "$ref": "#/components/schemas/ItemRemovalResponse"
                 }
               }
             }
@@ -1090,7 +1601,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BudgetMutationResponse"
+                  "$ref": "#/components/schemas/ExpenseItemMutationResponse"
                 }
               }
             }
@@ -1213,7 +1724,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BudgetMutationResponse"
+                  "$ref": "#/components/schemas/ExpenseItemMutationResponse"
                 }
               }
             }
@@ -1266,7 +1777,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BudgetMutationResponse"
+                  "$ref": "#/components/schemas/ItemRemovalResponse"
                 }
               }
             }
