@@ -16,7 +16,8 @@ import {
   updateIncomeItemValidation,
   updateExpenseItemValidation,
   deleteIncomeItemValidation,
-  deleteExpenseItemValidation
+  deleteExpenseItemValidation,
+  duplicateBudgetValidation
 } from '../validators/budget.validator';
 
 const router = express.Router();
@@ -126,6 +127,84 @@ router.delete(
   budgetIdValidation,
   validate,
   budgetController.deleteBudget.bind(budgetController)
+);
+
+/**
+ * @openapi
+ * /api/budgets/{id}/duplicate:
+ *   post:
+ *     tags: [Budgets]
+ *     summary: Duplicate a budget into a new (year, month)
+ *     description: |
+ *       Clones the source budget's `incomeItems` and `expenseItems` into a
+ *       brand-new budget at the target `year`/`month`. **Transactions are NOT
+ *       copied** — they are historical records pointing at the SOURCE items,
+ *       and the cloned items are new rows with new IDs. Copying them would
+ *       break transaction history.
+ *
+ *       Fails with:
+ *       - `400` if the target month is out of range, or if any source income
+ *         item references an account that no longer belongs to the user
+ *         (error message lists the offending accountIds).
+ *       - `403` if the source budget does not belong to the caller.
+ *       - `404` if the source budget does not exist.
+ *       - `409` if a budget already exists at the target `(year, month)`.
+ *
+ *       Items are NOT accepted in the body — pass only the target period.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: Source budget ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [year, month]
+ *             additionalProperties: false
+ *             properties:
+ *               year:  { type: integer, minimum: 2000, maximum: 2100, example: 2026 }
+ *               month: { type: integer, minimum: 0, maximum: 11, example: 6, description: '0-indexed (0 = January, 11 = December)' }
+ *           example:
+ *             year: 2026
+ *             month: 6
+ *     responses:
+ *       201:
+ *         description: Budget duplicated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data:    { type: object, description: 'The newly created budget with cloned incomeItems and expenseItems' }
+ *                 message: { type: string, example: 'Budget duplicated successfully' }
+ *       400: { $ref: '#/components/responses/BadRequestError' }
+ *       401: { $ref: '#/components/responses/UnauthorizedError' }
+ *       403:
+ *         description: Source budget does not belong to the caller
+ *       404: { $ref: '#/components/responses/NotFoundError' }
+ *       409:
+ *         description: A budget already exists for the target period
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *             example:
+ *               success: false
+ *               error: 'Budget for 2026-7 already exists'
+ *               statusCode: 409
+ */
+router.post(
+  '/:id/duplicate',
+  authenticateJWT,
+  duplicateBudgetValidation,
+  validate,
+  budgetController.duplicateBudget.bind(budgetController)
 );
 
 /**

@@ -150,6 +150,95 @@ export class BudgetService {
   }
 
   /**
+   * Duplicate a budget into a new (year, month) period.
+   *
+   * Behavior:
+   *   - Source budget must exist and belong to the caller (404 / 403 via
+   *     `getBudgetById`).
+   *   - Target month must be 0–11.
+   *   - Target period must not already have a budget (409).
+   *   - Every source income item's accountId must still belong to the caller
+   *     (400 listing offenders). This guards against accounts that were
+   *     deleted or transferred since the source budget was created.
+   *   - Transactions are NEVER copied — they point at the source items, and
+   *     duplicating them would corrupt historical history.
+   */
+  async duplicateBudget(
+    sourceBudgetId: string,
+    userId: string,
+    targetYear: number,
+    targetMonth: number
+  ): Promise<EnhancedBudget> {
+    // Validate target month range
+    if (targetMonth < 0 || targetMonth > 11) {
+      throw new Error('Month must be between 0 and 11');
+    }
+
+    // Verify source exists + belongs to user (throws 'Budget not found' or
+    // 'Unauthorized access to budget' — controller maps to 404/403)
+    const source = await this.getBudgetById(sourceBudgetId, userId);
+
+    // Reject same-period clone explicitly — the unique constraint would also
+    // catch it, but this gives a clearer 409 message.
+    if (source.year === targetYear && source.month === targetMonth) {
+      throw new Error(
+        `Budget for ${targetYear}-${targetMonth + 1} already exists`
+      );
+    }
+
+    // Check target period not already occupied
+    const targetExists = await budgetRepository.findByUserAndPeriod(
+      userId,
+      targetYear,
+      targetMonth
+    );
+    if (targetExists) {
+      throw new Error(
+        `Budget for ${targetYear}-${targetMonth + 1} already exists`
+      );
+    }
+
+    // Re-verify every source accountId still belongs to user. Collect ALL
+    // offenders before throwing so the client gets the full list in one trip
+    // instead of having to fix one-at-a-time.
+    const accountIds = Array.from(
+      new Set(source.incomeItems.map((i) => i.accountId))
+    );
+    const offenders: string[] = [];
+    for (const accountId of accountIds) {
+      const ok = await accountRepository.findByIdAndUser(accountId, userId);
+      if (!ok) offenders.push(accountId);
+    }
+    if (offenders.length > 0) {
+      throw new Error(
+        `Cannot duplicate: source budget references account(s) that no longer belong to user: ${offenders.join(', ')}`
+      );
+    }
+
+    try {
+      const duplicated = await budgetRepository.duplicateBudget(
+        sourceBudgetId,
+        userId,
+        targetYear,
+        targetMonth
+      );
+
+      if (!duplicated) {
+        // Source disappeared between getBudgetById and duplicateBudget — race.
+        throw new Error('Budget not found');
+      }
+
+      logger.info(
+        `Budget ${sourceBudgetId} duplicated to ${duplicated.id} (${targetYear}-${targetMonth + 1}) for user ${userId}`
+      );
+      return duplicated;
+    } catch (error) {
+      logger.error('Error duplicating budget:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Delete budget
    */
   async deleteBudget(budgetId: string, userId: string): Promise<void> {
