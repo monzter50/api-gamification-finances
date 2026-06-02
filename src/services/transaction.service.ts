@@ -1,8 +1,28 @@
+import { Prisma } from '@prisma/client';
 import { transactionRepository, transactionIncludes, type EnhancedTransaction } from '../repositories/transaction.repository';
 import { budgetRepository } from '../repositories/budget.repository';
 import { accountRepository } from '../repositories/account.repository';
 import prisma from '../config/database';
 import { logger } from '../config/logger';
+
+/** Fields needed to create one transaction row (shared by single + bulk create). */
+export interface CreateTransactionInput {
+    budgetId: string
+    date: string
+    amount: number
+    vendor: string
+    type: string
+    accountId: string
+    description?: string
+    incomeItemId?: string
+    expenseItemId?: string
+    installmentCurrent?: number
+    installmentTotal?: number
+    installmentOriginal?: number
+}
+
+/** Budget shape returned by budgetRepository.findById (includes income/expense items). */
+type BudgetWithItems = NonNullable<Awaited<ReturnType<typeof budgetRepository.findById>>>;
 
 /**
  * Transaction Service
@@ -42,25 +62,28 @@ export class TransactionService {
     }
 
     /**
-     * Create a new transaction.
-     * Atomically: insert the transaction row + credit/debit the account.
+     * Create one transaction row + apply its balance delta, using the provided
+     * Prisma client. Pass a `$transaction` client (`tx`) to compose this into a
+     * larger atomic unit (e.g. bulk import); the row insert and the balance
+     * update then commit/roll back with everything else in that transaction.
+     *
+     * `prefetchedBudget` lets a bulk caller validate/load the budget once and
+     * reuse it across rows instead of re-reading it per row.
+     *
+     * NOTE: the budget-item limit reads (used/spent) query committed data, so
+     * within a single bulk transaction multiple rows against the SAME
+     * income/expense item don't see each other's not-yet-committed amounts.
+     * Imported rows don't carry item ids today, so this isn't hit in practice;
+     * revisit (pass `client` into the aggregation reads) if that changes.
      */
-    async createTransaction(userId: string, data: {
-        budgetId: string
-        date: string
-        amount: number
-        vendor: string
-        type: string
-        accountId: string
-        description?: string
-        incomeItemId?: string
-        expenseItemId?: string
-        installmentCurrent?: number
-        installmentTotal?: number
-        installmentOriginal?: number
-    }): Promise<EnhancedTransaction> {
+    private async createOne(
+        client: Prisma.TransactionClient,
+        userId: string,
+        data: CreateTransactionInput,
+        prefetchedBudget?: BudgetWithItems
+    ): Promise<EnhancedTransaction> {
         // 1. Verify budget exists and belongs to user
-        const budget = await budgetRepository.findById(data.budgetId);
+        const budget = prefetchedBudget ?? await budgetRepository.findById(data.budgetId);
         if (!budget) {
             throw new Error('Budget not found');
         }
@@ -123,21 +146,69 @@ export class TransactionService {
         if (data.installmentTotal !== undefined) txData.installmentTotal = data.installmentTotal;
         if (data.installmentOriginal !== undefined) txData.installmentOriginal = data.installmentOriginal;
 
-        // 7. Atomic: row insert + balance update commit or roll back together
-        const transaction = await prisma.$transaction(async (tx) => {
-            const created = await tx.transaction.create({
-                data: txData,
-                include: transactionIncludes
-            });
-            await tx.account.update({
-                where: { id: data.accountId },
-                data: { balance: { increment: delta } }
-            });
-            return created;
+        // 7. Row insert + balance update on the supplied client
+        const created = await client.transaction.create({
+            data: txData,
+            include: transactionIncludes
+        });
+        await client.account.update({
+            where: { id: data.accountId },
+            data: { balance: { increment: delta } }
         });
 
-        logger.info(`Transaction created: ${transaction.id} (account ${data.accountId} delta ${delta})`);
-        return transaction;
+        logger.info(`Transaction created: ${created.id} (account ${data.accountId} delta ${delta})`);
+        return created;
+    }
+
+    /**
+     * Create a new transaction.
+     * Atomically: insert the transaction row + credit/debit the account.
+     */
+    async createTransaction(userId: string, data: CreateTransactionInput): Promise<EnhancedTransaction> {
+        return await prisma.$transaction(async (tx) => await this.createOne(tx, userId, data));
+    }
+
+    /**
+     * Bulk-create transactions from a reviewed statement import.
+     *
+     * All-or-nothing: every row is created inside ONE `$transaction`, so either
+     * the whole batch (rows + balance deltas) commits, or nothing does. Rows are
+     * created SEQUENTIALLY (not in parallel) so account-balance increments and
+     * any per-item aggregation apply in a deterministic order.
+     *
+     * The budget is validated/loaded once and reused across rows. Each row's
+     * `accountId` may override the batch default (already merged by the caller).
+     */
+    async bulkCreateTransactions(
+        userId: string,
+        rows: CreateTransactionInput[]
+    ): Promise<EnhancedTransaction[]> {
+        if (rows.length === 0) {
+            return [];
+        }
+
+        // Validate the shared budget once (all rows in an import target one budget).
+        const budgetId = rows[0]!.budgetId;
+        const budget = await budgetRepository.findById(budgetId);
+        if (!budget) {
+            throw new Error('Budget not found');
+        }
+        if (budget.userId !== userId) {
+            throw new Error('Unauthorized access to budget');
+        }
+
+        const created = await prisma.$transaction(async (tx) => {
+            const results: EnhancedTransaction[] = [];
+            for (const row of rows) {
+                // Reuse the prefetched budget when the row targets it (the common case).
+                const prefetched = row.budgetId === budgetId ? budget : undefined;
+                results.push(await this.createOne(tx, userId, row, prefetched));
+            }
+            return results;
+        });
+
+        logger.info(`Bulk import created ${created.length} transactions for user ${userId}`);
+        return created;
     }
 
     /**
