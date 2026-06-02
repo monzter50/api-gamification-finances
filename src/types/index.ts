@@ -20,6 +20,8 @@ export interface JWTPayload {
   userId: string
   email: string
   name: string
+  /** Active session id this token was minted for (single-session enforcement). */
+  sid: string
   iat: number
   exp: number
 }

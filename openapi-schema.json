@@ -1030,6 +1030,21 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "Single active session — the user already has a session that has\nbeen active within the inactivity window. They must log out of the\nother session (or let it go idle) before signing in again.\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "success": false,
+                  "message": "You already have an active session on another device. Log out there or wait a few minutes, then try again.",
+                  "errorCode": "SESSION_ALREADY_ACTIVE"
+                }
+              }
+            }
           }
         }
       }

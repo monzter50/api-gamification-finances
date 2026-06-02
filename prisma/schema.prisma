@@ -22,6 +22,15 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Single-active-session enforcement.
+  // `sessionId` is the id of the user's current active session and is embedded
+  // in the JWT as the `sid` claim; a token whose `sid` no longer matches is
+  // rejected (SESSION_REVOKED). `sessionLastActivityAt` drives the inactivity
+  // window: a new login is blocked (SESSION_ALREADY_ACTIVE) only while the
+  // existing session has been active within SESSION_INACTIVITY_WINDOW_MIN.
+  sessionId             String?
+  sessionLastActivityAt DateTime?
+
   transactions Transaction[]
   budgets      Budget[]
   accounts     Account[]
