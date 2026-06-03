@@ -85,6 +85,15 @@ All routes mounted under `/api`. Auth endpoints are public; everything else requ
 
 Full route list is enumerated at `GET /api/docs` (returns JSON) and rendered at `/api-docs` (Swagger UI).
 
+## Importing transactions from a statement image
+
+Extract transactions from a statement photo/screenshot and bulk-create them after review. Two steps, both under `/api/transactions/import` and documented in the OpenAPI spec:
+
+1. **`POST /import/extract`** — `multipart/form-data` with a `file` field (JPEG/PNG/WebP). Returns the extracted rows for review (no DB writes). Extraction is swappable: a **mock** extractor by default, or **Claude vision** when `ANTHROPIC_API_KEY` is set (and `USE_MOCK_EXTRACTION` ≠ `true`). Each row carries `date/amount/vendor/type/description` plus a `confidence` hint and the raw `sourceText`.
+2. **`POST /import/confirm`** — the user-reviewed batch (`budgetId`, `accountId`, `transactions[]` with optional per-row `accountId` override). Bulk-creates in **one atomic `$transaction`**, reusing the standard create/rebalance logic.
+
+Image upload is in-memory (multer), capped at `MAX_UPLOAD_MB` (default 10). Errors: `413 FILE_TOO_LARGE`, `415 UNSUPPORTED_FILE_TYPE`, `422 NO_TRANSACTIONS_FOUND`, `502 EXTRACTION_FAILED`, `503 EXTRACTION_UNAVAILABLE`.
+
 ## Project layout
 
 ```
