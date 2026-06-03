@@ -1,7 +1,9 @@
 import express from 'express';
 import { transactionController } from '../controllers/transaction.controller';
+import { xlsxImportController } from '../controllers/xlsxImport.controller';
 import { authenticateJWT } from './auth';
 import { validate } from '../middleware/validate';
+import { xlsxUpload } from '../middleware/xlsxUpload';
 import {
   createTransactionValidation,
   updateTransactionValidation,
@@ -9,6 +11,7 @@ import {
   transactionQueryValidation,
   monthlySummaryValidation
 } from '../validators/transaction.validator';
+import { confirmXlsxValidation } from '../validators/xlsxImport.validator';
 
 const router = express.Router();
 
@@ -56,6 +59,23 @@ router.get(
   transactionIdValidation,
   validate,
   transactionController.getTransactionById.bind(transactionController)
+);
+
+// Excel import — parse an uploaded .xlsx (no DB writes)
+router.post(
+  '/import/xlsx/parse',
+  authenticateJWT,
+  xlsxUpload,
+  xlsxImportController.parse.bind(xlsxImportController)
+);
+
+// Excel import — bulk-create the reviewed batch (atomic)
+router.post(
+  '/import/xlsx/confirm',
+  authenticateJWT,
+  confirmXlsxValidation,
+  validate,
+  xlsxImportController.confirm.bind(xlsxImportController)
 );
 
 // Create new transaction
