@@ -85,18 +85,24 @@ app.get('/health', (_req: Request, res: Response) => {
   });
 });
 
+// Raw OpenAPI spec (JSON) — consumed by Orval / openapi-typescript / Swagger UI.
+// Mounted OUTSIDE the `/api/` prefix on purpose: the `/api/` rate limiter
+// would otherwise throttle codegen tooling that polls this endpoint.
+// `/api-docs.json` is the conventional path; `/api/schema.json` is kept as
+// an alias for backwards compatibility with anything already pointing at it.
+const sendOpenApiSpec = (_req: Request, res: Response): void => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+};
+app.get('/api-docs.json', sendOpenApiSpec);
+app.get('/api/schema.json', sendOpenApiSpec);
+
 // Swagger UI
 app.use('/api-docs', swaggerUi.serve as any, swaggerUi.setup(swaggerSpec, {
   explorer: true,
   customCss: '.swagger-ui .topbar { display: none }',
   customSiteTitle: 'Gamification Finances API Docs'
 }) as any);
-
-// Endpoint para obtener el schema JSON (para generar tipos en frontend)
-app.get('/api/schema.json', (req: Request, res: Response) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerSpec);
-});
 
 // API routes
 app.use('/api', routes);

@@ -1,326 +1,176 @@
-# API de Gamificación de Finanzas
+# API Gamification Finances
 
-Una API RESTful completa para gestionar finanzas personales con elementos de gamificación, desarrollada con **Node.js**, **Express**, **TypeScript** y **MongoDB**.
+REST API for personal finance management (budgets, accounts, transactions). Built with **Node.js + Express + TypeScript + Prisma + PostgreSQL**.
 
-## 🚀 Características
+For architecture conventions and contributor guidance, see [`CLAUDE.md`](./CLAUDE.md).
 
-### 💰 Gestión Financiera
-- **Transacciones**: Ingresos, gastos y ahorros
-- **Categorización**: Sistema de categorías para organizar transacciones
-- **Metas de ahorro**: Establecer y rastrear objetivos financieros
-- **Resúmenes**: Estadísticas mensuales y generales
+## Requirements
 
-### 🎮 Gamificación
-- **Sistema de niveles**: Progresión basada en experiencia
-- **Monedas virtuales**: Sistema de recompensas
-- **Logros**: Desbloqueo de logros por metas alcanzadas
-- **Tabla de clasificación**: Competencia entre usuarios
-- **Rachas**: Seguimiento de actividad diaria
+- Node.js ≥ 18
+- PostgreSQL (local container, Prisma Cloud, or any managed Postgres)
+- Yarn (project uses `yarn.lock`)
+- Docker + Docker Compose (optional, for the containerized workflow)
 
-### 🔐 Autenticación y Seguridad
-- **JWT**: Autenticación basada en tokens
-- **Encriptación**: Contraseñas hasheadas con bcrypt
-- **Validación**: Validación de datos con express-validator
-- **Rate limiting**: Protección contra ataques de fuerza bruta
+## Quick start
 
-### 🛠️ Tecnologías
-- **TypeScript**: Tipado estático para mayor robustez
-- **ES Modules**: Sistema de módulos moderno
-- **Vitest**: Framework de testing moderno
-- **ESLint**: Linting con reglas TypeScript
-
-## 📋 Requisitos Previos
-
-- Node.js (versión 18 o superior)
-- MongoDB (local o Atlas)
-- npm o yarn
-
-## 🛠️ Instalación
-
-1. **Clonar el repositorio**
-   ```bash
-   git clone <repository-url>
-   cd api-gamification-finances
-   ```
-
-2. **Instalar dependencias**
-   ```bash
-   npm install
-   ```
-
-3. **Configurar variables de entorno**
-   ```bash
-   cp env.example .env
-   ```
-   
-   Editar el archivo `.env` con tus configuraciones:
-   ```env
-   PORT=3000
-   NODE_ENV=development
-   MONGODB_URI=mongodb://localhost:27017/gamification-finances
-   JWT_SECRET=tu-super-secret-jwt-key
-   JWT_EXPIRES_IN=7d
-   ```
-
-4. **Compilar TypeScript**
-   ```bash
-   npm run build
-   ```
-
-5. **Poblar la base de datos con logros**
-   ```bash
-   npm run seed
-   ```
-
-6. **Iniciar el servidor**
-   ```bash
-   # Desarrollo (con hot reload)
-   npm run dev
-   
-   # Producción
-   npm start
-   ```
-
-## 📚 Scripts Disponibles
-
-- `npm run build` - Compilar TypeScript a JavaScript
-- `npm start` - Iniciar servidor en producción
-- `npm run dev` - Iniciar servidor en desarrollo con hot reload
-- `npm test` - Ejecutar tests con Vitest
-- `npm run test:ui` - Ejecutar tests con interfaz gráfica
-- `npm run test:coverage` - Ejecutar tests con cobertura
-- `npm run lint` - Verificar código con ESLint
-- `npm run lint:fix` - Corregir errores de ESLint automáticamente
-- `npm run type-check` - Verificar tipos de TypeScript
-- `npm run seed` - Poblar base de datos con logros
-
-## 📚 Documentación de la API
-
-### Endpoints Principales
-
-#### 🔐 Autenticación
-- `POST /api/auth/register` - Registrar nuevo usuario
-- `POST /api/auth/login` - Iniciar sesión
-- `POST /api/auth/logout` - Cerrar sesión
-- `GET /api/auth/me` - Obtener perfil del usuario actual
-
-#### 👤 Usuarios
-- `GET /api/users/profile` - Obtener perfil del usuario
-- `PUT /api/users/profile` - Actualizar perfil del usuario
-- `GET /api/users/stats` - Obtener estadísticas del usuario
-
-#### 💳 Transacciones
-- `GET /api/transactions` - Obtener todas las transacciones del usuario
-- `POST /api/transactions` - Crear nueva transacción
-- `GET /api/transactions/:id` - Obtener transacción específica
-- `PUT /api/transactions/:id` - Actualizar transacción
-- `DELETE /api/transactions/:id` - Eliminar transacción
-- `GET /api/transactions/summary` - Obtener resumen financiero
-- `GET /api/transactions/monthly/:year/:month` - Obtener resumen mensual
-
-#### 🏆 Logros
-- `GET /api/achievements` - Obtener todos los logros
-- `GET /api/achievements/user` - Obtener logros del usuario
-- `POST /api/achievements/:id/unlock` - Desbloquear logro
-
-#### 🎮 Gamificación
-- `GET /api/gamification/profile` - Obtener perfil de gamificación
-- `GET /api/gamification/leaderboard` - Obtener tabla de clasificación
-- `GET /api/gamification/level-info` - Información de progresión de nivel
-- `GET /api/gamification/stats` - Estadísticas de gamificación
-
-### Ejemplos de Uso
-
-#### Registrar un usuario
 ```bash
-curl -X POST http://localhost:3000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "usuario123",
-    "email": "usuario@ejemplo.com",
-    "password": "password123",
-    "firstName": "Juan",
-    "lastName": "Pérez"
-  }'
+# 1. Install deps
+yarn install
+
+# 2. Configure environment
+cp env.example .env
+# Edit .env — at minimum set DATABASE_URL and JWT_SECRET
+
+# 3. Apply migrations
+yarn prisma migrate deploy
+
+# 4. Run in dev mode (hot reload)
+yarn dev:watch
 ```
 
-#### Crear una transacción
+The server starts on `http://localhost:3000`. Health check at `/health`, OpenAPI docs at `/api-docs`.
+
+## Environment variables
+
+| Variable | Required | Notes |
+|---|---|---|
+| `DATABASE_URL` | ✅ | Postgres connection string. Use `?sslmode=require` for managed DBs |
+| `JWT_SECRET` | ✅ | Symmetric secret for signing JWTs |
+| `JWT_EXPIRES_IN` |  | Default `7d` |
+| `SESSION_INACTIVITY_WINDOW_MIN` |  | Default `20`. Single-active-session window — a new login is blocked while an existing session has been active within this many minutes (see [Authentication & sessions](#authentication--sessions)) |
+| `PORT` |  | Default `3000`. Set by Railway/Render automatically |
+| `NODE_ENV` |  | `development` / `staging` / `production` / `test` |
+| `CORS_ORIGIN` |  | Comma-separated list. Default `http://localhost:3000` |
+| `TRUST_PROXY_HOPS` |  | `1` behind Railway/Render, `2` if Cloudflare is in front. Never `true` |
+| `RATE_LIMIT_WINDOW_MS` |  | Default `900000` (15 min) |
+| `RATE_LIMIT_MAX_REQUESTS` |  | Default `100` per window per IP |
+| `LOG_LEVEL` |  | `debug` / `info` / `warn` / `error` |
+
+Templates: `env.example` (local), `env.staging.example`, `env.test` (committed). Real `.env*` files are gitignored.
+
+## Scripts
+
 ```bash
-curl -X POST http://localhost:3000/api/transactions \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer TU_JWT_TOKEN" \
-  -d '{
-    "type": "income",
-    "category": "salary",
-    "amount": 1000,
-    "description": "Salario mensual"
-  }'
+yarn dev / dev:watch          # local dev (tsx)
+yarn build / start            # compile to dist/, then run
+
+yarn type-check               # strict tsc --noEmit (catches things tsx hides)
+yarn lint / lint:fix          # eslint
+yarn test / test:ui / test:coverage   # vitest
+
+yarn prisma migrate dev       # create + apply a new migration
+yarn prisma migrate deploy    # apply existing migrations (CI/prod)
+yarn prisma studio            # GUI DB browser
+
+yarn export:schema            # dump openapi-schema.json
+yarn generate:client          # also regenerate src/types/openapi.d.ts
+
+# Docker (base + override pattern)
+yarn compose:dev              # local stack with hot reload
+yarn compose:staging          # built image + .env.staging + external DB
+yarn compose:prod             # built image + .env.production + external DB
+yarn compose:logs             # tail api logs
 ```
 
-## 🗄️ Estructura del Proyecto
+## API surface
+
+All routes mounted under `/api`. Auth endpoints are public; everything else requires `Authorization: Bearer <token>`.
+
+| Group | Path | Notes |
+|---|---|---|
+| Auth | `/auth/register`, `/auth/login`, `/auth/logout`, `/auth/me` | DB-backed JWT blacklist on logout + [single active session](#authentication--sessions) |
+| Users | `/users/...` | Profile + user-scoped operations |
+| Accounts | `/accounts/...` | Checking / savings / credit_card / vales |
+| Budgets | `/budgets/...` | Monthly budgets with income + expense items |
+| Transactions | `/transactions/...` | Linked to accounts and budgets; mutating one rebalances the others |
+
+Full route list is enumerated at `GET /api/docs` (returns JSON) and rendered at `/api-docs` (Swagger UI).
+
+
+## Importing an Excel workbook
+
+Bulk-import budget data from an `.xlsx` budget workbook (e.g. "TARJETAS Y GASTOS"). Two steps, both under `/api/transactions/import/xlsx` and documented in the OpenAPI spec:
+
+1. **`POST /import/xlsx/parse`** — `multipart/form-data` with a `file` field. Parses three sheets and returns the rows for review (no DB writes):
+   - **Budget track** → transactions (each row's account resolved later from `paymentSource` = "Payment Method / Card")
+   - **Income** → budget income items (`description` + `amount`)
+   - **Expenses** → budget expense items (`Fixed`/`Variable` derived from the *Gastos Fijos / Gastos Variables* section headers)
+
+   Excel serial dates are converted to ISO; summary/total rows are skipped.
+2. **`POST /import/xlsx/confirm`** — the user-reviewed batch (`budgetId`, `defaultAccountId`, `accountMapping`, `transactions`, `incomeItems`, `expenseItems`). Creates income items + expense items + transactions in **one atomic `$transaction`**. Transactions move the account balance; budget items don't.
+
+Parsing uses `exceljs`. Upload limit is `MAX_UPLOAD_MB` (default 10). Errors: `413 FILE_TOO_LARGE`, `415 UNSUPPORTED_FILE_TYPE`, `422 NO_TRANSACTIONS_FOUND`.
+
+## Authentication & sessions
+
+Auth is JWT-based (`Authorization: Bearer <token>`) with **single active session per user** — a user can only be signed in on one device at a time.
+
+**How it works**
+
+- Each `User` has a `sessionId` and `sessionLastActivityAt`. On login a fresh `sessionId` is generated and embedded in the JWT as the `sid` claim.
+- `authenticateJWT` rejects any token whose `sid` no longer matches the user's current `sessionId` (i.e. a newer login superseded it).
+- A session counts as **active** only while it has been used within `SESSION_INACTIVITY_WINDOW_MIN` (default 20 min). Once idle past that window, a new login is allowed again — this prevents permanent lockout when a user closes the app without logging out. The window slides forward on each authenticated request (throttled to ~1 write/min).
+- Logout clears the session (and blacklists the token), freeing the slot immediately.
+
+**Error contract** — the status code is the signal (a thin client can branch on it without parsing the body):
+
+| Scenario | HTTP | `errorCode` |
+|---|---|---|
+| Login while another session is active | `409` | `SESSION_ALREADY_ACTIVE` |
+| Request with a token superseded by a newer login | `440` | `SESSION_REVOKED` |
+| Token blacklisted (after logout) | `401` | `TOKEN_BLACKLISTED` |
+| Malformed / expired token | `401` | `INVALID_TOKEN` |
+| Deactivated account | `403` | `ACCOUNT_DEACTIVATED` |
+
+
+## Project layout
 
 ```
 src/
-├── types/           # Definiciones de tipos TypeScript
-├── models/          # Modelos de MongoDB con Mongoose
-├── routes/          # Rutas de la API
-├── middleware/      # Middlewares personalizados
-├── config/          # Configuraciones
-├── utils/           # Utilidades y helpers
-├── scripts/         # Scripts de utilidad
-├── tests/           # Tests y configuración
-└── server.ts        # Punto de entrada principal
+├── config/         # Prisma client, logger, Swagger setup
+├── controllers/    # HTTP layer — parse req, call services, shape res
+├── services/       # Business logic — orchestrate repositories
+├── repositories/   # Prisma queries — extend BaseRepository<T>
+├── dto/            # Request/response shapes (partial adoption: auth + user)
+├── validators/     # express-validator chains
+├── middleware/     # errorHandler, validate
+├── errors/         # Typed application errors (AuthError + subclasses)
+├── routes/         # Route definitions
+├── types/          # Shared types (JWTPayload, AuthenticatedRequest, ApiResponse)
+├── tests/          # Vitest setup
+└── server.ts       # Entry point
+
+prisma/
+├── schema.prisma   # Source of truth for the data model
+└── migrations/     # Versioned SQL migrations
 ```
 
-## 🗄️ Estructura de la Base de Datos
+See [`CLAUDE.md`](./CLAUDE.md) for the conventions around adding a new resource, the `BaseRepository` gotchas, strict-TypeScript patterns, and deployment notes.
 
-### Modelos Principales
+## Docker
 
-#### User
-- Información básica del usuario
-- Datos de gamificación (nivel, experiencia, monedas)
-- Estadísticas financieras
-- Logros desbloqueados
+A single `Dockerfile` (multi-stage: `deps` → `builder` → `pruned` → `production`) is used for all deployed environments. Per-environment behavior is driven by compose overrides + env files — there is no `Dockerfile.staging` or `Dockerfile.prod`.
 
-#### Transaction
-- Transacciones financieras
-- Categorización automática
-- Cálculo de recompensas de gamificación
-- Metadatos adicionales
+| File | Purpose |
+|---|---|
+| `docker-compose.yml` | Shared base — api + postgres |
+| `docker-compose.override.yml` | Auto-loaded for `yarn compose:dev` — hot reload, source mount |
+| `docker-compose.staging.yml` | Staging overrides — disables embedded Postgres (managed DB) |
+| `docker-compose.prod.yml` | Production overrides — single replica, resource limits, `on-failure` restart |
+| `railway.json` | Railway deployment config — `Dockerfile` builder + `prisma migrate deploy` as pre-deploy |
 
-#### Achievement
-- Sistema de logros
-- Criterios de desbloqueo
-- Recompensas asociadas
-- Categorías y rareza
+## Deployment
 
-## 🎯 Sistema de Gamificación
+Configured for **Railway**:
 
-### Experiencia y Niveles
-- **Fórmula de experiencia**: Nivel × 100 puntos para subir
-- **Recompensas por transacción**:
-  - Ingresos: 10% del monto como experiencia
-  - Ahorros: 20% del monto como experiencia
-  - Gastos: 5% del monto como experiencia
+1. Connect this repo in the Railway dashboard.
+2. Variables → paste the relevant entries from `env.production.example` (`DATABASE_URL`, `JWT_SECRET`, `TRUST_PROXY_HOPS=1`, etc.).
+3. Add a Postgres plugin (auto-injects `DATABASE_URL`) **or** use an external managed DB (e.g. Prisma Cloud).
+4. Push to your tracked branch — Railway builds from the Dockerfile, runs `npx prisma migrate deploy`, then starts the container.
+5. Settings → Networking → Generate Domain.
 
-### Monedas Virtuales
-- **Recompensas por transacción**:
-  - Ingresos: 5% del monto como monedas
-  - Ahorros: 10% del monto como monedas
-  - Gastos: 2% del monto como monedas
+Same pattern works on Render, Fly.io, Heroku, or any platform that builds from a Dockerfile and injects env vars.
 
-### Logros
-- **Categorías**: Financiero, Ahorro, Seguimiento, Racha, Hito
-- **Criterios**: Cantidad de transacciones, monto total, metas alcanzadas
-- **Rareza**: Común, Raro, Épico, Legendario
+## License
 
-## 🧪 Testing
-
-```bash
-# Ejecutar tests
-npm test
-
-# Ejecutar tests con UI
-npm run test:ui
-
-# Ejecutar tests con cobertura
-npm run test:coverage
-```
-
-## 🔧 Configuración de Desarrollo
-
-### Variables de Entorno
-```env
-# Servidor
-PORT=3000
-NODE_ENV=development
-
-# Base de datos
-MONGODB_URI=mongodb://localhost:27017/gamification-finances
-
-# JWT
-JWT_SECRET=tu-super-secret-jwt-key
-JWT_EXPIRES_IN=7d
-
-# API
-API_VERSION=v1
-CORS_ORIGIN=http://localhost:3000
-
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=100
-
-# Logging
-LOG_LEVEL=info
-```
-
-### Configuración TypeScript
-- **Target**: ES2022
-- **Module**: ESNext
-- **Strict mode**: Habilitado
-- **Path mapping**: Configurado para imports limpios
-
-## 🚀 Despliegue
-
-### Heroku
-1. Crear aplicación en Heroku
-2. Configurar variables de entorno
-3. Conectar repositorio
-4. Configurar build script: `npm run build`
-5. Configurar start script: `npm start`
-
-### Docker
-```dockerfile
-FROM node:18-alpine
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm ci --only=production
-
-COPY . .
-RUN npm run build
-
-EXPOSE 3000
-
-CMD ["npm", "start"]
-```
-
-```bash
-# Construir imagen
-docker build -t gamification-finances .
-
-# Ejecutar contenedor
-docker run -p 3000:3000 gamification-finances
-```
-
-## 🤝 Contribución
-
-1. Fork el proyecto
-2. Crear una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abrir un Pull Request
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para detalles.
-
-## 🆘 Soporte
-
-Si tienes alguna pregunta o problema, por favor abre un issue en el repositorio.
-
-## 🔮 Roadmap
-
-- [ ] Sistema de notificaciones push
-- [ ] Integración con bancos
-- [ ] Análisis de gastos con IA
-- [ ] Sistema de amigos y grupos
-- [ ] Marketplace de recompensas
-- [ ] Exportación de datos
-- [ ] API GraphQL
-- [ ] Aplicación móvil
-
----
-
-Desarrollado con ❤️ y TypeScript para hacer las finanzas personales más divertidas y efectivas. 
+MIT

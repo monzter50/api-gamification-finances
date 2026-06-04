@@ -532,6 +532,63 @@ export class BudgetRepository extends BaseRepository<Budget> {
   }
 
   /**
+   * Duplicate a budget into a new period.
+   *
+   * Copies the source budget's incomeItems and expenseItems into a brand-new
+   * Budget row at `(targetYear, targetMonth)`. Transactions are NOT copied —
+   * they are historical records pointing at the SOURCE items, and the cloned
+   * items are new rows with new IDs.
+   *
+   * Caller MUST have already:
+   *   - verified the source budget belongs to `userId`
+   *   - verified there is no existing budget at the target period
+   *   - validated every income item's accountId still belongs to `userId`
+   *
+   * The whole clone (parent budget + nested items) runs inside a single
+   * Prisma transaction so a partial duplicate is not possible.
+   */
+  async duplicateBudget (
+    sourceBudgetId: string,
+    userId: string,
+    targetYear: number,
+    targetMonth: number
+  ): Promise<EnhancedBudget | null> {
+    const source = await this.model.findFirst({
+      where: { id: sourceBudgetId, userId },
+      include: { incomeItems: true, expenseItems: true }
+    });
+    if (!source) return null;
+
+    const incomeData = source.incomeItems.map((i: IncomeItem) => ({
+      description: i.description,
+      amount: i.amount,
+      type: i.type,
+      accountId: i.accountId
+    }));
+
+    const expenseData = source.expenseItems.map((e: ExpenseItem) => ({
+      description: e.description,
+      amount: e.amount,
+      type: e.type
+    }));
+
+    const created = await prisma.$transaction(async (tx) => {
+      return await tx.budget.create({
+        data: {
+          userId,
+          year: targetYear,
+          month: targetMonth,
+          incomeItems: { create: incomeData },
+          expenseItems: { create: expenseData }
+        },
+        include: { incomeItems: true, expenseItems: true }
+      });
+    });
+
+    return this.enrichBudget(created);
+  }
+
+  /**
    * Update a single expense item (Option B).
    *
    * Returns the UPDATED item + recomputed totals — NOT the full parent budget.

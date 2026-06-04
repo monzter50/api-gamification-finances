@@ -220,6 +220,9 @@ export const addExpenseItemValidation = [
   param('id')
     .isUUID()
     .withMessage('Invalid budget ID'),
+  param('incomeId')
+    .isUUID()
+    .withMessage('Invalid income ID'),
   body('description')
     .trim()
     .notEmpty()
@@ -255,6 +258,32 @@ export const updateIncomeItemValidation = [
   body('accountId')
     .isUUID()
     .withMessage('accountId is required and must be a valid UUID')
+];
+
+/**
+ * Validation for POST /api/budgets/:id/duplicate.
+ *
+ * The body identifies the TARGET period; the path :id identifies the SOURCE.
+ * Items are NOT accepted in the body — they're copied verbatim from the source.
+ */
+export const duplicateBudgetValidation = [
+  param('id')
+    .isUUID()
+    .withMessage('Invalid source budget ID'),
+  body('year')
+    .isInt({ min: 2000, max: 2100 })
+    .withMessage('Year must be between 2000 and 2100'),
+  body('month')
+    .isInt({ min: 0, max: 11 })
+    .withMessage('Month must be between 0 and 11'),
+  body('incomeItems')
+    .not()
+    .exists()
+    .withMessage('incomeItems is not allowed here. The duplicate copies items from the source budget.'),
+  body('expenseItems')
+    .not()
+    .exists()
+    .withMessage('expenseItems is not allowed here. The duplicate copies items from the source budget.')
 ];
 
 /**

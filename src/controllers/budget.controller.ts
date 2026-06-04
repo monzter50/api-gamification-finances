@@ -278,6 +278,103 @@ export class BudgetController {
   }
 
   /**
+   * POST /api/budgets/:id/duplicate
+   * Clone a budget (income + expense items only) into a new (year, month).
+   *
+   * Does NOT copy Transaction rows — those are historical and tied to the
+   * SOURCE items by foreign key. The clone gets fresh items with new IDs.
+   */
+  async duplicateBudget (req: BudgetRequest<{ year: number, month: number }>, res: Response): Promise<void> {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({
+          success: false,
+          error: 'Validation error',
+          errors: errors.array(),
+          statusCode: 400
+        });
+        return;
+      }
+
+      const { id } = req.params as { id: string };
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          error: 'Source budget ID is required',
+          statusCode: 400
+        });
+        return;
+      }
+
+      const userId = req.user!.userId;
+      const { year, month } = req.body;
+
+      const duplicated = await budgetService.duplicateBudget(
+        id,
+        userId,
+        year,
+        month
+      );
+
+      res.status(201).json({
+        success: true,
+        data: duplicated,
+        message: 'Budget duplicated successfully'
+      });
+    } catch (error) {
+      logger.error('Error duplicating budget:', error);
+
+      const errorMessage = (error as Error).message;
+
+      if (errorMessage === 'Budget not found') {
+        res.status(404).json({
+          success: false,
+          error: 'Budget not found',
+          statusCode: 404
+        });
+        return;
+      }
+
+      if (errorMessage === 'Unauthorized access to budget') {
+        res.status(403).json({
+          success: false,
+          error: 'Unauthorized access to budget',
+          statusCode: 403
+        });
+        return;
+      }
+
+      if (errorMessage.includes('already exists')) {
+        res.status(409).json({
+          success: false,
+          error: errorMessage,
+          statusCode: 409
+        });
+        return;
+      }
+
+      if (
+        errorMessage.startsWith('Cannot duplicate:') ||
+        errorMessage.includes('Month must be between')
+      ) {
+        res.status(400).json({
+          success: false,
+          error: errorMessage,
+          statusCode: 400
+        });
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        error: 'Error duplicating budget',
+        statusCode: 500
+      });
+    }
+  }
+
+  /**
    * GET /api/budgets/stats
    * Get budget statistics for user
    */

@@ -409,6 +409,84 @@ const options: swaggerJsdoc.Options = {
             message: { type: 'string', example: 'Income items retrieved successfully' }
           }
         },
+        RegisterRequest: {
+          type: 'object',
+          required: ['email', 'password', 'name'],
+          properties: {
+            email: { type: 'string', format: 'email', example: 'jane@example.com' },
+            password: { type: 'string', format: 'password', minLength: 6, example: 'hunter2!' },
+            name: { type: 'string', minLength: 2, maxLength: 50, example: 'Jane Doe' }
+          }
+        },
+        LoginRequest: {
+          type: 'object',
+          required: ['email', 'password'],
+          properties: {
+            email: { type: 'string', format: 'email', example: 'jane@example.com' },
+            password: { type: 'string', format: 'password', example: 'hunter2!' }
+          }
+        },
+        UserBasicInfo: {
+          type: 'object',
+          required: ['id', 'email', 'name', 'role'],
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'usr_01HX5A2B3C4D5E6F' },
+            email: { type: 'string', format: 'email', example: 'jane@example.com' },
+            name: { type: 'string', example: 'Jane Doe' },
+            role: { type: 'string', enum: ['user', 'admin'], example: 'user' }
+          }
+        },
+        AuthResponse: {
+          type: 'object',
+          description: 'Canonical auth payload. LoginResponse and RegisterResponse are name-aliases of this shape so codegen tools generate distinct named types; they remain free to diverge later without breaking the shared contract.',
+          required: ['success', 'token', 'expiresIn', 'user'],
+          properties: {
+            success: { type: 'boolean', example: true },
+            message: { type: 'string', example: 'Login successful' },
+            token: {
+              type: 'string',
+              description: 'JWT access token. Send as `Authorization: Bearer <token>` on subsequent requests.',
+              example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+            },
+            expiresIn: {
+              type: 'integer',
+              description: 'Token lifetime in seconds from issue.',
+              example: 86400
+            },
+            user: { $ref: '#/components/schemas/UserBasicInfo' }
+          }
+        },
+        LoginResponse: {
+          allOf: [{ $ref: '#/components/schemas/AuthResponse' }],
+          description: 'Response shape for POST /api/auth/login. Identical to AuthResponse today; named separately to allow independent evolution.'
+        },
+        RegisterResponse: {
+          allOf: [{ $ref: '#/components/schemas/AuthResponse' }],
+          description: 'Response shape for POST /api/auth/register. Identical to AuthResponse today; named separately to allow independent evolution.'
+        },
+        UserProfile: {
+          type: 'object',
+          description: 'Returned by GET /api/auth/me. Full profile (no password hash).',
+          required: ['id', 'email', 'name', 'role', 'isActive'],
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'usr_01HX5A2B3C4D5E6F' },
+            email: { type: 'string', format: 'email', example: 'jane@example.com' },
+            name: { type: 'string', example: 'Jane Doe' },
+            role: { type: 'string', enum: ['user', 'admin'], example: 'user' },
+            isActive: { type: 'boolean', example: true },
+            lastLogin: { type: 'string', format: 'date-time', example: '2026-05-18T14:23:00.000Z' },
+            createdAt: { type: 'string', format: 'date-time', example: '2025-11-02T08:00:00.000Z' },
+            updatedAt: { type: 'string', format: 'date-time', example: '2026-05-19T09:00:00.000Z' }
+          }
+        },
+        LogoutResponse: {
+          type: 'object',
+          required: ['success', 'message'],
+          properties: {
+            success: { type: 'boolean', example: true },
+            message: { type: 'string', example: 'Logged out successfully' }
+          }
+        },
         PaginatedExpenseResponse: {
           type: 'object',
           properties: {
