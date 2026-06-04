@@ -220,6 +220,9 @@ export const addExpenseItemValidation = [
   param('id')
     .isUUID()
     .withMessage('Invalid budget ID'),
+  param('incomeId')
+    .isUUID()
+    .withMessage('Invalid income ID'),
   body('description')
     .trim()
     .notEmpty()
