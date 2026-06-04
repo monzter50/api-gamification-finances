@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { userRepository } from '../repositories/user.repository';
@@ -10,8 +11,36 @@ import {
   AccountDeactivatedError,
   UserNotFoundError,
   UserAlreadyExistsError,
-  TokenBlacklistedError
+  TokenBlacklistedError,
+  SessionRevokedError,
+  SessionAlreadyActiveError
 } from '../errors/AuthErrors';
+
+/**
+ * A session counts as "active" (and therefore blocks a new login) only while it
+ * has been used within this many minutes. Once it goes idle past the window, a
+ * fresh login is allowed again — this prevents permanent lockout when a user
+ * closes the app without logging out. Configurable via env.
+ */
+const SESSION_INACTIVITY_WINDOW_MIN = parseInt(
+  process.env.SESSION_INACTIVITY_WINDOW_MIN ?? '20',
+  10
+);
+
+/**
+ * Is there a live session that should block a new login?
+ * True when a sessionId exists and its last activity is within the window.
+ */
+function isSessionActive (
+  sessionId: string | null | undefined,
+  lastActivityAt: Date | null | undefined
+): boolean {
+  if (!sessionId || !lastActivityAt) {
+    return false;
+  }
+  const windowMs = SESSION_INACTIVITY_WINDOW_MIN * 60 * 1000;
+  return Date.now() - new Date(lastActivityAt).getTime() < windowMs;
+}
 
 /**
  * Authentication Service
@@ -43,8 +72,12 @@ export class AuthService {
 
     const userId = (user as any).id;
 
-    // Generate JWT token
-    const { token, expiresIn } = this.generateToken(userId, user.email);
+    // Open the first active session for this user.
+    const sessionId = randomUUID();
+    await userRepository.startSession(userId, sessionId);
+
+    // Generate JWT token bound to the session
+    const { token, expiresIn } = this.generateToken(userId, user.email, sessionId);
 
     logger.info(`New user registered: ${user.email}`);
 
@@ -85,11 +118,21 @@ export class AuthService {
 
     const userId = (user as any).id;
 
-    // Update last login
-    await userRepository.updateLastLogin(userId);
+    // Single active session: block login while another session is still active
+    // (used within the inactivity window). The user must log out there — or let
+    // that session go idle — before signing in again.
+    if (isSessionActive((user as any).sessionId, (user as any).sessionLastActivityAt)) {
+      logger.info(`Login blocked, session already active: ${user.email}`);
+      throw new SessionAlreadyActiveError();
+    }
 
-    // Generate JWT token
-    const { token, expiresIn } = this.generateToken(userId, user.email);
+    // Open a new active session (also updates lastLogin). Any previously issued
+    // token now carries a stale `sid` and will be rejected as SESSION_REVOKED.
+    const sessionId = randomUUID();
+    await userRepository.startSession(userId, sessionId);
+
+    // Generate JWT token bound to the session
+    const { token, expiresIn } = this.generateToken(userId, user.email, sessionId);
 
     logger.info(`User logged in: ${user.email}`);
 
@@ -111,6 +154,10 @@ export class AuthService {
 
     // Blacklist the token (tokenUtils will handle expiration extraction)
     await blacklistToken(token, userId);
+
+    // Clear the active session so the single-session slot frees up immediately
+    // and a fresh login is allowed without waiting for the inactivity window.
+    await userRepository.clearSession(userId);
 
     logger.info(`User logged out: ${userId}`);
 
@@ -144,6 +191,11 @@ export class AuthService {
       throw new AccountDeactivatedError('User account is deactivated');
     }
 
+    // Single-session: the token is only valid for the user's current session.
+    if (decoded.sid !== (user as any).sessionId) {
+      throw new SessionRevokedError();
+    }
+
     return {
       userId: (user as any).id,
       email: user.email,
@@ -157,12 +209,12 @@ export class AuthService {
   /**
    * Generate JWT token
    */
-  private generateToken (userId: string, email: string): { token: string, expiresIn: number } {
+  private generateToken (userId: string, email: string, sessionId: string): { token: string, expiresIn: number } {
     const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
     const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '7d';
 
     const token = jwt.sign(
-      { userId, email, id: userId },
+      { userId, email, id: userId, sid: sessionId },
       jwtSecret,
       { expiresIn: jwtExpiresIn } as jwt.SignOptions
     );

@@ -37,6 +37,7 @@ The server starts on `http://localhost:3000`. Health check at `/health`, OpenAPI
 | `DATABASE_URL` | ✅ | Postgres connection string. Use `?sslmode=require` for managed DBs |
 | `JWT_SECRET` | ✅ | Symmetric secret for signing JWTs |
 | `JWT_EXPIRES_IN` |  | Default `7d` |
+| `SESSION_INACTIVITY_WINDOW_MIN` |  | Default `20`. Single-active-session window — a new login is blocked while an existing session has been active within this many minutes (see [Authentication & sessions](#authentication--sessions)) |
 | `PORT` |  | Default `3000`. Set by Railway/Render automatically |
 | `NODE_ENV` |  | `development` / `staging` / `production` / `test` |
 | `CORS_ORIGIN` |  | Comma-separated list. Default `http://localhost:3000` |
@@ -77,13 +78,14 @@ All routes mounted under `/api`. Auth endpoints are public; everything else requ
 
 | Group | Path | Notes |
 |---|---|---|
-| Auth | `/auth/register`, `/auth/login`, `/auth/logout`, `/auth/me` | DB-backed JWT blacklist on logout |
+| Auth | `/auth/register`, `/auth/login`, `/auth/logout`, `/auth/me` | DB-backed JWT blacklist on logout + [single active session](#authentication--sessions) |
 | Users | `/users/...` | Profile + user-scoped operations |
 | Accounts | `/accounts/...` | Checking / savings / credit_card / vales |
 | Budgets | `/budgets/...` | Monthly budgets with income + expense items |
 | Transactions | `/transactions/...` | Linked to accounts and budgets; mutating one rebalances the others |
 
 Full route list is enumerated at `GET /api/docs` (returns JSON) and rendered at `/api-docs` (Swagger UI).
+
 
 ## Importing an Excel workbook
 
@@ -98,6 +100,28 @@ Bulk-import budget data from an `.xlsx` budget workbook (e.g. "TARJETAS Y GASTOS
 2. **`POST /import/xlsx/confirm`** — the user-reviewed batch (`budgetId`, `defaultAccountId`, `accountMapping`, `transactions`, `incomeItems`, `expenseItems`). Creates income items + expense items + transactions in **one atomic `$transaction`**. Transactions move the account balance; budget items don't.
 
 Parsing uses `exceljs`. Upload limit is `MAX_UPLOAD_MB` (default 10). Errors: `413 FILE_TOO_LARGE`, `415 UNSUPPORTED_FILE_TYPE`, `422 NO_TRANSACTIONS_FOUND`.
+
+## Authentication & sessions
+
+Auth is JWT-based (`Authorization: Bearer <token>`) with **single active session per user** — a user can only be signed in on one device at a time.
+
+**How it works**
+
+- Each `User` has a `sessionId` and `sessionLastActivityAt`. On login a fresh `sessionId` is generated and embedded in the JWT as the `sid` claim.
+- `authenticateJWT` rejects any token whose `sid` no longer matches the user's current `sessionId` (i.e. a newer login superseded it).
+- A session counts as **active** only while it has been used within `SESSION_INACTIVITY_WINDOW_MIN` (default 20 min). Once idle past that window, a new login is allowed again — this prevents permanent lockout when a user closes the app without logging out. The window slides forward on each authenticated request (throttled to ~1 write/min).
+- Logout clears the session (and blacklists the token), freeing the slot immediately.
+
+**Error contract** — the status code is the signal (a thin client can branch on it without parsing the body):
+
+| Scenario | HTTP | `errorCode` |
+|---|---|---|
+| Login while another session is active | `409` | `SESSION_ALREADY_ACTIVE` |
+| Request with a token superseded by a newer login | `440` | `SESSION_REVOKED` |
+| Token blacklisted (after logout) | `401` | `TOKEN_BLACKLISTED` |
+| Malformed / expired token | `401` | `INVALID_TOKEN` |
+| Deactivated account | `403` | `ACCOUNT_DEACTIVATED` |
+
 
 ## Project layout
 
