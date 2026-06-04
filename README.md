@@ -86,6 +86,21 @@ All routes mounted under `/api`. Auth endpoints are public; everything else requ
 
 Full route list is enumerated at `GET /api/docs` (returns JSON) and rendered at `/api-docs` (Swagger UI).
 
+
+## Importing an Excel workbook
+
+Bulk-import budget data from an `.xlsx` budget workbook (e.g. "TARJETAS Y GASTOS"). Two steps, both under `/api/transactions/import/xlsx` and documented in the OpenAPI spec:
+
+1. **`POST /import/xlsx/parse`** — `multipart/form-data` with a `file` field. Parses three sheets and returns the rows for review (no DB writes):
+   - **Budget track** → transactions (each row's account resolved later from `paymentSource` = "Payment Method / Card")
+   - **Income** → budget income items (`description` + `amount`)
+   - **Expenses** → budget expense items (`Fixed`/`Variable` derived from the *Gastos Fijos / Gastos Variables* section headers)
+
+   Excel serial dates are converted to ISO; summary/total rows are skipped.
+2. **`POST /import/xlsx/confirm`** — the user-reviewed batch (`budgetId`, `defaultAccountId`, `accountMapping`, `transactions`, `incomeItems`, `expenseItems`). Creates income items + expense items + transactions in **one atomic `$transaction`**. Transactions move the account balance; budget items don't.
+
+Parsing uses `exceljs`. Upload limit is `MAX_UPLOAD_MB` (default 10). Errors: `413 FILE_TOO_LARGE`, `415 UNSUPPORTED_FILE_TYPE`, `422 NO_TRANSACTIONS_FOUND`.
+
 ## Authentication & sessions
 
 Auth is JWT-based (`Authorization: Bearer <token>`) with **single active session per user** — a user can only be signed in on one device at a time.
@@ -106,6 +121,7 @@ Auth is JWT-based (`Authorization: Bearer <token>`) with **single active session
 | Token blacklisted (after logout) | `401` | `TOKEN_BLACKLISTED` |
 | Malformed / expired token | `401` | `INVALID_TOKEN` |
 | Deactivated account | `403` | `ACCOUNT_DEACTIVATED` |
+
 
 ## Project layout
 
