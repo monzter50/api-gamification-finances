@@ -86,6 +86,16 @@ export class XlsxImportService {
         });
       }
 
+      // Map of expense-item description → id (newly created + any pre-existing),
+      // so each transaction can be linked to its expense item by Category.
+      const budgetExpenseItems = await tx.expenseItem.findMany({
+        where: { budgetId },
+        select: { id: true, description: true }
+      });
+      const expenseItemByDescription = new Map(
+        budgetExpenseItems.map((e) => [e.description.trim().toLowerCase(), e.id])
+      );
+
       // Transactions (move the account balance: income +, expense −).
       const ids: string[] = [];
       for (const { row, accountId } of resolvedTx) {
@@ -100,6 +110,11 @@ export class XlsxImportService {
           accountId
         };
         if (row.description !== undefined) { txData.description = row.description; }
+        // Link expense transactions to their expense item via the sheet Category.
+        if (row.type === 'expense' && row.category) {
+          const expenseItemId = expenseItemByDescription.get(row.category.trim().toLowerCase());
+          if (expenseItemId) { txData.expenseItemId = expenseItemId; }
+        }
 
         const created = await tx.transaction.create({ data: txData });
         await tx.account.update({ where: { id: accountId }, data: { balance: { increment: delta } } });

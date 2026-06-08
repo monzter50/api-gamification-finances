@@ -20,6 +20,7 @@ export interface ParsedTransaction {
   type: TransactionType
   description?: string
   paymentSource?: string  // "Payment Method / Card" → account mapping
+  category?: string       // sheet "Category" → matched to an expense item (expenseItemId)
 }
 
 /** An income line item parsed from the "Income" sheet (type + account filled in UI). */

@@ -61,8 +61,6 @@ const cellToDateISO = (v: CellValue): string => {
   return '';
 };
 
-const buildDescription = (expense: string, category: string): string =>
-  [expense, category].filter(Boolean).join(' — ');
 
 /** "Budget track" → expense transactions. */
 const parseTransactions = (ws: ExcelJS.Worksheet): ParsedTransaction[] => {
@@ -81,9 +79,12 @@ const parseTransactions = (ws: ExcelJS.Worksheet): ParsedTransaction[] => {
     const paymentSource = [method, card].filter(Boolean).join(' / ');
 
     const parsed: ParsedTransaction = { date, amount, vendor, type: 'expense' };
-    const description = buildDescription(expense, category);
+    // Description is the expense label (A); the Category (C) drives the
+    // expense-item link (expenseItemId), so it's NOT folded into the text.
+    const description = expense || category;
     if (description) { parsed.description = description; }
     if (paymentSource) { parsed.paymentSource = paymentSource; }
+    if (category) { parsed.category = category; }
     rows.push(parsed);
   });
   return rows;
