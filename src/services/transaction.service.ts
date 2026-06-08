@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { transactionRepository, transactionIncludes, type EnhancedTransaction } from '../repositories/transaction.repository';
 import { budgetRepository } from '../repositories/budget.repository';
 import { accountRepository } from '../repositories/account.repository';
@@ -274,9 +275,22 @@ export class TransactionService {
         const oldDelta = this.balanceDeltaForType(existing.type, existing.amount);
         const newDelta = this.balanceDeltaForType(newType, newAmount);
 
-        // 6. Build update payload (convert date string if present)
-        const updateData: any = { ...data };
-        if (data.date) updateData.date = new Date(data.date);
+        // 6. Build update payload from ONLY the editable Transaction fields.
+        // Never spread the raw request body — clients may send extra fields
+        // (e.g. `category`, `owner`, `budgetId`) that aren't columns on
+        // Transaction and would make Prisma reject the whole update.
+        const updateData: Prisma.TransactionUncheckedUpdateInput = {};
+        if (data.date !== undefined) updateData.date = new Date(data.date);
+        if (data.amount !== undefined) updateData.amount = Number(data.amount);
+        if (data.vendor !== undefined) updateData.vendor = data.vendor;
+        if (data.type !== undefined) updateData.type = data.type;
+        if (data.accountId !== undefined) updateData.accountId = data.accountId;
+        if (data.description !== undefined) updateData.description = data.description;
+        if (data.incomeItemId !== undefined) updateData.incomeItemId = data.incomeItemId;
+        if (data.expenseItemId !== undefined) updateData.expenseItemId = data.expenseItemId;
+        if (data.installmentCurrent !== undefined) updateData.installmentCurrent = data.installmentCurrent;
+        if (data.installmentTotal !== undefined) updateData.installmentTotal = data.installmentTotal;
+        if (data.installmentOriginal !== undefined) updateData.installmentOriginal = data.installmentOriginal;
 
         // 7. Atomic: balance reversal on old account + balance apply on new account + row update
         const updated = await prisma.$transaction(async (tx) => {
