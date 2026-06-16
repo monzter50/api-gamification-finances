@@ -102,6 +102,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     total: number
     page: number
     totalPages: number
+    totals: { income: number, expense: number, savings: number, count: number }
   }> {
     const where: any = { userId };
 
@@ -113,9 +114,16 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       if (filters.endDate) where.date.lte = filters.endDate;
     }
 
+    // Totals are computed over the SAME budget + date scope but independent of
+    // the `type` filter, so the income/expense summaries always reflect the
+    // whole set (not just the current page, and not narrowed by a type filter).
+    const totalsWhere: any = { userId };
+    if (filters.budgetId) totalsWhere.budgetId = filters.budgetId;
+    if (where.date) totalsWhere.date = where.date;
+
     const skip = (page - 1) * limit;
 
-    const [data, total] = await Promise.all([
+    const [data, total, grouped] = await Promise.all([
       this.model.findMany({
         where,
         include: transactionIncludes,
@@ -123,14 +131,28 @@ export class TransactionRepository extends BaseRepository<Transaction> {
         take: limit,
         orderBy: { date: 'desc' }
       }),
-      this.model.count({ where })
+      this.model.count({ where }),
+      this.model.groupBy({
+        by: ['type'],
+        where: totalsWhere,
+        _sum: { amount: true },
+        _count: true
+      })
     ]);
+
+    const totals = { income: 0, expense: 0, savings: 0, count: 0 };
+    for (const g of grouped as Array<{ type: string, _sum: { amount: number | null }, _count: number }>) {
+      const sum = g._sum.amount ?? 0;
+      totals.count += g._count;
+      if (g.type === 'income') { totals.income = sum; } else if (g.type === 'expense') { totals.expense = sum; } else if (g.type === 'savings') { totals.savings = sum; }
+    }
 
     return {
       data,
       total,
       page,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(total / limit),
+      totals
     };
   }
 

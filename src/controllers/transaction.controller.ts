@@ -47,6 +47,7 @@ export class TransactionController {
                     total: result.total,
                     pages: result.totalPages
                 },
+                totals: result.totals,
                 message: 'Transactions retrieved successfully'
             });
         } catch (error) {

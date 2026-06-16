@@ -34,6 +34,7 @@ export const confirmXlsxValidation = [
   body('transactions.*.type').isIn(['income', 'expense']).withMessage('Type must be income or expense'),
   body('transactions.*.description').optional().trim(),
   body('transactions.*.paymentSource').optional().trim(),
+  body('transactions.*.category').optional().trim(),
 
   // Income items
   body('incomeItems.*.description').trim().notEmpty().withMessage('Income item description is required'),
