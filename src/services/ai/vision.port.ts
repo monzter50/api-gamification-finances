@@ -20,6 +20,12 @@ export interface VisionExtractRequest {
   systemPrompt: string
   userPrompt: string
   images: VisionImage[]
+  /**
+   * Optional JSON Schema for constrained decoding. Hosts that support
+   * structured output will refuse to emit anything off-shape; hosts that
+   * don't are handled by the adapter falling back to free-form text.
+   */
+  jsonSchema?: { name: string, schema: Record<string, unknown> }
 }
 
 export interface VisionExtractResult {

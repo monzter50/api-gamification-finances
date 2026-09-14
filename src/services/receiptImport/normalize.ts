@@ -171,19 +171,57 @@ export function buildExternalKey (parts: {
     .digest('hex');
 }
 
-/** Map row index -> resolved date, from the model's date headings. */
+/**
+ * Map row index -> resolved date by FORWARD-FILLING from each heading.
+ *
+ * A date heading in the app governs every row beneath it until the next
+ * heading. Models are unreliable about saying so: qwen2.5-vl returns
+ * `appliesToRows: [0, 1]` for a heading that actually covers five rows, which
+ * would silently leave the rest dateless. Rather than lean harder on the
+ * prompt, treat `appliesToRows` as a hint about where a heading STARTS and
+ * derive the span here, where it is deterministic and testable.
+ */
 function buildDateIndex (
   headers: VisionDateHeader[],
-  reference: Date
+  rowCount: number,
+  reference: Date,
+  fallbackHeading: string | null
 ): Map<number, ResolvedDate> {
   const index = new Map<number, ResolvedDate>();
-  for (const header of headers) {
-    const resolved = resolveDateHeading(header.raw, reference);
-    if (!resolved) { continue; }
-    for (const rowIndex of header.appliesToRows) {
-      index.set(rowIndex, resolved);
+
+  const effective = headers.length > 0
+    ? headers
+    : (fallbackHeading !== null ? [{ raw: fallbackHeading, appliesToRows: [0] }] : []);
+
+  const anchors = effective
+    .map((header, position) => {
+      const resolved = resolveDateHeading(header.raw, reference);
+      if (!resolved) { return null; }
+      const indices = header.appliesToRows.filter((i) => Number.isInteger(i) && i >= 0);
+      // No usable hint: fall back to the heading's own order of appearance.
+      const startsAt = indices.length > 0 ? Math.min(...indices) : (position === 0 ? 0 : Number.MAX_SAFE_INTEGER);
+      return { startsAt, resolved };
+    })
+    .filter((a): a is { startsAt: number, resolved: ResolvedDate } => a !== null)
+    .sort((a, b) => a.startsAt - b.startsAt);
+
+  if (anchors.length === 0) { return index; }
+
+  // The first heading governs from row 0, even if the model claimed otherwise
+  // -- rows cannot appear above the first date in the list.
+  const first = anchors[0];
+  if (first !== undefined) { first.startsAt = 0; }
+
+  let cursor = 0;
+  for (let row = 0; row < rowCount; row += 1) {
+    while (cursor + 1 < anchors.length) {
+      const next = anchors[cursor + 1];
+      if (next !== undefined && next.startsAt <= row) { cursor += 1; } else { break; }
     }
+    const active = anchors[cursor];
+    if (active !== undefined) { index.set(row, active.resolved); }
   }
+
   return index;
 }
 
@@ -196,15 +234,17 @@ export interface NormalizeResult {
 export function normalizeRows (
   visionRows: VisionRow[],
   dateHeaders: VisionDateHeader[],
-  options: { accountKind: AccountKind, referenceDate: Date }
+  options: { accountKind: AccountKind, referenceDate: Date, primaryDateHeading?: string | null }
 ): NormalizeResult {
-  const dateIndex = buildDateIndex(dateHeaders, options.referenceDate);
+  const fallbackHeading = options.primaryDateHeading ?? null;
+  const dateIndex = buildDateIndex(dateHeaders, visionRows.length, options.referenceDate, fallbackHeading);
   const warnings: string[] = [];
 
-  if (dateHeaders.length > 0 && dateIndex.size === 0) {
+  const sawHeading = dateHeaders.length > 0 || fallbackHeading !== null;
+  if (sawHeading && dateIndex.size === 0) {
     warnings.push('A date heading was detected but could not be parsed; rows have no date.');
   }
-  if (dateHeaders.length === 0) {
+  if (!sawHeading) {
     warnings.push('No date heading was detected in the image; rows have no date.');
   }
 

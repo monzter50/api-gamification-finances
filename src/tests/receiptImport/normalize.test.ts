@@ -176,6 +176,96 @@ describe('normalizeRows — overlapping screenshots', () => {
   });
 });
 
+describe('normalizeRows - under-specified date headings', () => {
+  it('forward-fills a heading the model only partly mapped', () => {
+    // Real qwen2.5-vl output: the heading covers five rows but the model
+    // only claimed the first two. Every row must still get the date.
+    const stingy: VisionDateHeader[] = [{ raw: '22 de junio', appliesToRows: [0, 1] }];
+
+    const result = normalizeRows(SAMPLE_ROWS, stingy, {
+      accountKind: 'credit',
+      referenceDate: REFERENCE
+    });
+
+    expect(result.rows).toHaveLength(5);
+    expect(result.rows.every((r) => r.date === '2026-06-22')).toBe(true);
+    expect(result.rows.some((r) => r.reviewReasons.includes('missing_date'))).toBe(false);
+  });
+
+  it('switches to the next heading at its first claimed row', () => {
+    const headers: VisionDateHeader[] = [
+      { raw: '22 de junio', appliesToRows: [0] },
+      { raw: '21 de junio', appliesToRows: [3] }
+    ];
+
+    const result = normalizeRows(SAMPLE_ROWS, headers, {
+      accountKind: 'credit',
+      referenceDate: REFERENCE
+    });
+
+    expect(result.rows.map((r) => r.date))
+      .toEqual(['2026-06-22', '2026-06-22', '2026-06-22', '2026-06-21', '2026-06-21']);
+  });
+
+  it('governs from row 0 even when the model claims a later start', () => {
+    const headers: VisionDateHeader[] = [{ raw: '22 de junio', appliesToRows: [2, 3] }];
+
+    const result = normalizeRows(SAMPLE_ROWS, headers, {
+      accountKind: 'credit',
+      referenceDate: REFERENCE
+    });
+
+    expect(result.rows[0]?.date).toBe('2026-06-22');
+  });
+});
+
+describe('normalizeRows - primaryDateHeading fallback', () => {
+  it('dates every row from the fallback when dateHeaders comes back empty', () => {
+    // qwen2.5-vl reliably fills primaryDateHeading but often returns an empty
+    // dateHeaders array. The fallback is what keeps rows from losing dates.
+    const result = normalizeRows(SAMPLE_ROWS, [], {
+      accountKind: 'credit',
+      referenceDate: REFERENCE,
+      primaryDateHeading: '22 de junio'
+    });
+
+    expect(result.rows.every((r) => r.date === '2026-06-22')).toBe(true);
+    expect(result.warnings).toHaveLength(0);
+  });
+
+  it('prefers explicit dateHeaders over the fallback', () => {
+    const result = normalizeRows(SAMPLE_ROWS, [{ raw: '21 de junio', appliesToRows: [0] }], {
+      accountKind: 'credit',
+      referenceDate: REFERENCE,
+      primaryDateHeading: '22 de junio'
+    });
+
+    expect(result.rows.every((r) => r.date === '2026-06-21')).toBe(true);
+  });
+
+  it('warns when neither source yields a date', () => {
+    const result = normalizeRows(SAMPLE_ROWS, [], {
+      accountKind: 'credit',
+      referenceDate: REFERENCE,
+      primaryDateHeading: null
+    });
+
+    expect(result.rows.every((r) => r.date === null)).toBe(true);
+    expect(result.warnings.some((w) => w.includes('No date heading'))).toBe(true);
+    expect(result.rows.every((r) => r.reviewReasons.includes('missing_date'))).toBe(true);
+  });
+
+  it('warns when a heading is present but unparseable', () => {
+    const result = normalizeRows(SAMPLE_ROWS, [], {
+      accountKind: 'credit',
+      referenceDate: REFERENCE,
+      primaryDateHeading: 'Movimientos'
+    });
+
+    expect(result.warnings.some((w) => w.includes('could not be parsed'))).toBe(true);
+  });
+});
+
 describe('buildExternalKey', () => {
   it('is stable across runs', () => {
     const parts = { date: '2026-06-22', time: '16:12', vendorKey: 'gasol arco kabah', amountAbs: 1070.96, signRaw: '+' as const };
