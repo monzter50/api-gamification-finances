@@ -1,0 +1,99 @@
+import { logger } from '../../config/logger';
+import { NoRowsDetectedError, VisionDisabledError, VisionOutputInvalidError } from '../../errors/ReceiptImportErrors';
+import { ollamaVisionAdapter } from '../ai/adapters/ollama.vision.adapter';
+import type { VisionExtractor, VisionImage } from '../ai/vision.port';
+import { normalizeRows } from './normalize';
+import { SYSTEM_PROMPT, USER_PROMPT } from './prompt';
+import { visionOutputSchema } from './schema';
+import type { AccountKind, ParseImageOptions, ParseImageResult } from './types';
+
+/**
+ * Bank-screenshot import service.
+ *
+ * READ-ONLY by design. `parse` reads an image and returns draft rows; it never
+ * touches the database. That keeps the endpoint idempotent — a user can
+ * re-upload and re-review as often as they like with no consequence — and
+ * means a model hallucination can never reach the ledger on its own.
+ *
+ * Creating Transactions from these rows is a separate confirm step, not yet
+ * built, which will reuse the existing xlsx confirm pipeline.
+ */
+export class ReceiptImportService {
+  constructor (private readonly vision: VisionExtractor = ollamaVisionAdapter) {}
+
+  private isEnabled (): boolean {
+    // Default ON in dev so `yarn dev` works with a local Ollama; production
+    // must opt in explicitly, since Railway has no model host to talk to.
+    const flag = process.env.VISION_ENABLED;
+    if (flag === undefined) { return process.env.NODE_ENV !== 'production'; }
+    return flag === 'true' || flag === '1';
+  }
+
+  async parse (
+    files: Array<{ buffer: Buffer, mimetype: string, originalname: string }>,
+    options: ParseImageOptions
+  ): Promise<ParseImageResult> {
+    if (!this.isEnabled()) {
+      throw new VisionDisabledError();
+    }
+
+    const images: VisionImage[] = files.map((file) => ({
+      buffer: file.buffer,
+      // Some clients send octet-stream for a perfectly good PNG.
+      mimeType: file.mimetype.startsWith('image/') ? file.mimetype : 'image/png'
+    }));
+
+    const result = await this.vision.extract({
+      systemPrompt: SYSTEM_PROMPT,
+      userPrompt: USER_PROMPT,
+      images
+    });
+
+    const parsed = visionOutputSchema.safeParse(result.json);
+    if (!parsed.success) {
+      const detail = parsed.error.issues
+        .slice(0, 3)
+        .map((i) => `${i.path.join('.') || 'root'}: ${i.message}`)
+        .join('; ');
+      logger.warn(`Vision output failed schema validation — ${detail}`);
+      throw new VisionOutputInvalidError(
+        `The model returned JSON in an unexpected shape (${detail}).`
+      );
+    }
+
+    const { rows, duplicatesInBatch, warnings } = normalizeRows(
+      parsed.data.rows,
+      parsed.data.dateHeaders,
+      { accountKind: options.accountKind, referenceDate: options.referenceDate }
+    );
+
+    if (rows.length === 0) {
+      throw new NoRowsDetectedError(
+        'No transaction rows were detected. Check the screenshot shows the movements list.'
+      );
+    }
+
+    const needsReview = rows.filter((r) => r.needsReview).length;
+    const transfers = rows.filter((r) => r.kind === 'transfer').length;
+
+    logger.info(
+      `Screenshot parse: ${rows.length} rows (${needsReview} need review, ` +
+      `${transfers} transfers) from ${images.length} image(s) in ${result.latencyMs}ms`
+    );
+
+    return {
+      rows,
+      counts: { rows: rows.length, needsReview, transfers, duplicatesInBatch },
+      source: {
+        model: result.model,
+        imagesProcessed: images.length,
+        accountKind: options.accountKind,
+        latencyMs: result.latencyMs
+      },
+      warnings
+    };
+  }
+}
+
+export const receiptImportService = new ReceiptImportService();
+export type { AccountKind };
