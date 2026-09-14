@@ -1,10 +1,10 @@
 import { logger } from '../../config/logger';
 import { NoRowsDetectedError, VisionDisabledError, VisionOutputInvalidError } from '../../errors/ReceiptImportErrors';
-import { ollamaVisionAdapter } from '../ai/adapters/ollama.vision.adapter';
+import { visionAdapter } from '../ai/adapters/openaiCompatible.vision.adapter';
 import type { VisionExtractor, VisionImage } from '../ai/vision.port';
 import { normalizeRows } from './normalize';
 import { SYSTEM_PROMPT, USER_PROMPT } from './prompt';
-import { visionOutputSchema } from './schema';
+import { VISION_JSON_SCHEMA, visionOutputSchema } from './schema';
 import type { AccountKind, ParseImageOptions, ParseImageResult } from './types';
 
 /**
@@ -19,7 +19,7 @@ import type { AccountKind, ParseImageOptions, ParseImageResult } from './types';
  * built, which will reuse the existing xlsx confirm pipeline.
  */
 export class ReceiptImportService {
-  constructor (private readonly vision: VisionExtractor = ollamaVisionAdapter) {}
+  constructor (private readonly vision: VisionExtractor = visionAdapter) {}
 
   private isEnabled (): boolean {
     // Default ON in dev so `yarn dev` works with a local Ollama; production
@@ -46,7 +46,11 @@ export class ReceiptImportService {
     const result = await this.vision.extract({
       systemPrompt: SYSTEM_PROMPT,
       userPrompt: USER_PROMPT,
-      images
+      images,
+      jsonSchema: {
+        name: 'bank_movements',
+        schema: VISION_JSON_SCHEMA as unknown as Record<string, unknown>
+      }
     });
 
     const parsed = visionOutputSchema.safeParse(result.json);
@@ -64,12 +68,27 @@ export class ReceiptImportService {
     const { rows, duplicatesInBatch, warnings } = normalizeRows(
       parsed.data.rows,
       parsed.data.dateHeaders,
-      { accountKind: options.accountKind, referenceDate: options.referenceDate }
+      {
+        accountKind: options.accountKind,
+        referenceDate: options.referenceDate,
+        primaryDateHeading: parsed.data.primaryDateHeading
+      }
     );
 
     if (rows.length === 0) {
       throw new NoRowsDetectedError(
         'No transaction rows were detected. Check the screenshot shows the movements list.'
+      );
+    }
+
+    // The model told us how many cards it could see. Fewer rows than that
+    // means it dropped some — silent data loss is the worst outcome here, so
+    // surface it rather than returning a confident-looking short list.
+    const claimed = parsed.data.rowsVisible;
+    if (claimed !== null && claimed > rows.length + duplicatesInBatch) {
+      warnings.push(
+        `The model reported ${claimed} rows in the image but returned ${rows.length + duplicatesInBatch}. ` +
+        'Some transactions may be missing — check the bottom of the screenshot.'
       );
     }
 
