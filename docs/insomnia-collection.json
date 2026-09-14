@@ -12,7 +12,6 @@
       "description": "Insomnia workspace for the Gamification Finances API. The JWT token is auto-extracted from the Login response and injected into every protected request.",
       "scope": "collection"
     },
-
     {
       "_id": "env_1111aaaabbbb2222ccccdddd3333eeee",
       "_type": "environment",
@@ -28,13 +27,23 @@
         "income_item_id": "REPLACE_INCOME_ITEM_ID",
         "expense_item_id": "REPLACE_EXPENSE_ITEM_ID",
         "account_id": "REPLACE_ACCOUNT_ID",
-        "transaction_id": "REPLACE_TRANSACTION_ID"
+        "transaction_id": "REPLACE_TRANSACTION_ID",
+        "screenshot_path": "/Users/josegonzalez/Downloads/IMG_4170.png",
+        "xlsx_path": "/Users/josegonzalez/Downloads/budget.xlsx"
       },
       "dataPropertyOrder": {
-        "&": ["base_url", "email", "password", "budget_id", "income_item_id", "expense_item_id", "account_id", "transaction_id"]
+        "&": [
+          "base_url",
+          "email",
+          "password",
+          "budget_id",
+          "income_item_id",
+          "expense_item_id",
+          "account_id",
+          "transaction_id"
+        ]
       }
     },
-
     {
       "_id": "env_2222aaaabbbb3333ccccdddd4444eeee",
       "_type": "environment",
@@ -46,10 +55,11 @@
         "base_url": "http://localhost:3000"
       },
       "dataPropertyOrder": {
-        "&": ["base_url"]
+        "&": [
+          "base_url"
+        ]
       }
     },
-
     {
       "_id": "env_3333aaaabbbb4444ccccdddd5555eeee",
       "_type": "environment",
@@ -61,10 +71,11 @@
         "base_url": "https://api.production.com"
       },
       "dataPropertyOrder": {
-        "&": ["base_url"]
+        "&": [
+          "base_url"
+        ]
       }
     },
-
     {
       "_id": "fld_a1a1a1a1b2b2b2b2c3c3c3c3d4d4d4d4",
       "_type": "request_group",
@@ -86,7 +97,10 @@
         "text": "{\n  \"email\": \"{{ _.email }}\",\n  \"password\": \"{{ _.password }}\"\n}"
       },
       "headers": [
-        { "name": "Content-Type", "value": "application/json" }
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
       ],
       "authentication": {},
       "metaSortKey": -1050
@@ -103,7 +117,10 @@
         "text": "{\n  \"email\": \"{{ _.email }}\",\n  \"password\": \"{{ _.password }}\",\n  \"name\": \"Test User\"\n}"
       },
       "headers": [
-        { "name": "Content-Type", "value": "application/json" }
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
       ],
       "authentication": {},
       "metaSortKey": -1100
@@ -136,7 +153,6 @@
       },
       "metaSortKey": -950
     },
-
     {
       "_id": "fld_b2b2b2b2c3c3c3c3d4d4d4d4e5e5e5e5",
       "_type": "request_group",
@@ -168,7 +184,12 @@
         "mimeType": "application/json",
         "text": "{\n  \"name\": \"New Name\"\n}"
       },
-      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
       "authentication": {
         "type": "bearer",
         "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
@@ -188,7 +209,6 @@
       },
       "metaSortKey": -800
     },
-
     {
       "_id": "fld_c3c3c3c3d4d4d4d4e5e5e5e5f6f6f6f6",
       "_type": "request_group",
@@ -204,9 +224,21 @@
       "method": "GET",
       "url": "{{ _.base_url }}/api/transactions",
       "parameters": [
-        { "name": "page", "value": "1", "disabled": true },
-        { "name": "limit", "value": "20", "disabled": true },
-        { "name": "type", "value": "expense", "disabled": true }
+        {
+          "name": "page",
+          "value": "1",
+          "disabled": true
+        },
+        {
+          "name": "limit",
+          "value": "20",
+          "disabled": true
+        },
+        {
+          "name": "type",
+          "value": "expense",
+          "disabled": true
+        }
       ],
       "authentication": {
         "type": "bearer",
@@ -226,7 +258,12 @@
         "mimeType": "application/json",
         "text": "{\n  \"budgetId\": \"{{ _.budget_id }}\",\n  \"date\": \"2026-04-17\",\n  \"amount\": 150.5,\n  \"vendor\": \"Soriana\",\n  \"type\": \"expense\",\n  \"accountId\": \"{{ _.account_id }}\",\n  \"description\": \"Grocery shopping\",\n  \"expenseItemId\": \"{{ _.expense_item_id }}\"\n}"
       },
-      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
       "authentication": {
         "type": "bearer",
         "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
@@ -284,7 +321,12 @@
         "mimeType": "application/json",
         "text": "{\n  \"amount\": 200,\n  \"vendor\": \"Walmart\",\n  \"description\": \"Updated description\",\n  \"date\": \"2026-04-17\"\n}"
       },
-      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
       "authentication": {
         "type": "bearer",
         "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
@@ -304,7 +346,6 @@
       },
       "metaSortKey": -400
     },
-
     {
       "_id": "fld_d4d4d4d4e5e5e5e5f6f6f6f60707070707",
       "_type": "request_group",
@@ -320,8 +361,16 @@
       "method": "GET",
       "url": "{{ _.base_url }}/api/budgets",
       "parameters": [
-        { "name": "year", "value": "2026", "disabled": true },
-        { "name": "month", "value": "4", "disabled": true }
+        {
+          "name": "year",
+          "value": "2026",
+          "disabled": true
+        },
+        {
+          "name": "month",
+          "value": "4",
+          "disabled": true
+        }
       ],
       "authentication": {
         "type": "bearer",
@@ -341,7 +390,12 @@
         "mimeType": "application/json",
         "text": "{\n  \"year\": 2026,\n  \"month\": 3,\n  \"incomeItems\": [\n    {\n      \"description\": \"Monthly salary\",\n      \"amount\": 25000,\n      \"type\": \"Transfer\"\n    }\n  ],\n  \"expenseItems\": [\n    {\n      \"description\": \"Rent\",\n      \"amount\": 1200,\n      \"type\": \"Fixed\"\n    }\n  ]\n}"
       },
-      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
       "authentication": {
         "type": "bearer",
         "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
@@ -386,7 +440,12 @@
         "mimeType": "application/json",
         "text": "{\n  \"year\": 2026,\n  \"month\": 3\n}"
       },
-      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
       "authentication": {
         "type": "bearer",
         "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
@@ -406,7 +465,6 @@
       },
       "metaSortKey": -50
     },
-
     {
       "_id": "fld_e5e5e5e5f6f6f6f60707070708080808",
       "_type": "request_group",
@@ -439,7 +497,12 @@
         "mimeType": "application/json",
         "text": "{\n  \"name\": \"Main Account\",\n  \"type\": \"checking\",\n  \"balance\": 0,\n  \"currency\": \"MXN\",\n  \"isActive\": true\n}"
       },
-      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
       "authentication": {
         "type": "bearer",
         "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
@@ -471,7 +534,12 @@
         "mimeType": "application/json",
         "text": "{\n  \"name\": \"Main Account (renamed)\",\n  \"balance\": 5000,\n  \"currency\": \"MXN\",\n  \"isActive\": true\n}"
       },
-      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
       "authentication": {
         "type": "bearer",
         "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
@@ -491,7 +559,6 @@
       },
       "metaSortKey": 58
     },
-
     {
       "_id": "fld_incomeaaaa1111bbbb2222cccc3333",
       "_type": "request_group",
@@ -508,8 +575,16 @@
       "method": "GET",
       "url": "{{ _.base_url }}/api/budgets/{{ _.budget_id }}/income",
       "parameters": [
-        { "name": "page", "value": "1", "disabled": true },
-        { "name": "limit", "value": "10", "disabled": true }
+        {
+          "name": "page",
+          "value": "1",
+          "disabled": true
+        },
+        {
+          "name": "limit",
+          "value": "10",
+          "disabled": true
+        }
       ],
       "authentication": {
         "type": "bearer",
@@ -528,7 +603,12 @@
         "mimeType": "application/json",
         "text": "{\n  \"description\": \"Monthly salary\",\n  \"amount\": 25000,\n  \"type\": \"Transfer\",\n  \"accountId\": null\n}"
       },
-      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
       "authentication": {
         "type": "bearer",
         "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
@@ -547,7 +627,12 @@
         "mimeType": "application/json",
         "text": "{\n  \"incomeItems\": [\n    {\n      \"description\": \"Salary\",\n      \"amount\": 25000,\n      \"type\": \"Transfer\",\n      \"accountId\": null\n    },\n    {\n      \"description\": \"Freelance\",\n      \"amount\": 5000,\n      \"type\": \"Cash\"\n    }\n  ]\n}"
       },
-      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
       "authentication": {
         "type": "bearer",
         "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
@@ -565,7 +650,12 @@
         "mimeType": "application/json",
         "text": "{\n  \"description\": \"Salary (updated)\",\n  \"amount\": 27000,\n  \"type\": \"Transfer\",\n  \"accountId\": null\n}"
       },
-      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
       "authentication": {
         "type": "bearer",
         "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
@@ -585,7 +675,6 @@
       },
       "metaSortKey": 80
     },
-
     {
       "_id": "fld_expenseaaa1111bbbb2222cccc3333",
       "_type": "request_group",
@@ -602,8 +691,16 @@
       "method": "GET",
       "url": "{{ _.base_url }}/api/budgets/{{ _.budget_id }}/expense",
       "parameters": [
-        { "name": "page", "value": "1", "disabled": true },
-        { "name": "limit", "value": "10", "disabled": true }
+        {
+          "name": "page",
+          "value": "1",
+          "disabled": true
+        },
+        {
+          "name": "limit",
+          "value": "10",
+          "disabled": true
+        }
       ],
       "authentication": {
         "type": "bearer",
@@ -622,7 +719,12 @@
         "mimeType": "application/json",
         "text": "{\n  \"description\": \"Rent\",\n  \"amount\": 1200,\n  \"type\": \"Fixed\"\n}"
       },
-      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
       "authentication": {
         "type": "bearer",
         "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
@@ -641,7 +743,12 @@
         "mimeType": "application/json",
         "text": "{\n  \"expenseItems\": [\n    {\n      \"description\": \"Rent\",\n      \"amount\": 1200,\n      \"type\": \"Fixed\"\n    },\n    {\n      \"description\": \"Groceries\",\n      \"amount\": 400,\n      \"type\": \"Variable\"\n    }\n  ]\n}"
       },
-      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
       "authentication": {
         "type": "bearer",
         "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
@@ -659,7 +766,12 @@
         "mimeType": "application/json",
         "text": "{\n  \"description\": \"Rent (updated)\",\n  \"amount\": 1300,\n  \"type\": \"Fixed\"\n}"
       },
-      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
       "authentication": {
         "type": "bearer",
         "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
@@ -679,7 +791,6 @@
       },
       "metaSortKey": 99
     },
-
     {
       "_id": "fld_f6f6f6f60707070708080808090909",
       "_type": "request_group",
@@ -695,6 +806,151 @@
       "method": "GET",
       "url": "{{ _.base_url }}/health",
       "metaSortKey": 100
+    },
+    {
+      "_id": "fld_importaaaa1111bbbb2222cccc3333",
+      "_type": "request_group",
+      "parentId": "wrk_8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b",
+      "name": "Import",
+      "description": "Bulk import: bank-app screenshots (vision model) and .xlsx workbooks. Both follow parse -> review -> confirm; nothing is written until confirm.",
+      "metaSortKey": -650
+    },
+    {
+      "_id": "req_receiptparse1111bbbb2222cccc",
+      "_type": "request",
+      "parentId": "fld_importaaaa1111bbbb2222cccc3333",
+      "name": "Parse Bank Screenshot (Credit)",
+      "description": "Upload a screenshot of a bank movements list; get structured draft rows back.\n\nREAD-ONLY - nothing is persisted, so this is safe to re-run.\n\naccountKind decides what a minus sign MEANS:\n  credit -> '+' is a charge, '-' is a card payment (a transfer between your own accounts)\n  debit  -> '+' is money in, '-' is money out\nGet this wrong and card payments get double-counted as spending.\n\nRequires a vision model: LM Studio on :1234 or Ollama on :11434, with\nVISION_BASE_URL / VISION_MODEL / VISION_ENABLED set in .env.\nExpect 20-60s on a local 7B model.\n\nSet screenshot_path in the environment to point at your image.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/transactions/import/receipt/parse",
+      "body": {
+        "mimeType": "multipart/form-data",
+        "params": [
+          {
+            "id": "pair_receipt_file_1",
+            "name": "files",
+            "value": "",
+            "type": "file",
+            "fileName": "{{ _.screenshot_path }}"
+          },
+          {
+            "id": "pair_receipt_kind",
+            "name": "accountKind",
+            "value": "credit"
+          },
+          {
+            "id": "pair_receipt_ref",
+            "name": "referenceDate",
+            "value": "2026-06-30T00:00:00.000Z",
+            "disabled": true
+          }
+        ]
+      },
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": -700
+    },
+    {
+      "_id": "req_receiptdebit1111bbbb2222ccc",
+      "_type": "request",
+      "parentId": "fld_importaaaa1111bbbb2222cccc3333",
+      "name": "Parse Bank Screenshot (Debit, multi-image)",
+      "description": "Same endpoint, debit sign semantics, several scrolls of the same list.\n\nOverlapping screenshots are expected: rows repeated across images are\nde-duplicated on date+time+vendor+amount and reported in\ncounts.duplicatesInBatch. Max 5 images per request.\n\nEnable the extra file rows and point them at your other screenshots.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/transactions/import/receipt/parse",
+      "body": {
+        "mimeType": "multipart/form-data",
+        "params": [
+          {
+            "id": "pair_receipt2_file_1",
+            "name": "files",
+            "value": "",
+            "type": "file",
+            "fileName": "{{ _.screenshot_path }}"
+          },
+          {
+            "id": "pair_receipt2_file_2",
+            "name": "files",
+            "value": "",
+            "type": "file",
+            "fileName": "",
+            "disabled": true
+          },
+          {
+            "id": "pair_receipt2_file_3",
+            "name": "files",
+            "value": "",
+            "type": "file",
+            "fileName": "",
+            "disabled": true
+          },
+          {
+            "id": "pair_receipt2_kind",
+            "name": "accountKind",
+            "value": "debit"
+          }
+        ]
+      },
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": -690
+    },
+    {
+      "_id": "req_xlsxparse1111bbbb2222cccc33",
+      "_type": "request",
+      "parentId": "fld_importaaaa1111bbbb2222cccc3333",
+      "name": "Parse XLSX Workbook",
+      "description": "Upload a budget workbook; get parsed transactions, income items and\nexpense items back. No DB writes. Feed the result into Confirm XLSX.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/transactions/import/xlsx/parse",
+      "body": {
+        "mimeType": "multipart/form-data",
+        "params": [
+          {
+            "id": "pair_xlsx_file",
+            "name": "file",
+            "value": "",
+            "type": "file",
+            "fileName": "{{ _.xlsx_path }}"
+          }
+        ]
+      },
+      "headers": [],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": -680
+    },
+    {
+      "_id": "req_xlsxconfirm1111bbbb2222ccc",
+      "_type": "request",
+      "parentId": "fld_importaaaa1111bbbb2222cccc3333",
+      "name": "Confirm XLSX Import",
+      "description": "Atomically creates the reviewed batch: expense items, income items and\ntransactions, moving account balances in the same $transaction.\n\nPaste the rows from Parse XLSX into the arrays below and map every\npaymentSource to an accountId - an unmapped source fails the whole import.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/transactions/import/xlsx/confirm",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"budgetId\": \"{{ _.budget_id }}\",\n  \"defaultAccountId\": \"{{ _.account_id }}\",\n  \"accountMapping\": {\n    \"Debit Card\": \"{{ _.account_id }}\"\n  },\n  \"transactions\": [\n    {\n      \"date\": \"2026-06-22\",\n      \"amount\": 1070.96,\n      \"vendor\": \"Gasol arco kabah\",\n      \"type\": \"expense\",\n      \"description\": \"Gasolina\",\n      \"category\": \"Transporte\"\n    }\n  ],\n  \"incomeItems\": [],\n  \"expenseItems\": []\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {
+        "type": "bearer",
+        "token": "{% response 'body', 'req_loginaaaa1111bbbb2222cccc3333', 'b64::JC50b2tlbg==::46b', 'when-expired', 60 %}"
+      },
+      "metaSortKey": -670
     }
   ]
 }
