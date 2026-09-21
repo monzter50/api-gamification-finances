@@ -120,7 +120,9 @@ For a "Foo" resource, add these files in lockstep:
    ```
    `yarn dev` (tsx) silently ignores these; `yarn build` / `yarn type-check` will fail. **Always run `yarn type-check` before committing.**
 
-2. **Path aliases** (`@/*`, `@/types/*`, etc.) are defined in `tsconfig.json` and mirrored in `vitest.config.ts` but **almost never used** — at the time of writing, exactly one file (`src/utils/response.ts`) imports via `@/`. Everything else uses relative imports like `../services/foo.service`. Stick with relative imports unless you're refactoring with intent.
+2. **Path aliases** (`@/*`, `@/types/*`, `@/utils/*`, `@/models/*`, `@/routes/*`, `@/middleware/*`, `@/config/*`, `@/services/*`, `@/repositories/*`, `@/controllers/*`, `@/validators/*`, `@/dto/*`, `@/errors/*`, `@/constants/*`) are defined in `tsconfig.json` and mirrored in `vitest.config.ts` — **keep both in sync when adding a new top-level `src/` folder.**
+   - **Rule: use a relative import for 1–2 levels of `../`; switch to a `@/...` alias at 3+ levels** (e.g. `../../../config/logger` → `@/config/logger`). This is enforced by an ESLint `no-restricted-imports` rule (`.eslintrc.json`) that errors on any import matching `../../../*` or deeper — `yarn lint` will catch violations.
+   - **Runtime gotcha**: `tsc` does **not** rewrite `paths` aliases in emitted JS — it only uses them for type-checking. A raw `tsc` build leaves `require("@/config/logger")` in `dist/`, which crashes under plain `node` (Railway/Docker use `node dist/server.js` directly, no alias resolution). `tsc-alias` runs after `tsc` in the `build` script (`"build": "tsc && tsc-alias"`) specifically to rewrite those back to relative paths in `dist/`. Don't remove `tsc-alias` from the build pipeline without replacing it with an equivalent runtime-safe mechanism. (`tsx` and `vitest` resolve aliases natively, so `yarn dev` and `yarn test` will look fine even if the production build is broken — always verify with `yarn build && yarn start` after touching alias config.)
 
 ## Database & migrations
 
