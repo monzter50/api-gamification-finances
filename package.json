@@ -4,7 +4,7 @@
   "description": "API para aplicación de gamificación de finanzas",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && tsc-alias",
     "start": "node dist/server.js",
     "dev": "tsx --env-file=.env src/server.ts",
     "dev:watch": "tsx --env-file=.env --watch src/server.ts",
@@ -79,6 +79,7 @@
     "openapi-typescript": "^7.10.1",
     "prisma": "5",
     "supertest": "^6.3.3",
+    "tsc-alias": "^1.9.5",
     "tsx": "^4.6.0",
     "typescript": "^5.3.0",
     "vitest": "^1.0.0"

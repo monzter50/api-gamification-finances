@@ -59,7 +59,18 @@
     "@typescript-eslint/no-unsafe-argument": "off",
     "@typescript-eslint/unbound-method": "off",
     "@typescript-eslint/naming-convention": "off",
-    "@typescript-eslint/ban-ts-comment": "off"
+    "@typescript-eslint/ban-ts-comment": "off",
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["../../../*", "../../../**"],
+            "message": "Relative import goes up 3+ folders — use a '@/...' path alias instead (see tsconfig.json > compilerOptions.paths)."
+          }
+        ]
+      }
+    ]
   },
   "globals": {
     "process": "readonly",

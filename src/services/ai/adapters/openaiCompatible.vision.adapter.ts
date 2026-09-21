@@ -1,5 +1,5 @@
-import { logger } from '../../../config/logger';
-import { VisionOutputInvalidError, VisionUnavailableError } from '../../../errors/ReceiptImportErrors';
+import { logger } from '@/config/logger';
+import { VisionOutputInvalidError, VisionUnavailableError } from '@/errors/ReceiptImportErrors';
 import type { VisionExtractRequest, VisionExtractResult, VisionExtractor } from '../vision.port';
 
 /**
