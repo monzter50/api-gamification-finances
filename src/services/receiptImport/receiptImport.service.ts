@@ -69,7 +69,6 @@ export class ReceiptImportService {
       parsed.data.rows,
       parsed.data.dateHeaders,
       {
-        accountKind: options.accountKind,
         referenceDate: options.referenceDate,
         primaryDateHeading: parsed.data.primaryDateHeading
       }
@@ -93,16 +92,15 @@ export class ReceiptImportService {
     }
 
     const needsReview = rows.filter((r) => r.needsReview).length;
-    const transfers = rows.filter((r) => r.kind === 'transfer').length;
 
     logger.info(
-      `Screenshot parse: ${rows.length} rows (${needsReview} need review, ` +
-      `${transfers} transfers) from ${images.length} image(s) in ${result.latencyMs}ms`
+      `Screenshot parse: ${rows.length} rows (${needsReview} need review) ` +
+      `from ${images.length} image(s) in ${result.latencyMs}ms`
     );
 
     return {
       rows,
-      counts: { rows: rows.length, needsReview, transfers, duplicatesInBatch },
+      counts: { rows: rows.length, needsReview, duplicatesInBatch },
       source: {
         model: result.model,
         imagesProcessed: images.length,

@@ -1096,6 +1096,13 @@ export interface paths {
                     };
                     content?: never;
                 };
+                /** @description Vision model reachable but did not respond within the configured timeout */
+                504: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
         };
         delete?: never;

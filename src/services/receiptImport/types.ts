@@ -7,22 +7,18 @@
  * built) that reuses the existing xlsx confirm pipeline.
  */
 
-/** How the source account treats signs. Decides what a minus means. */
-export type AccountKind = 'credit' | 'debit';
-
 /**
- * What a row represents once the sign has been interpreted.
- * 'transfer' covers card payments (e.g. "Bmovil.pago tdc") which move money
- * between the user's own accounts and must never be booked as spending.
+ * How the source account treats signs. The model no longer transcribes
+ * amount/sign at all (too risky to trust OCR with money — see prompt.ts), so
+ * this currently only rides through to `source.accountKind` for the client;
+ * it stops being inert once the confirm step interprets amounts itself.
  */
-export type RowKind = 'income' | 'expense' | 'transfer';
+export type AccountKind = 'credit' | 'debit';
 
 /** Why a row was flagged for human attention. */
 export type ReviewReason =
   | 'truncated_vendor'
-  | 'transfer_detected'
   | 'year_inferred'
-  | 'unreadable_amount'
   | 'missing_date'
   | 'missing_time';
 
@@ -34,14 +30,6 @@ export interface DraftRow {
   vendorKey: string
   /** True when the app's UI cut the name off — the tail is unrecoverable. */
   truncated: boolean
-
-  /** Absolute value. Sign lives in `signRaw`, meaning lives in `kind`. */
-  amountAbs: number
-  /** The sign as printed: '+' or '-'. */
-  signRaw: '+' | '-'
-  /** The raw amount string, kept for audit when a parse looks wrong. */
-  amountText: string
-  kind: RowKind
 
   /** ISO-8601 local timestamp, or null when the date could not be resolved. */
   occurredAt: string | null
@@ -74,7 +62,6 @@ export interface ParseImageResult {
   counts: {
     rows: number
     needsReview: number
-    transfers: number
     duplicatesInBatch: number
   }
   source: {

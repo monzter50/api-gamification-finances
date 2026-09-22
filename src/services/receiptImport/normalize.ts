@@ -1,13 +1,13 @@
 import { createHash } from 'node:crypto';
-import type { AccountKind, DraftRow, ReviewReason, RowKind } from './types';
+import type { DraftRow, ReviewReason } from './types';
 import type { VisionDateHeader, VisionRow } from './schema';
 
 /**
  * Pure normalization: model transcription in, structured draft rows out.
  *
- * Deliberately free of I/O so the interesting rules — sign semantics, year
- * inference, de-duplication — are directly unit-testable without a model, a
- * database or an HTTP request in the loop.
+ * Deliberately free of I/O so the interesting rules — year inference,
+ * de-duplication — are directly unit-testable without a model, a database or
+ * an HTTP request in the loop.
  */
 
 const SPANISH_MONTHS: Record<string, number> = {
@@ -26,9 +26,6 @@ const SPANISH_MONTHS: Record<string, number> = {
   diciembre: 12
 };
 
-/** Anything above this is a misread, not a purchase. */
-const MAX_PLAUSIBLE_AMOUNT = 100_000_000;
-
 /** Lowercase, strip accents, collapse whitespace — the vendor lookup key. */
 export function toVendorKey (raw: string): string {
   return raw
@@ -43,26 +40,6 @@ export function toVendorKey (raw: string): string {
 /** True when the bank's UI cut the vendor name off. */
 export function looksTruncated (raw: string): boolean {
   return /(…|\.\.\.)\s*$/.test(raw.trim());
-}
-
-/**
- * Parse a displayed amount. Assumes es-MX conventions: ',' groups thousands,
- * '.' is the decimal separator. Returns null when nothing usable is present.
- */
-export function parseAmount (amountText: string): number | null {
-  if (!amountText) { return null; }
-
-  const digits = amountText.replace(/[^\d.,-]/g, '').replace(/,/g, '');
-  if (digits === '' || digits === '-' || digits === '.') { return null; }
-
-  const value = Number.parseFloat(digits);
-  if (!Number.isFinite(value)) { return null; }
-
-  const abs = Math.abs(value);
-  if (abs > MAX_PLAUSIBLE_AMOUNT) { return null; }
-
-  // Two decimal places: currency, not floating point.
-  return Math.round(abs * 100) / 100;
 }
 
 /** '16:12 h' -> '16:12'. Returns null when no clock time is present. */
@@ -136,37 +113,24 @@ function isoDate (year: number, month: number, day: number): string {
 }
 
 /**
- * What a sign MEANS depends on the account it was shown for.
+ * Stable identity for a row, used to spot re-uploaded or overlapping images.
  *
- *  credit card view: '+' is a charge you owe, '-' is you paying the card off
- *                    (money moving between your own accounts — a transfer).
- *  debit view:       '+' is money in, '-' is money out.
- *
- * Getting this backwards double-counts card payments as spending, which is
- * why `accountKind` is a required input rather than something we guess.
+ * Keyed on date + time + vendor only — the model no longer transcribes an
+ * amount, so it can't be part of the identity. Coarser than before: two
+ * distinct rows for the same vendor in the exact same displayed minute will
+ * now collide and one will be dropped as a "duplicate". Rare in practice
+ * (bank UIs show time to the minute), but worth knowing.
  */
-export function deriveKind (sign: '+' | '-', accountKind: AccountKind): RowKind {
-  if (accountKind === 'credit') {
-    return sign === '-' ? 'transfer' : 'expense';
-  }
-  return sign === '-' ? 'expense' : 'income';
-}
-
-/** Stable identity for a row, used to spot re-uploaded or overlapping images. */
 export function buildExternalKey (parts: {
   date: string | null
   time: string | null
   vendorKey: string
-  amountAbs: number
-  signRaw: '+' | '-'
 }): string {
   return createHash('sha1')
     .update([
       parts.date ?? 'nodate',
       parts.time ?? 'notime',
-      parts.vendorKey,
-      parts.amountAbs.toFixed(2),
-      parts.signRaw
+      parts.vendorKey
     ].join('|'))
     .digest('hex');
 }
@@ -234,7 +198,7 @@ export interface NormalizeResult {
 export function normalizeRows (
   visionRows: VisionRow[],
   dateHeaders: VisionDateHeader[],
-  options: { accountKind: AccountKind, referenceDate: Date, primaryDateHeading?: string | null }
+  options: { referenceDate: Date, primaryDateHeading?: string | null }
 ): NormalizeResult {
   const fallbackHeading = options.primaryDateHeading ?? null;
   const dateIndex = buildDateIndex(dateHeaders, visionRows.length, options.referenceDate, fallbackHeading);
@@ -258,9 +222,6 @@ export function normalizeRows (
 
     const reviewReasons: ReviewReason[] = [];
 
-    const amountAbs = parseAmount(raw.amountText);
-    if (amountAbs === null) { reviewReasons.push('unreadable_amount'); }
-
     const truncated = raw.truncated || looksTruncated(vendorRaw);
     if (truncated) { reviewReasons.push('truncated_vendor'); }
 
@@ -271,14 +232,9 @@ export function normalizeRows (
     const time = parseTime(raw.timeText);
     if (time === null) { reviewReasons.push('missing_time'); }
 
-    const signRaw = raw.signText;
-    const kind = deriveKind(signRaw, options.accountKind);
-    if (kind === 'transfer') { reviewReasons.push('transfer_detected'); }
-
     const date = resolved?.date ?? null;
-    const amount = amountAbs ?? 0;
 
-    const externalKey = buildExternalKey({ date, time, vendorKey: toVendorKey(vendorRaw), amountAbs: amount, signRaw });
+    const externalKey = buildExternalKey({ date, time, vendorKey: toVendorKey(vendorRaw) });
     if (seen.has(externalKey)) {
       duplicatesInBatch += 1;
       return;
@@ -289,10 +245,6 @@ export function normalizeRows (
       vendorRaw,
       vendorKey: toVendorKey(vendorRaw),
       truncated,
-      amountAbs: amount,
-      signRaw,
-      amountText: raw.amountText,
-      kind,
       occurredAt: date !== null ? `${date}T${time ?? '00:00'}:00` : null,
       date,
       time,

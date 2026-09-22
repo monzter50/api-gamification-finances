@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildExternalKey,
-  deriveKind,
   looksTruncated,
   normalizeRows,
-  parseAmount,
   parseTime,
   resolveDateHeading,
   toVendorKey
@@ -13,14 +11,16 @@ import type { VisionDateHeader, VisionRow } from '../../services/receiptImport/s
 
 /**
  * Fixture: the five cards visible in a real BBVA "Movimientos" screenshot,
- * exactly as the vision model should transcribe them.
+ * exactly as the vision model should transcribe them. Amount/sign are no
+ * longer part of what the model transcribes (see prompt.ts) — the human
+ * enters those during review.
  */
 const SAMPLE_ROWS: VisionRow[] = [
-  { vendorRaw: 'Infonavit', truncated: false, amountText: '$ 9,185.27', signText: '+', subtitle: 'Pago con tarjeta', timeText: '19:48 h' },
-  { vendorRaw: 'City club1044 hua…', truncated: true, amountText: '$ 182.09', signText: '+', subtitle: 'Pago con tarjeta', timeText: '17:32 h' },
-  { vendorRaw: 'Gasol arco kabah', truncated: false, amountText: '$ 1,070.96', signText: '+', subtitle: 'Pago con tarjeta', timeText: '16:12 h' },
-  { vendorRaw: 'Bmovil.pago tdc', truncated: false, amountText: '$ -3,200.00', signText: '-', subtitle: 'Movimiento BBVA', timeText: '10:51 h' },
-  { vendorRaw: 'Merpago*agregador', truncated: false, amountText: '$ 55.97', signText: '+', subtitle: 'Pago con tarjeta', timeText: '10:36 h' }
+  { vendorRaw: 'Infonavit', truncated: false, subtitle: 'Pago con tarjeta', timeText: '19:48 h' },
+  { vendorRaw: 'City club1044 hua…', truncated: true, subtitle: 'Pago con tarjeta', timeText: '17:32 h' },
+  { vendorRaw: 'Gasol arco kabah', truncated: false, subtitle: 'Pago con tarjeta', timeText: '16:12 h' },
+  { vendorRaw: 'Bmovil.pago tdc', truncated: false, subtitle: 'Movimiento BBVA', timeText: '10:51 h' },
+  { vendorRaw: 'Merpago*agregador', truncated: false, subtitle: 'Pago con tarjeta', timeText: '10:36 h' }
 ];
 
 const SAMPLE_HEADERS: VisionDateHeader[] = [
@@ -28,26 +28,6 @@ const SAMPLE_HEADERS: VisionDateHeader[] = [
 ];
 
 const REFERENCE = new Date(2026, 8, 14); // 14 Sep 2026
-
-describe('parseAmount', () => {
-  it('parses Mexican-format currency', () => {
-    expect(parseAmount('$ 9,185.27')).toBe(9185.27);
-    expect(parseAmount('$ 55.97')).toBe(55.97);
-  });
-
-  it('returns the absolute value — sign is tracked separately', () => {
-    expect(parseAmount('$ -3,200.00')).toBe(3200);
-  });
-
-  it('returns null for unreadable text rather than guessing', () => {
-    expect(parseAmount('')).toBeNull();
-    expect(parseAmount('$ --')).toBeNull();
-  });
-
-  it('rejects implausible amounts as misreads', () => {
-    expect(parseAmount('$ 999,999,999,999.00')).toBeNull();
-  });
-});
 
 describe('parseTime', () => {
   it('strips the trailing h', () => {
@@ -93,18 +73,6 @@ describe('resolveDateHeading', () => {
   });
 });
 
-describe('deriveKind', () => {
-  it('reads a credit-card view: positive is a charge, negative is a payment', () => {
-    expect(deriveKind('+', 'credit')).toBe('expense');
-    expect(deriveKind('-', 'credit')).toBe('transfer');
-  });
-
-  it('reads a debit view the other way round', () => {
-    expect(deriveKind('+', 'debit')).toBe('income');
-    expect(deriveKind('-', 'debit')).toBe('expense');
-  });
-});
-
 describe('toVendorKey / looksTruncated', () => {
   it('normalizes case, accents and spacing', () => {
     expect(toVendorKey('  Gasól   ARCO  Kabah ')).toBe('gasol arco kabah');
@@ -119,7 +87,6 @@ describe('toVendorKey / looksTruncated', () => {
 
 describe('normalizeRows — the sample screenshot', () => {
   const result = normalizeRows(SAMPLE_ROWS, SAMPLE_HEADERS, {
-    accountKind: 'credit',
     referenceDate: REFERENCE
   });
 
@@ -127,19 +94,14 @@ describe('normalizeRows — the sample screenshot', () => {
     expect(result.rows).toHaveLength(5);
   });
 
-  it('books the card payment as a transfer, not an expense', () => {
-    const payment = result.rows.find((r) => r.vendorRaw === 'Bmovil.pago tdc');
-    expect(payment?.kind).toBe('transfer');
-    expect(payment?.amountAbs).toBe(3200);
-    expect(payment?.needsReview).toBe(true);
-    expect(payment?.reviewReasons).toContain('transfer_detected');
+  it('resolves date and time into a single occurredAt timestamp', () => {
+    const gas = result.rows.find((r) => r.vendorRaw === 'Gasol arco kabah');
+    expect(gas?.occurredAt).toBe('2026-06-22T16:12:00');
   });
 
-  it('books ordinary charges as expenses', () => {
-    const gas = result.rows.find((r) => r.vendorRaw === 'Gasol arco kabah');
-    expect(gas?.kind).toBe('expense');
-    expect(gas?.amountAbs).toBe(1070.96);
-    expect(gas?.occurredAt).toBe('2026-06-22T16:12:00');
+  it('carries the payment-method subtitle through as method', () => {
+    const payment = result.rows.find((r) => r.vendorRaw === 'Bmovil.pago tdc');
+    expect(payment?.method).toBe('Movimiento BBVA');
   });
 
   it('flags the truncated vendor and never invents the missing tail', () => {
@@ -166,7 +128,6 @@ describe('normalizeRows — overlapping screenshots', () => {
     ];
 
     const result = normalizeRows(overlapping, headers, {
-      accountKind: 'credit',
       referenceDate: REFERENCE
     });
 
@@ -183,7 +144,6 @@ describe('normalizeRows - under-specified date headings', () => {
     const stingy: VisionDateHeader[] = [{ raw: '22 de junio', appliesToRows: [0, 1] }];
 
     const result = normalizeRows(SAMPLE_ROWS, stingy, {
-      accountKind: 'credit',
       referenceDate: REFERENCE
     });
 
@@ -199,7 +159,6 @@ describe('normalizeRows - under-specified date headings', () => {
     ];
 
     const result = normalizeRows(SAMPLE_ROWS, headers, {
-      accountKind: 'credit',
       referenceDate: REFERENCE
     });
 
@@ -211,7 +170,6 @@ describe('normalizeRows - under-specified date headings', () => {
     const headers: VisionDateHeader[] = [{ raw: '22 de junio', appliesToRows: [2, 3] }];
 
     const result = normalizeRows(SAMPLE_ROWS, headers, {
-      accountKind: 'credit',
       referenceDate: REFERENCE
     });
 
@@ -224,7 +182,6 @@ describe('normalizeRows - primaryDateHeading fallback', () => {
     // qwen2.5-vl reliably fills primaryDateHeading but often returns an empty
     // dateHeaders array. The fallback is what keeps rows from losing dates.
     const result = normalizeRows(SAMPLE_ROWS, [], {
-      accountKind: 'credit',
       referenceDate: REFERENCE,
       primaryDateHeading: '22 de junio'
     });
@@ -235,7 +192,6 @@ describe('normalizeRows - primaryDateHeading fallback', () => {
 
   it('prefers explicit dateHeaders over the fallback', () => {
     const result = normalizeRows(SAMPLE_ROWS, [{ raw: '21 de junio', appliesToRows: [0] }], {
-      accountKind: 'credit',
       referenceDate: REFERENCE,
       primaryDateHeading: '22 de junio'
     });
@@ -245,7 +201,6 @@ describe('normalizeRows - primaryDateHeading fallback', () => {
 
   it('warns when neither source yields a date', () => {
     const result = normalizeRows(SAMPLE_ROWS, [], {
-      accountKind: 'credit',
       referenceDate: REFERENCE,
       primaryDateHeading: null
     });
@@ -257,7 +212,6 @@ describe('normalizeRows - primaryDateHeading fallback', () => {
 
   it('warns when a heading is present but unparseable', () => {
     const result = normalizeRows(SAMPLE_ROWS, [], {
-      accountKind: 'credit',
       referenceDate: REFERENCE,
       primaryDateHeading: 'Movimientos'
     });
@@ -268,13 +222,19 @@ describe('normalizeRows - primaryDateHeading fallback', () => {
 
 describe('buildExternalKey', () => {
   it('is stable across runs', () => {
-    const parts = { date: '2026-06-22', time: '16:12', vendorKey: 'gasol arco kabah', amountAbs: 1070.96, signRaw: '+' as const };
+    const parts = { date: '2026-06-22', time: '16:12', vendorKey: 'gasol arco kabah' };
     expect(buildExternalKey(parts)).toBe(buildExternalKey(parts));
   });
 
-  it('changes when the amount changes', () => {
-    const base = { date: '2026-06-22', time: '16:12', vendorKey: 'gasol arco kabah', signRaw: '+' as const };
-    expect(buildExternalKey({ ...base, amountAbs: 1070.96 }))
-      .not.toBe(buildExternalKey({ ...base, amountAbs: 1070.9 }));
+  it('changes when the vendor changes', () => {
+    const base = { date: '2026-06-22', time: '16:12' };
+    expect(buildExternalKey({ ...base, vendorKey: 'gasol arco kabah' }))
+      .not.toBe(buildExternalKey({ ...base, vendorKey: 'infonavit' }));
+  });
+
+  it('changes when the time changes', () => {
+    const base = { date: '2026-06-22', vendorKey: 'gasol arco kabah' };
+    expect(buildExternalKey({ ...base, time: '16:12' }))
+      .not.toBe(buildExternalKey({ ...base, time: '16:13' }));
   });
 });

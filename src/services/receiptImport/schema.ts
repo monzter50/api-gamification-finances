@@ -15,8 +15,6 @@ const SHORT_TEXT = z.string().max(300);
 export const visionRowSchema = z.object({
   vendorRaw: SHORT_TEXT,
   truncated: z.boolean().nullish().transform((v) => v ?? false),
-  amountText: SHORT_TEXT.nullish().transform((v) => v ?? ''),
-  signText: z.enum(['+', '-']).nullish().transform((v) => v ?? '+'),
   subtitle: SHORT_TEXT.nullish().transform((v) => v ?? null),
   timeText: SHORT_TEXT.nullish().transform((v) => v ?? null)
 });
@@ -84,12 +82,10 @@ export const VISION_JSON_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['vendorRaw', 'truncated', 'amountText', 'signText', 'subtitle', 'timeText'],
+        required: ['vendorRaw', 'truncated', 'subtitle', 'timeText'],
         properties: {
           vendorRaw: { type: 'string' },
           truncated: { type: 'boolean' },
-          amountText: { type: 'string' },
-          signText: { type: 'string', enum: ['+', '-'] },
           subtitle: { type: ['string', 'null'] },
           timeText: { type: ['string', 'null'] }
         }
