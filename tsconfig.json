@@ -36,7 +36,14 @@
       "@/models/*": ["models/*"],
       "@/routes/*": ["routes/*"],
       "@/middleware/*": ["middleware/*"],
-      "@/config/*": ["config/*"]
+      "@/config/*": ["config/*"],
+      "@/services/*": ["services/*"],
+      "@/repositories/*": ["repositories/*"],
+      "@/controllers/*": ["controllers/*"],
+      "@/validators/*": ["validators/*"],
+      "@/dto/*": ["dto/*"],
+      "@/errors/*": ["errors/*"],
+      "@/constants/*": ["constants/*"]
     }
   },
   "include": [

@@ -26,7 +26,14 @@ export default defineConfig({
       '@/models': resolve(__dirname, './src/models'),
       '@/routes': resolve(__dirname, './src/routes'),
       '@/middleware': resolve(__dirname, './src/middleware'),
-      '@/config': resolve(__dirname, './src/config')
+      '@/config': resolve(__dirname, './src/config'),
+      '@/services': resolve(__dirname, './src/services'),
+      '@/repositories': resolve(__dirname, './src/repositories'),
+      '@/controllers': resolve(__dirname, './src/controllers'),
+      '@/validators': resolve(__dirname, './src/validators'),
+      '@/dto': resolve(__dirname, './src/dto'),
+      '@/errors': resolve(__dirname, './src/errors'),
+      '@/constants': resolve(__dirname, './src/constants')
     }
   }
 }); 

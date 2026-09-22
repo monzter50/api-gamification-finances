@@ -4,6 +4,8 @@ import { xlsxImportController } from '../controllers/xlsxImport.controller';
 import { authenticateJWT } from './auth';
 import { validate } from '../middleware/validate';
 import { xlsxUpload } from '../middleware/xlsxUpload';
+import { imageUpload } from '../middleware/imageUpload';
+import { receiptImportController } from '../controllers/receiptImport.controller';
 import {
   createTransactionValidation,
   updateTransactionValidation,
@@ -12,6 +14,7 @@ import {
   monthlySummaryValidation
 } from '../validators/transaction.validator';
 import { confirmXlsxValidation } from '../validators/xlsxImport.validator';
+import { parseReceiptValidation } from '../validators/receiptImport.validator';
 
 const router = express.Router();
 
@@ -165,6 +168,67 @@ router.post(
   authenticateJWT,
   xlsxUpload,
   xlsxImportController.parse.bind(xlsxImportController)
+);
+
+/**
+ * @openapi
+ * /api/transactions/import/receipt/parse:
+ *   post:
+ *     tags: [Transactions]
+ *     summary: Parse bank-app screenshot(s) into draft transaction rows (no DB writes)
+ *     description: >
+ *       Uploads one or more screenshots of a bank movements list and returns
+ *       structured draft rows read by a vision model. Nothing is persisted —
+ *       the rows are a proposal for the user to review. Multiple images are
+ *       treated as consecutive scrolls of the same list and de-duplicated.
+ *
+ *
+ *       `accountKind` decides what a minus sign means and therefore whether a
+ *       row is an expense or a card payment; it defaults to `credit`.
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [files]
+ *             properties:
+ *               files:
+ *                 type: array
+ *                 items: { type: string, format: binary }
+ *                 description: PNG/JPEG/WebP screenshots, max 5 per request
+ *               accountKind:
+ *                 type: string
+ *                 enum: [credit, debit]
+ *                 default: credit
+ *               referenceDate:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Anchor for year inference. Defaults to now.
+ *     responses:
+ *       200:
+ *         description: Draft rows extracted from the image
+ *       400:
+ *         description: No file uploaded, or invalid field values
+ *       413:
+ *         description: Image exceeds the upload size limit
+ *       415:
+ *         description: Unsupported file type
+ *       422:
+ *         description: Model output unreadable, or no rows detected
+ *       503:
+ *         description: Vision model disabled or unreachable
+ *       504:
+ *         description: Vision model reachable but did not respond within the configured timeout
+ */
+router.post(
+  '/import/receipt/parse',
+  authenticateJWT,
+  imageUpload,
+  parseReceiptValidation,
+  validate,
+  receiptImportController.parse.bind(receiptImportController)
 );
 
 /**

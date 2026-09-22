@@ -137,6 +137,26 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /**
+                 * @description Single active session — the user already has a session that has
+                 *     been active within the inactivity window. They must log out of the
+                 *     other session (or let it go idle) before signing in again.
+                 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "success": false,
+                         *       "message": "You already have an active session on another device. Log out there or wait a few minutes, then try again.",
+                         *       "errorCode": "SESSION_ALREADY_ACTIVE"
+                         *     }
+                         */
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -984,6 +1004,104 @@ export interface paths {
                          */
                         "application/json": components["schemas"]["Error"];
                     };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/transactions/import/receipt/parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Parse bank-app screenshot(s) into draft transaction rows (no DB writes)
+         * @description Uploads one or more screenshots of a bank movements list and returns structured draft rows read by a vision model. Nothing is persisted — the rows are a proposal for the user to review. Multiple images are treated as consecutive scrolls of the same list and de-duplicated.
+         *
+         *     `accountKind` decides what a minus sign means and therefore whether a row is an expense or a card payment; it defaults to `credit`.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        /** @description PNG/JPEG/WebP screenshots, max 5 per request */
+                        files: string[];
+                        /**
+                         * @default credit
+                         * @enum {string}
+                         */
+                        accountKind?: "credit" | "debit";
+                        /**
+                         * Format: date-time
+                         * @description Anchor for year inference. Defaults to now.
+                         */
+                        referenceDate?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Draft rows extracted from the image */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description No file uploaded, or invalid field values */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Image exceeds the upload size limit */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unsupported file type */
+                415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Model output unreadable, or no rows detected */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Vision model disabled or unreachable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Vision model reachable but did not respond within the configured timeout */
+                504: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
             };
         };
