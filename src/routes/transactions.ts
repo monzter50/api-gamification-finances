@@ -219,6 +219,8 @@ router.post(
  *         description: Model output unreadable, or no rows detected
  *       503:
  *         description: Vision model disabled or unreachable
+ *       504:
+ *         description: Vision model reachable but did not respond within the configured timeout
  */
 router.post(
   '/import/receipt/parse',

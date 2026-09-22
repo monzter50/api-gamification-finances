@@ -1,5 +1,5 @@
 import { logger } from '@/config/logger';
-import { VisionOutputInvalidError, VisionUnavailableError } from '@/errors/ReceiptImportErrors';
+import { VisionOutputInvalidError, VisionTimeoutError, VisionUnavailableError } from '@/errors/ReceiptImportErrors';
 import type { VisionExtractRequest, VisionExtractResult, VisionExtractor } from '../vision.port';
 
 /**
@@ -15,6 +15,19 @@ import type { VisionExtractRequest, VisionExtractResult, VisionExtractor } from 
 const DEFAULT_BASE_URL = 'http://localhost:1234/v1';
 const DEFAULT_MODEL = 'qwen/qwen2.5-vl-7b';
 const DEFAULT_TIMEOUT_MS = 120_000;
+/**
+ * Extra budget per additional image beyond the first. Multi-image uploads
+ * (consecutive scrolls of the same list, up to 5) make the model re-read the
+ * whole batch in one pass — a flat timeout that was tuned for one screenshot
+ * routinely trips on five. Scales the ceiling instead of just raising the
+ * base for everyone.
+ */
+const DEFAULT_TIMEOUT_PER_IMAGE_MS = 30_000;
+
+/** True for both the standard `AbortSignal.timeout()` firing and a manual abort. */
+function isTimeoutError (err: unknown): boolean {
+  return err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
+}
 
 /**
  * How to ask for JSON back. Hosts disagree:
@@ -70,6 +83,7 @@ export class OpenAiCompatibleVisionAdapter implements VisionExtractor {
   private readonly baseUrl: string;
   private readonly apiKey: string | undefined;
   private readonly timeoutMs: number;
+  private readonly timeoutPerImageMs: number;
   private readonly maxTokens: number;
 
   constructor () {
@@ -77,7 +91,16 @@ export class OpenAiCompatibleVisionAdapter implements VisionExtractor {
     this.model = process.env.VISION_MODEL ?? DEFAULT_MODEL;
     this.apiKey = process.env.VISION_API_KEY;
     this.timeoutMs = parseInt(process.env.VISION_TIMEOUT_MS ?? String(DEFAULT_TIMEOUT_MS), 10);
+    this.timeoutPerImageMs = parseInt(
+      process.env.VISION_TIMEOUT_PER_IMAGE_MS ?? String(DEFAULT_TIMEOUT_PER_IMAGE_MS),
+      10
+    );
     this.maxTokens = parseInt(process.env.VISION_MAX_TOKENS ?? '4096', 10);
+  }
+
+  /** Base timeout plus a per-image surcharge for every image past the first. */
+  private effectiveTimeoutMs (imageCount: number): number {
+    return this.timeoutMs + this.timeoutPerImageMs * Math.max(0, imageCount - 1);
   }
 
   private responseFormat (
@@ -107,6 +130,7 @@ export class OpenAiCompatibleVisionAdapter implements VisionExtractor {
     if (this.apiKey) { headers.Authorization = `Bearer ${this.apiKey}`; }
 
     const startedAt = Date.now();
+    const timeoutMs = this.effectiveTimeoutMs(req.images.length);
 
     let mode = configuredMode();
     if (mode === 'json_schema' && !req.jsonSchema) { mode = 'json_object'; }
@@ -116,7 +140,7 @@ export class OpenAiCompatibleVisionAdapter implements VisionExtractor {
         return await fetch(`${this.baseUrl}/chat/completions`, {
           method: 'POST',
           headers,
-          signal: AbortSignal.timeout(this.timeoutMs),
+          signal: AbortSignal.timeout(timeoutMs),
           body: JSON.stringify({
             model: this.model,
             messages: [
@@ -135,6 +159,17 @@ export class OpenAiCompatibleVisionAdapter implements VisionExtractor {
           })
         });
       } catch (err) {
+        if (isTimeoutError(err)) {
+          logger.error(
+            `Vision host at ${this.baseUrl} did not respond within ${timeoutMs}ms ` +
+            `for ${req.images.length} image(s)`
+          );
+          throw new VisionTimeoutError(
+            `The vision model did not respond within ${Math.round(timeoutMs / 1000)}s for ` +
+            `${req.images.length} image(s). Try fewer or smaller screenshots, or raise ` +
+            'VISION_TIMEOUT_MS / VISION_TIMEOUT_PER_IMAGE_MS.'
+          );
+        }
         const reason = err instanceof Error ? err.message : String(err);
         logger.error(`Vision host unreachable at ${this.baseUrl}: ${reason}`);
         throw new VisionUnavailableError(

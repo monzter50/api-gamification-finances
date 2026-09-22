@@ -2,6 +2,7 @@ import { logger } from '../../config/logger';
 import { NoRowsDetectedError, VisionDisabledError, VisionOutputInvalidError } from '../../errors/ReceiptImportErrors';
 import { visionAdapter } from '../ai/adapters/openaiCompatible.vision.adapter';
 import type { VisionExtractor, VisionImage } from '../ai/vision.port';
+import { prepareImage } from './imagePrep';
 import { normalizeRows } from './normalize';
 import { SYSTEM_PROMPT, USER_PROMPT } from './prompt';
 import { VISION_JSON_SCHEMA, visionOutputSchema } from './schema';
@@ -37,11 +38,10 @@ export class ReceiptImportService {
       throw new VisionDisabledError();
     }
 
-    const images: VisionImage[] = files.map((file) => ({
-      buffer: file.buffer,
-      // Some clients send octet-stream for a perfectly good PNG.
-      mimeType: file.mimetype.startsWith('image/') ? file.mimetype : 'image/png'
-    }));
+    // Downscale before the model ever sees them — the single biggest lever
+    // on local-host latency (see imagePrep.ts). Runs in parallel; each file
+    // is an independent sharp pipeline.
+    const images: VisionImage[] = await Promise.all(files.map(async (file) => await prepareImage(file)));
 
     const result = await this.vision.extract({
       systemPrompt: SYSTEM_PROMPT,

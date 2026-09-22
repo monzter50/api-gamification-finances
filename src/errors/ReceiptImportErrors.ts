@@ -14,10 +14,22 @@ export class VisionDisabledError extends AuthError {
   }
 }
 
-/** The model host was unreachable, timed out, or returned a non-2xx. */
+/** The model host refused the connection or returned a non-2xx. */
 export class VisionUnavailableError extends AuthError {
   constructor (message: string = 'The vision model is unavailable. Try again shortly.') {
     super(message, 503, 'VISION_UNAVAILABLE');
+  }
+}
+
+/**
+ * The model host was reachable but did not answer within the configured
+ * window. Kept distinct from `VisionUnavailableError` — "it's down" and
+ * "it's just slow" call for different client behavior (retry immediately vs.
+ * resubmit with fewer/smaller images).
+ */
+export class VisionTimeoutError extends AuthError {
+  constructor (message: string = 'The vision model did not respond in time. Try again with fewer or smaller images.') {
+    super(message, 504, 'VISION_TIMEOUT');
   }
 }
 
