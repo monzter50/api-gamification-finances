@@ -5,7 +5,7 @@ const prisma = new PrismaClient({
   log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error']
 });
 
-export const connectDB = async (environment: 'development' | 'test' | 'production' = 'development'): Promise<void> => {
+export const connectDB = async (_environment: 'development' | 'test' | 'production' = 'development'): Promise<void> => {
   try {
     logger.info('🔌 Connecting to PostgreSQL with Prisma...');
     await prisma.$connect();

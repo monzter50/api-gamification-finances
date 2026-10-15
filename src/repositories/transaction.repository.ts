@@ -104,12 +104,12 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     page: number = 1,
     limit: number = 10
   ): Promise<{
-      data: EnhancedTransaction[]
-      total: number
-      page: number
-      totalPages: number
-      totals: { income: number, expense: number, savings: number, count: number }
-    }> {
+    data: EnhancedTransaction[]
+    total: number
+    page: number
+    totalPages: number
+    totals: { income: number, expense: number, savings: number, count: number }
+  }> {
     const where: any = { userId };
 
     if (filters.type) where.type = filters.type;
@@ -297,12 +297,12 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     year?: number,
     month?: number
   ): Promise<{
-      totalIncome: number
-      totalExpense: number
-      incomeCount: number
-      expenseCount: number
-      netBalance: number
-    }> {
+    totalIncome: number
+    totalExpense: number
+    incomeCount: number
+    expenseCount: number
+    netBalance: number
+  }> {
     const dateFilter: any = {};
     if (year !== undefined && month !== undefined) {
       const startDate = new Date(year, month - 1, 1);

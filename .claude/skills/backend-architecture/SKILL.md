@@ -85,7 +85,7 @@ This is why switching from an AI model to a non-AI OCR engine (e.g. tesseract.js
 
 | Job | Tool | Notes |
 |---|---|---|
-| Runtime | **Node 20** (`node:20-slim`) | `engines >=18`; image pins 20 |
+| Runtime | **Node 22 LTS** (`node:22-slim`) | `engines >=22.12.0`; Node 20 is EOL (Apr 2026). Move to 24 LTS once Prisma is upgraded |
 | Language | **TypeScript 5, strict** | `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes` |
 | HTTP framework | **Express 4** | async errors need try/catch + `next(err)` |
 | Database | **PostgreSQL** | managed (Prisma Cloud) in staging/prod; container in dev |
@@ -102,8 +102,8 @@ This is why switching from an AI model to a non-AI OCR engine (e.g. tesseract.js
 | Compression | **compression** | |
 | API docs | **swagger-jsdoc** + **swagger-ui-express** | `@openapi` JSDoc in routes; `/api-docs`, `/api-docs.json` |
 | Client types | **openapi-typescript** | `yarn generate:client` → `src/types/openapi.d.ts` |
-| Tests | **Vitest** (+ `@vitest/coverage-v8`, **supertest** available for HTTP tests) | mocks for repos and `$transaction` |
-| Lint / style | **ESLint 8** + `standard-with-typescript` | 2 spaces, single quotes, semicolons |
+| Tests | **Vitest 4** (+ `@vitest/coverage-v8`, **supertest** available for HTTP tests) | mocks for repos and `$transaction` |
+| Lint / style | **ESLint 10** flat config (`eslint.config.mjs`) + **neostandard** (`semi: true`) + type-aware typescript-eslint rules | 2 spaces, single quotes, semicolons |
 | Dev runner | **tsx** | hot reload; does NOT type-check — run `yarn type-check` |
 | Package manager | **Yarn 1 (classic)** | `yarn.lock` is the source of truth; don't add npm/pnpm lockfiles |
 | Container | **Docker**, single multi-stage Dockerfile | `deps → builder → pruned → production`, runs as non-root `nodejs` |
@@ -134,10 +134,10 @@ Commands for all of these are in CLAUDE.md.
 
 Before `yarn add`:
 1. **Can the existing stack do it?** (Prisma `groupBy` before a reporting lib; `crypto`
-   before a hashing lib; `fetch` (Node 20) before axios.)
+   before a hashing lib; `fetch` (built into Node) before axios.)
 2. **Is it maintained and widely used?** Recent releases, no open critical advisories
    (`yarn audit`), compatible license (MIT/Apache/BSD/ISC).
-3. **What does it cost at runtime?** Native binaries must work on `node:20-slim` for
+3. **What does it cost at runtime?** Native binaries must work on `node:22-slim` for
    x86_64 and ARM64; memory on Railway is limited.
 4. **Wrap it** if it's an external system or likely to change (port + adapter); a pure
    utility can be imported directly from one place.

@@ -1,7 +1,7 @@
 # Templates for a new resource
 
 Replace `Foo`/`foo`/`foos`/`FOO` with the resource name. Example fields: `name`, `kind`,
-`targetCents`. Delete what you don't need. Formatting follows `.eslintrc.json`
+`targetCents`. Delete what you don't need. Formatting follows `eslint.config.mjs` (neostandard + semicolons)
 (2 spaces, single quotes, semicolons, space before function parens, no trailing commas).
 
 ## Contents

@@ -465,12 +465,12 @@ export class BudgetRepository extends BaseRepository<Budget> {
     page: number = 1,
     limit: number = 10
   ): Promise<{
-      items: IncomeItem[]
-      total: number
-      page: number
-      limit: number
-      pages: number
-    }> {
+    items: IncomeItem[]
+    total: number
+    page: number
+    limit: number
+    pages: number
+  }> {
     // Verify budget exists
     const exists = await this.model.findFirst({ where: { id: budgetId, userId } });
     if (!exists) {
@@ -505,12 +505,12 @@ export class BudgetRepository extends BaseRepository<Budget> {
     page: number = 1,
     limit: number = 10
   ): Promise<{
-      items: ExpenseItem[]
-      total: number
-      page: number
-      limit: number
-      pages: number
-    }> {
+    items: ExpenseItem[]
+    total: number
+    page: number
+    limit: number
+    pages: number
+  }> {
     // Verify budget exists
     const exists = await this.model.findFirst({ where: { id: budgetId, userId } });
     if (!exists) {

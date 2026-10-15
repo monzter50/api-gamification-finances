@@ -22,9 +22,9 @@ running a tool locally first; add it to CI once it's quiet (no unreviewed noise)
 | Type safety | `yarn type-check` (tsc strict) | every change | ✅ |
 | Lint | `yarn lint` (ESLint) | every change | ✅ |
 | Security lint | `eslint-plugin-security` | every change | ❌ add |
-| Dependencies | `yarn audit` (Yarn 1) | every PR + weekly | ❌ not automated |
+| Dependencies | `yarn audit` (Yarn 1) | every PR | ✅ CI (`--groups dependencies --level high`) |
 | Dependency updates | Dependabot or Renovate | continuous | ❌ add |
-| Secrets in git | gitleaks | pre-commit + CI | ❌ add |
+| Secrets in git | gitleaks | pre-commit + CI | ✅ CI |
 | SAST | Semgrep (`p/owasp-top-ten`, `p/nodejs`, `p/typescript`) | CI | ❌ add |
 | Container image | Trivy (`trivy image`) or Docker Scout | on image build | ❌ add |
 | DAST | OWASP ZAP API scan against `/api-docs.json` | staging, before release | ❌ optional |
@@ -69,10 +69,11 @@ ESLint security rules (cheap, in the editor):
 yarn add -D eslint-plugin-security
 ```
 
-```jsonc
-// .eslintrc.json
-"plugins": ["@typescript-eslint", "security"],
-"extends": ["standard-with-typescript", "plugin:security/recommended-legacy"]
+```js
+// eslint.config.mjs — add to the exported array
+import security from 'eslint-plugin-security';
+// ...
+security.configs.recommended,
 ```
 
 Expect some noise from `detect-object-injection`; disable that single rule if it
@@ -135,7 +136,7 @@ jobs:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: yarn }
+        with: { node-version: 22, cache: yarn }
       - run: yarn install --frozen-lockfile
       - run: yarn prisma generate
       - run: yarn type-check

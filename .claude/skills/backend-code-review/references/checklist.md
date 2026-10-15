@@ -173,5 +173,6 @@ index on a table that will hold 50 rows is Low, not Medium).
 - Budget repository methods throw `BudgetNotFoundError` in a few places
   (`getPaginated*Items`) — acceptable, but prefer returning `null` from new repo methods.
 - Old bcrypt hashes are cost 10; there's no rehash-on-login yet.
-- Dev toolchain (Vitest 1, ESLint 8) has audit advisories that need major upgrades;
-  runtime deps are clean except a non-reachable `uuid` advisory via exceljs.
+- `package.json` `resolutions` force patched transitive versions (`fast-uri`, `source-map-js`,
+  `uuid` for exceljs, `vite` dedupe). Don't drop one without re-running `yarn audit`;
+  revisit them when the parent packages ship fixes.

@@ -204,15 +204,14 @@ Fixed (keep them fixed — the tests in `src/tests/security/` guard most of thes
 | Swagger + `/api/docs` public in prod | Off in production unless `ENABLE_API_DOCS=true` |
 | bcrypt cost 10 | 12 for new hashes |
 | Emails in auth logs | User IDs only |
-| 65 runtime dependency advisories (1 critical) | In-range upgrades + `fast-uri` resolution → 1 moderate left |
+| 65 runtime + 86 dev dependency advisories (5 critical) | In-range runtime upgrades; Vitest 1→4, ESLint 8→10 (neostandard), supertest 6→7; `resolutions` for `fast-uri`, `source-map-js`, `uuid`, `vite` → **0 advisories** |
+| Node 20 runtime (EOL April 2026, no security patches) | Node 22 LTS in Docker, CI and `engines` |
 | No CI | `.github/workflows/ci.yml`: gates + runtime audit + gitleaks |
 
 Still open:
 
 | Item | Where | Severity |
 |---|---|---|
-| `uuid` <11 via exceljs (v3/v5/v6 `buf` bounds) — exceljs only uses v4, not reachable | runtime deps | Low (documented, revisit when exceljs updates) |
-| Dev-only toolchain advisories (Vitest 1, ESLint 8, typescript-eslint 6) — need major upgrades | devDependencies | Low (not shipped: pruned in Docker) |
 | JWT lifetime 7 days, no refresh tokens | `JWT_EXPIRES_IN` | Medium — shorten once refresh tokens exist |
 | `PATCH /budgets/:id/income|expense` replaces items with `deleteMany`; linked transactions silently lose their item link (FK `SetNull`) | `budget.repository.ts` | Medium (data integrity) |
 | No rehash-on-login to upgrade old cost-10 bcrypt hashes | `auth.service.ts` | Low |

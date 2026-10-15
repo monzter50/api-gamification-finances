@@ -133,7 +133,8 @@ For a "Foo" resource, add these files in lockstep:
 
 2. **Path aliases** (`@/*`, `@/types/*`, etc.) are defined in `tsconfig.json` and mirrored in `vitest.config.ts` but **almost never used** — at the time of writing, exactly one file (`src/utils/response.ts`) imports via `@/`. Everything else uses relative imports like `../services/foo.service`. Stick with relative imports unless you're refactoring with intent.
 
-3. **ESLint uses `tsconfig.eslint.json`**, which extends `tsconfig.json` but also includes test files (the build tsconfig excludes `*.test.ts` so they never land in `dist/`). Generated `src/types/openapi.d.ts` is in ESLint's `ignorePatterns`.
+3. **ESLint 10 flat config (`eslint.config.mjs`)**: neostandard style with `semi: true` (2 spaces, single quotes, semicolons, no trailing commas) plus a few type-aware typescript-eslint rules (`return-await: always`, `await-thenable`). Type info comes from `tsconfig.eslint.json`, which extends `tsconfig.json` but also includes test files (the build tsconfig excludes `*.test.ts` so they never land in `dist/`). Generated `src/types/openapi.d.ts` is ignored.
+4. **Node 22 LTS** everywhere (`engines >=22.12.0`, `node:22-slim` image, CI). Node 20 is end-of-life; the dev toolchain (neostandard, Vitest 4) won't install on it.
 
 ## Database & migrations
 
