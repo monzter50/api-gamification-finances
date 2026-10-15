@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: yarn
       - run: yarn install --frozen-lockfile
       - run: yarn prisma generate
@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       # Runtime deps only — that's what ships in the Docker image (dev deps are
       # pruned). Yarn 1 exits non-zero when advisories at/above --level exist.
       - run: yarn audit --groups dependencies --level high
