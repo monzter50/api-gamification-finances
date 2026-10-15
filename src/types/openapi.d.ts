@@ -137,6 +137,26 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /**
+                 * @description Single active session — the user already has a session that has
+                 *     been active within the inactivity window. They must log out of the
+                 *     other session (or let it go idle) before signing in again.
+                 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example {
+                         *       "success": false,
+                         *       "message": "You already have an active session on another device. Log out there or wait a few minutes, then try again.",
+                         *       "errorCode": "SESSION_ALREADY_ACTIVE"
+                         *     }
+                         */
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -927,6 +947,8 @@ export interface paths {
                                     type?: "Fixed" | "Variable";
                                 }[];
                                 paymentSources?: string[];
+                                /** @description Transaction categories with no matching row in the Expenses sheet. Show them in the review step. */
+                                unmatchedCategories?: string[];
                                 counts?: {
                                     transactions?: number;
                                     incomeItems?: number;
@@ -1072,6 +1094,18 @@ export interface paths {
                                     incomeItems?: number;
                                     expenseItems?: number;
                                 };
+                                /** @description Items that already existed in the budget (same name) and were updated in place. */
+                                updatedCount?: {
+                                    incomeItems?: number;
+                                    expenseItems?: number;
+                                };
+                                /** @description Rows not created because an identical row was already imported. */
+                                skippedCount?: {
+                                    transactions?: number;
+                                };
+                                /** @description Categories that matched no expense item; their rows were created without expenseItemId. */
+                                unmatchedCategories?: string[];
+                                /** @description Transactions created by this call (skipped rows excluded). */
                                 transactionIds?: string[];
                             };
                         };
@@ -1269,7 +1303,7 @@ export interface components {
              * @example Transfer
              * @enum {string}
              */
-            type: "Debit Card" | "Credit Card" | "Cash" | "Vales" | "Transfer" | "Check" | "Other";
+            type: "Debit Card" | "Cash" | "Vales" | "Transfer" | "Check" | "Other";
             /**
              * Format: uuid
              * @description ID of the account this planned income will be deposited into. Required as of PR 1.
@@ -1313,7 +1347,7 @@ export interface components {
              * @example Transfer
              * @enum {string}
              */
-            type: "Debit Card" | "Credit Card" | "Cash" | "Vales" | "Transfer" | "Check" | "Other";
+            type: "Debit Card" | "Cash" | "Vales" | "Transfer" | "Check" | "Other";
             /**
              * Format: uuid
              * @description Required. Must be an account owned by the authenticated user. Response 400 if the account does not belong to this user.

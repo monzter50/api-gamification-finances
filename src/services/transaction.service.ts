@@ -4,6 +4,8 @@ import { budgetRepository } from '../repositories/budget.repository';
 import { accountRepository } from '../repositories/account.repository';
 import prisma from '../config/database';
 import { logger } from '../config/logger';
+import { toCents, fromCents } from '../utils/money';
+import { statusOf, balanceDeltaCents, balanceIncrement } from './ledgerRules';
 
 /**
  * Transaction Service
@@ -14,23 +16,11 @@ import { logger } from '../config/logger';
  *  - Every create / update / delete is wrapped in `prisma.$transaction` so
  *    the row mutation and the balance delta either both commit or both roll
  *    back. There is no "transaction created but balance not updated" state.
+ *  - Overspending an ExpenseItem is NOT an error. The ledger records what
+ *    actually happened; `getBudgetBalance` reports each line's `status`.
+ *  - All money math runs in integer cents (see `utils/money`).
  */
 export class TransactionService {
-    /**
-     * Signed delta this transaction applies to its account's balance.
-     *  - income  → +amount (credit)
-     *  - expense → -amount (debit)
-     * Anything else (e.g. 'savings' / 'transfer') is rejected — transfers
-     * touch two accounts and need their own primitive, not this one.
-     */
-    private balanceDeltaForType(type: string, amount: number): number {
-        if (type === 'income') return amount;
-        if (type === 'expense') return -amount;
-        throw new Error(
-            `Unsupported transaction type "${type}" for balance update. Expected 'income' or 'expense'.`
-        );
-    }
-
     /**
      * Defense-in-depth: refuse to touch an account the caller doesn't own.
      * Cheap read; cost is dwarfed by the write it guards.
@@ -72,6 +62,8 @@ export class TransactionService {
         // 2. Verify account belongs to the same user (prevents cross-user balance writes)
         await this.assertAccountBelongsToUser(data.accountId, userId);
 
+        const amountCents = toCents(data.amount);
+
         // 3. Validate incomeItemId belongs to this budget and respects planned limits
         if (data.incomeItemId) {
             const incomeItem = budget.incomeItems.find(i => i.id === data.incomeItemId);
@@ -79,40 +71,35 @@ export class TransactionService {
                 throw new Error('Income item not found in this budget');
             }
 
-            const usedAmount = await transactionRepository.getUsedForIncomeItem(data.incomeItemId);
-            const remaining = incomeItem.amount - usedAmount;
-            if (data.amount > remaining) {
+            const usedCents = await transactionRepository.getUsedCentsForIncomeItem(data.incomeItemId);
+            const remainingCents = incomeItem.amountCents - usedCents;
+            if (amountCents > remainingCents) {
                 throw new Error(
-                    `Transaction amount (${data.amount}) exceeds remaining income balance (${remaining.toFixed(2)}) for "${incomeItem.description}"`
+                    `Transaction amount (${fromCents(amountCents)}) exceeds remaining income balance (${fromCents(remainingCents).toFixed(2)}) for "${incomeItem.description}"`
                 );
             }
         }
 
-        // 4. Validate expenseItemId belongs to this budget and respects planned limits
+        // 4. Validate expenseItemId belongs to this budget. There is deliberately
+        //    NO limit check: an expense that already happened must be recordable
+        //    even if it blows the plan — the budget reports it as `exceeded`.
         if (data.expenseItemId) {
             const expenseItem = budget.expenseItems.find(e => e.id === data.expenseItemId);
             if (!expenseItem) {
                 throw new Error('Expense item not found in this budget');
             }
-
-            const spentAmount = await transactionRepository.getSpentForExpenseItem(data.expenseItemId);
-            const remaining = expenseItem.amount - spentAmount;
-            if (data.amount > remaining) {
-                throw new Error(
-                    `Transaction amount (${data.amount}) exceeds remaining expense budget (${remaining.toFixed(2)}) for "${expenseItem.description}"`
-                );
-            }
         }
 
         // 5. Compute the balance delta up front so we fail fast on unsupported types
-        const delta = this.balanceDeltaForType(data.type, Number(data.amount));
+        const deltaCents = balanceDeltaCents(data.type, amountCents);
 
         // 6. Build the transaction row payload
         const txData: any = {
             userId,
             budgetId: data.budgetId,
             date: new Date(data.date),
-            amount: Number(data.amount),
+            amount: fromCents(amountCents),
+            amountCents,
             vendor: data.vendor,
             type: data.type,
             accountId: data.accountId
@@ -122,7 +109,10 @@ export class TransactionService {
         if (data.expenseItemId !== undefined) txData.expenseItemId = data.expenseItemId;
         if (data.installmentCurrent !== undefined) txData.installmentCurrent = data.installmentCurrent;
         if (data.installmentTotal !== undefined) txData.installmentTotal = data.installmentTotal;
-        if (data.installmentOriginal !== undefined) txData.installmentOriginal = data.installmentOriginal;
+        if (data.installmentOriginal !== undefined) {
+            txData.installmentOriginalCents = toCents(data.installmentOriginal);
+            txData.installmentOriginal = fromCents(txData.installmentOriginalCents);
+        }
 
         // 7. Atomic: row insert + balance update commit or roll back together
         const transaction = await prisma.$transaction(async (tx) => {
@@ -132,12 +122,12 @@ export class TransactionService {
             });
             await tx.account.update({
                 where: { id: data.accountId },
-                data: { balance: { increment: delta } }
+                data: balanceIncrement(deltaCents)
             });
             return created;
         });
 
-        logger.info(`Transaction created: ${transaction.id} (account ${data.accountId} delta ${delta})`);
+        logger.info(`Transaction created: ${transaction.id} (account ${data.accountId} delta ${fromCents(deltaCents)})`);
         return transaction;
     }
 
@@ -212,59 +202,45 @@ export class TransactionService {
         // 1. Verify transaction exists and belongs to user
         const existing = await this.getTransactionById(id, userId);
 
-        // 2. Re-validate budget-limit invariants if the caller changed anything that moves them
+        // 2. Resolve effective values (all money in cents)
+        const newAccountId = data.accountId ?? existing.accountId;
+        const newType = data.type ?? existing.type;
+        const newAmountCents = data.amount !== undefined ? toCents(data.amount) : existing.amountCents;
+
+        // 3. Re-validate item links if the caller changed anything that moves them
         const budgetId = existing.budgetId;
 
         if (budgetId && (data.incomeItemId !== undefined || data.expenseItemId !== undefined || data.amount !== undefined)) {
             const budget = await budgetRepository.findById(budgetId);
             if (!budget) throw new Error('Budget not found');
 
-            const existingIncomeItemId = (existing as any).incomeItemId as string | null;
+            const existingIncomeItemId = existing.incomeItemId;
             const newIncomeItemId = data.incomeItemId !== undefined ? data.incomeItemId : existingIncomeItemId;
             if (newIncomeItemId) {
                 const incomeItem = budget.incomeItems.find(i => i.id === newIncomeItemId);
                 if (!incomeItem) throw new Error('Income item not found in this budget');
 
-                const usedAmount = await transactionRepository.getUsedForIncomeItem(newIncomeItemId);
+                const usedCents = await transactionRepository.getUsedCentsForIncomeItem(newIncomeItemId);
                 // Exclude the current row's contribution since we're updating it in place
                 const usedExcludingCurrent = newIncomeItemId === existingIncomeItemId
-                    ? usedAmount - existing.amount
-                    : usedAmount;
-                const newAmount = data.amount ?? existing.amount;
-                const remaining = incomeItem.amount - usedExcludingCurrent;
+                    ? usedCents - existing.amountCents
+                    : usedCents;
+                const remainingCents = incomeItem.amountCents - usedExcludingCurrent;
 
-                if (newAmount > remaining) {
+                if (newAmountCents > remainingCents) {
                     throw new Error(
-                        `Transaction amount (${newAmount}) exceeds remaining income balance (${remaining.toFixed(2)}) for "${incomeItem.description}"`
+                        `Transaction amount (${fromCents(newAmountCents)}) exceeds remaining income balance (${fromCents(remainingCents).toFixed(2)}) for "${incomeItem.description}"`
                     );
                 }
             }
 
-            const existingExpenseItemId = (existing as any).expenseItemId as string | null;
-            const newExpenseItemId = data.expenseItemId !== undefined ? data.expenseItemId : existingExpenseItemId;
+            // Expense items: membership only, no limit (overspend is a status).
+            const newExpenseItemId = data.expenseItemId !== undefined ? data.expenseItemId : existing.expenseItemId;
             if (newExpenseItemId) {
                 const expenseItem = budget.expenseItems.find(e => e.id === newExpenseItemId);
                 if (!expenseItem) throw new Error('Expense item not found in this budget');
-
-                const spentAmount = await transactionRepository.getSpentForExpenseItem(newExpenseItemId);
-                const spentExcludingCurrent = newExpenseItemId === existingExpenseItemId
-                    ? spentAmount - existing.amount
-                    : spentAmount;
-                const newAmount = data.amount ?? existing.amount;
-                const remaining = expenseItem.amount - spentExcludingCurrent;
-
-                if (newAmount > remaining) {
-                    throw new Error(
-                        `Transaction amount (${newAmount}) exceeds remaining expense budget (${remaining.toFixed(2)}) for "${expenseItem.description}"`
-                    );
-                }
             }
         }
-
-        // 3. Resolve effective values for balance math
-        const newAccountId = data.accountId ?? existing.accountId;
-        const newType = data.type ?? existing.type;
-        const newAmount = data.amount !== undefined ? Number(data.amount) : existing.amount;
 
         // 4. If the account is changing, make sure the target belongs to this user
         if (data.accountId && data.accountId !== existing.accountId) {
@@ -272,8 +248,8 @@ export class TransactionService {
         }
 
         // 5. Compute deltas: reverse old effect, apply new effect
-        const oldDelta = this.balanceDeltaForType(existing.type, existing.amount);
-        const newDelta = this.balanceDeltaForType(newType, newAmount);
+        const oldDeltaCents = balanceDeltaCents(existing.type, existing.amountCents);
+        const newDeltaCents = balanceDeltaCents(newType, newAmountCents);
 
         // 6. Build update payload from ONLY the editable Transaction fields.
         // Never spread the raw request body — clients may send extra fields
@@ -281,7 +257,10 @@ export class TransactionService {
         // Transaction and would make Prisma reject the whole update.
         const updateData: Prisma.TransactionUncheckedUpdateInput = {};
         if (data.date !== undefined) updateData.date = new Date(data.date);
-        if (data.amount !== undefined) updateData.amount = Number(data.amount);
+        if (data.amount !== undefined) {
+            updateData.amountCents = newAmountCents;
+            updateData.amount = fromCents(newAmountCents);
+        }
         if (data.vendor !== undefined) updateData.vendor = data.vendor;
         if (data.type !== undefined) updateData.type = data.type;
         if (data.accountId !== undefined) updateData.accountId = data.accountId;
@@ -290,19 +269,23 @@ export class TransactionService {
         if (data.expenseItemId !== undefined) updateData.expenseItemId = data.expenseItemId;
         if (data.installmentCurrent !== undefined) updateData.installmentCurrent = data.installmentCurrent;
         if (data.installmentTotal !== undefined) updateData.installmentTotal = data.installmentTotal;
-        if (data.installmentOriginal !== undefined) updateData.installmentOriginal = data.installmentOriginal;
+        if (data.installmentOriginal !== undefined) {
+            const originalCents = toCents(data.installmentOriginal);
+            updateData.installmentOriginalCents = originalCents;
+            updateData.installmentOriginal = fromCents(originalCents);
+        }
 
         // 7. Atomic: balance reversal on old account + balance apply on new account + row update
         const updated = await prisma.$transaction(async (tx) => {
             // Reverse old effect on old account
             await tx.account.update({
                 where: { id: existing.accountId },
-                data: { balance: { increment: -oldDelta } }
+                data: balanceIncrement(-oldDeltaCents)
             });
             // Apply new effect on (possibly different) new account
             await tx.account.update({
                 where: { id: newAccountId },
-                data: { balance: { increment: newDelta } }
+                data: balanceIncrement(newDeltaCents)
             });
             // Update the transaction row
             return await tx.transaction.update({
@@ -313,7 +296,7 @@ export class TransactionService {
         });
 
         logger.info(
-            `Transaction updated: ${id} (reversed ${oldDelta} on ${existing.accountId}, applied ${newDelta} on ${newAccountId})`
+            `Transaction updated: ${id} (reversed ${fromCents(oldDeltaCents)} on ${existing.accountId}, applied ${fromCents(newDeltaCents)} on ${newAccountId})`
         );
         return updated;
     }
@@ -325,19 +308,19 @@ export class TransactionService {
     async deleteTransaction(id: string, userId: string): Promise<void> {
         const existing = await this.getTransactionById(id, userId);
 
-        const delta = this.balanceDeltaForType(existing.type, existing.amount);
+        const deltaCents = balanceDeltaCents(existing.type, existing.amountCents);
 
         await prisma.$transaction(async (tx) => {
             await tx.account.update({
                 where: { id: existing.accountId },
-                data: { balance: { increment: -delta } }
+                data: balanceIncrement(-deltaCents)
             });
             await tx.transaction.delete({
                 where: { id }
             });
         });
 
-        logger.info(`Transaction deleted: ${id} (reversed ${delta} on account ${existing.accountId})`);
+        logger.info(`Transaction deleted: ${id} (reversed ${fromCents(deltaCents)} on account ${existing.accountId})`);
     }
 
     /**
@@ -369,17 +352,19 @@ export class TransactionService {
         if (!budget) throw new Error('Budget not found');
         if (budget.userId !== userId) throw new Error('Unauthorized access to budget');
 
-        // For each expense item, calculate spent vs budgeted
+        // For each expense item: spent vs budgeted, plus its status. `remaining`
+        // goes negative when a line is overspent.
         const expenseBreakdown = await Promise.all(
             budget.expenseItems.map(async (item) => {
-                const spent = await transactionRepository.getSpentForExpenseItem(item.id);
+                const spentCents = await transactionRepository.getSpentCentsForExpenseItem(item.id);
                 return {
                     id: item.id,
                     description: item.description,
-                    budgeted: item.amount,
-                    spent,
-                    remaining: item.amount - spent,
-                    percentUsed: item.amount > 0 ? (spent / item.amount) * 100 : 0
+                    budgeted: fromCents(item.amountCents),
+                    spent: fromCents(spentCents),
+                    remaining: fromCents(item.amountCents - spentCents),
+                    percentUsed: item.amountCents > 0 ? (spentCents / item.amountCents) * 100 : 0,
+                    status: statusOf(item.amountCents, spentCents)
                 };
             })
         );
@@ -387,14 +372,14 @@ export class TransactionService {
         // For each income item, calculate used vs available
         const incomeBreakdown = await Promise.all(
             budget.incomeItems.map(async (item) => {
-                const used = await transactionRepository.getUsedForIncomeItem(item.id);
+                const usedCents = await transactionRepository.getUsedCentsForIncomeItem(item.id);
                 return {
                     id: item.id,
                     description: item.description,
-                    available: item.amount,
-                    used,
-                    remaining: item.amount - used,
-                    percentUsed: item.amount > 0 ? (used / item.amount) * 100 : 0
+                    available: fromCents(item.amountCents),
+                    used: fromCents(usedCents),
+                    remaining: fromCents(item.amountCents - usedCents),
+                    percentUsed: item.amountCents > 0 ? (usedCents / item.amountCents) * 100 : 0
                 };
             })
         );

@@ -6,6 +6,7 @@ import {
   type ParsedIncomeItem,
   type ParsedTransaction
 } from './types';
+import { findUnmatchedCategories } from './dedupe';
 
 /**
  * Parser for the "TARJETAS Y GASTOS" budget workbook → three app entities:
@@ -165,6 +166,7 @@ export async function parseWorkbook (buffer: Buffer): Promise<ParseResult> {
     incomeItems,
     expenseItems,
     paymentSources,
+    unmatchedCategories: findUnmatchedCategories(transactions, expenseItems.map((e) => e.description)),
     counts: {
       transactions: transactions.length,
       incomeItems: incomeItems.length,

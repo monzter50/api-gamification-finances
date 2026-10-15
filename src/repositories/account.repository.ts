@@ -1,5 +1,13 @@
 import { BaseRepository } from './base.repository';
 import { type Account } from '@prisma/client';
+import { toCents, fromCents } from '../utils/money';
+
+/**
+ * `balanceCents` is the source of truth. Serve `balance` derived from it so
+ * API consumers never see drift from the legacy Float column.
+ */
+const withExactBalance = <T extends Account | null>(account: T): T =>
+  account ? { ...account, balance: fromCents(account.balanceCents) } : account;
 
 export class AccountRepository extends BaseRepository<Account> {
   constructor() {
@@ -10,19 +18,20 @@ export class AccountRepository extends BaseRepository<Account> {
    * Find all accounts for a user
    */
   async findByUser(userId: string): Promise<Account[]> {
-    return this.model.findMany({
+    const accounts: Account[] = await this.model.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' }
     });
+    return accounts.map(withExactBalance);
   }
 
   /**
    * Find account by ID and verify user ownership
    */
   async findByIdAndUser(id: string, userId: string): Promise<Account | null> {
-    return this.model.findFirst({
+    return withExactBalance(await this.model.findFirst({
       where: { id, userId }
-    });
+    }));
   }
 
   /**
@@ -38,12 +47,14 @@ export class AccountRepository extends BaseRepository<Account> {
       isActive?: boolean;
     }
   ): Promise<Account> {
+    const balanceCents = toCents(data.balance ?? 0);
     return this.model.create({
       data: {
         userId,
         name: data.name,
         type: data.type,
-        balance: data.balance ?? 0,
+        balance: fromCents(balanceCents),
+        balanceCents,
         currency: data.currency ?? 'MXN',
         isActive: data.isActive ?? true
       }
@@ -56,15 +67,26 @@ export class AccountRepository extends BaseRepository<Account> {
   async updateByIdAndUser(
     id: string,
     userId: string,
-    data: Partial<Omit<Account, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>
+    data: Partial<Omit<Account, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'balanceCents'>>
   ): Promise<Account | null> {
     const exists = await this.model.findFirst({ where: { id, userId } });
     if (!exists) return null;
 
-    return this.model.update({
+    // Whitelist the editable columns; a direct balance edit writes both money columns.
+    const updateData: Partial<Account> = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.type !== undefined) updateData.type = data.type;
+    if (data.currency !== undefined) updateData.currency = data.currency;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.balance !== undefined) {
+      updateData.balanceCents = toCents(data.balance);
+      updateData.balance = fromCents(updateData.balanceCents);
+    }
+
+    return withExactBalance(await this.model.update({
       where: { id },
-      data
-    });
+      data: updateData
+    }));
   }
 
   /**
@@ -74,7 +96,7 @@ export class AccountRepository extends BaseRepository<Account> {
     const exists = await this.model.findFirst({ where: { id, userId } });
     if (!exists) return null;
 
-    return this.model.delete({ where: { id } });
+    return withExactBalance(await this.model.delete({ where: { id } }));
   }
 
   /**
