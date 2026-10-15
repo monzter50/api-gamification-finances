@@ -1,46 +1,29 @@
-import type { Response } from 'express';
+import type { Response, NextFunction } from 'express';
 import { userService } from '../services/user.service';
 import { type AuthenticatedRequest } from '../types';
 
-/**
- * User Controller
- * Handles HTTP requests/responses for user endpoints
- */
 export class UserController {
-  /**
-   * Get user profile
-   * GET /api/users/profile
-   */
-  async getProfile(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async getProfile (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const userId = req.user!.id;
-      const profile = await userService.getUserProfile(userId);
+      const profile = await userService.getUserProfile(req.user!.userId);
 
       res.status(200).json({
         success: true,
+        message: 'Perfil obtenido correctamente',
         data: profile
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error al obtener el perfil del usuario';
-      const statusCode = message.includes('not found') ? 404 : 500;
-
-      res.status(statusCode).json({
-        success: false,
-        message
-      });
+      next(error);
     }
   }
 
-  /**
-   * Update user profile
-   * PUT /api/users/profile
-   */
-  async updateProfile(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async updateProfile (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const userId = req.user!.id;
-      const { name, savingsGoal } = req.body;
+      const { name } = req.body as { name?: string };
+      const data: { name?: string } = {};
+      if (name !== undefined) data.name = name;
 
-      const profile = await userService.updateProfile(userId, { name, savingsGoal });
+      const profile = await userService.updateProfile(req.user!.userId, data);
 
       res.status(200).json({
         success: true,
@@ -48,16 +31,9 @@ export class UserController {
         data: profile
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error al actualizar el perfil del usuario';
-      const statusCode = message.includes('not found') ? 404 : 500;
-
-      res.status(statusCode).json({
-        success: false,
-        message
-      });
+      next(error);
     }
   }
-
 }
 
 // Export singleton instance

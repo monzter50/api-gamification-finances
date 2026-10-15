@@ -2,7 +2,7 @@ import express from 'express';
 import { budgetController } from '../controllers/budget.controller';
 import { incomeController } from '../controllers/income.controller';
 import { expenseController } from '../controllers/expense.controller';
-import { authenticateJWT } from './auth';
+import { authenticateJWT } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import {
   createBudgetValidation,
@@ -17,7 +17,8 @@ import {
   updateExpenseItemValidation,
   deleteIncomeItemValidation,
   deleteExpenseItemValidation,
-  duplicateBudgetValidation
+  duplicateBudgetValidation,
+  paginatedItemsValidation
 } from '../validators/budget.validator';
 
 const router = express.Router();
@@ -146,8 +147,7 @@ router.delete(
  *       - `400` if the target month is out of range, or if any source income
  *         item references an account that no longer belongs to the user
  *         (error message lists the offending accountIds).
- *       - `403` if the source budget does not belong to the caller.
- *       - `404` if the source budget does not exist.
+ *       - `404` if the source budget does not exist or belongs to another user.
  *       - `409` if a budget already exists at the target `(year, month)`.
  *
  *       Items are NOT accepted in the body — pass only the target period.
@@ -186,8 +186,6 @@ router.delete(
  *                 message: { type: string, example: 'Budget duplicated successfully' }
  *       400: { $ref: '#/components/responses/BadRequestError' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
- *       403:
- *         description: Source budget does not belong to the caller
  *       404: { $ref: '#/components/responses/NotFoundError' }
  *       409:
  *         description: A budget already exists for the target period
@@ -196,8 +194,9 @@ router.delete(
  *             schema: { $ref: '#/components/schemas/Error' }
  *             example:
  *               success: false
+ *               message: 'Budget for 2026-7 already exists'
  *               error: 'Budget for 2026-7 already exists'
- *               statusCode: 409
+ *               errorCode: BUDGET_ALREADY_EXISTS
  */
 router.post(
   '/:id/duplicate',
@@ -245,7 +244,7 @@ router.post(
 router.get(
   '/:id/income',
   authenticateJWT,
-  budgetIdValidation,
+  paginatedItemsValidation,
   validate,
   incomeController.getIncomeItems.bind(incomeController)
 );
@@ -281,8 +280,6 @@ router.get(
  *             schema: { $ref: '#/components/schemas/IncomeItemMutationResponse' }
  *       400: { $ref: '#/components/responses/BadRequestError' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
- *       403:
- *         description: Unauthorized access to budget
  *       404: { $ref: '#/components/responses/NotFoundError' }
  */
 router.post(
@@ -320,8 +317,6 @@ router.post(
  *             schema: { $ref: '#/components/schemas/BudgetMutationResponse' }
  *       400: { $ref: '#/components/responses/BadRequestError' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
- *       403:
- *         description: Unauthorized access to budget
  *       404: { $ref: '#/components/responses/NotFoundError' }
  */
 router.patch(
@@ -364,8 +359,6 @@ router.patch(
  *             schema: { $ref: '#/components/schemas/IncomeItemMutationResponse' }
  *       400: { $ref: '#/components/responses/BadRequestError' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
- *       403:
- *         description: Unauthorized access to budget
  *       404: { $ref: '#/components/responses/NotFoundError' }
  */
 router.put(
@@ -400,8 +393,6 @@ router.put(
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ItemRemovalResponse' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
- *       403:
- *         description: Unauthorized access to budget
  *       404: { $ref: '#/components/responses/NotFoundError' }
  */
 router.delete(
@@ -449,7 +440,7 @@ router.delete(
 router.get(
   '/:id/expense',
   authenticateJWT,
-  budgetIdValidation,
+  paginatedItemsValidation,
   validate,
   expenseController.getExpenseItems.bind(expenseController)
 );
@@ -484,8 +475,6 @@ router.get(
  *             schema: { $ref: '#/components/schemas/ExpenseItemMutationResponse' }
  *       400: { $ref: '#/components/responses/BadRequestError' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
- *       403:
- *         description: Unauthorized access to budget
  *       404: { $ref: '#/components/responses/NotFoundError' }
  */
 router.post(
@@ -523,8 +512,6 @@ router.post(
  *             schema: { $ref: '#/components/schemas/BudgetMutationResponse' }
  *       400: { $ref: '#/components/responses/BadRequestError' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
- *       403:
- *         description: Unauthorized access to budget
  *       404: { $ref: '#/components/responses/NotFoundError' }
  */
 router.patch(
@@ -567,8 +554,6 @@ router.patch(
  *             schema: { $ref: '#/components/schemas/ExpenseItemMutationResponse' }
  *       400: { $ref: '#/components/responses/BadRequestError' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
- *       403:
- *         description: Unauthorized access to budget
  *       404: { $ref: '#/components/responses/NotFoundError' }
  */
 router.put(
@@ -603,8 +588,6 @@ router.put(
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ItemRemovalResponse' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
- *       403:
- *         description: Unauthorized access to budget
  *       404: { $ref: '#/components/responses/NotFoundError' }
  */
 router.delete(

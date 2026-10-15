@@ -10,6 +10,7 @@ import {
 } from '../types/budget.types';
 import prisma from '../config/database';
 import { toCents, fromCents } from '../utils/money';
+import { BudgetAlreadyExistsError, BudgetNotFoundError } from '../errors/DomainErrors';
 
 /**
  * Money columns for an item write: `amountCents` is the source of truth and
@@ -174,7 +175,7 @@ export class BudgetRepository extends BaseRepository<Budget> {
     // Check for duplicate
     const exists = await this.budgetExists(data.userId, data.year, data.month);
     if (exists) {
-      throw new Error(`Budget for ${data.year}-${data.month} already exists`);
+      throw new BudgetAlreadyExistsError(data.year, data.month);
     }
 
     const budget = await this.model.create({
@@ -322,6 +323,20 @@ export class BudgetRepository extends BaseRepository<Budget> {
     return { totals };
   }
 
+  /**
+   * Find a budget by ID **scoped to its owner**. Returns null both when the
+   * budget doesn't exist and when it belongs to someone else — callers turn
+   * that into a 404 so other users' IDs can't be probed.
+   */
+  async findByIdAndUser (id: string, userId: string): Promise<EnhancedBudget | null> {
+    const budget = await this.model.findFirst({
+      where: { id, userId },
+      include: { incomeItems: true, expenseItems: true }
+    });
+    return budget ? this.enrichBudget(budget) : null;
+  }
+
+  /** Unscoped lookup — only use after ownership is established. Prefer `findByIdAndUser`. */
   override async findById (id: string): Promise<EnhancedBudget | null> {
     const budget = await this.model.findUnique({
       where: { id },
@@ -450,16 +465,16 @@ export class BudgetRepository extends BaseRepository<Budget> {
     page: number = 1,
     limit: number = 10
   ): Promise<{
-      items: IncomeItem[]
-      total: number
-      page: number
-      limit: number
-      pages: number
-    }> {
+    items: IncomeItem[]
+    total: number
+    page: number
+    limit: number
+    pages: number
+  }> {
     // Verify budget exists
     const exists = await this.model.findFirst({ where: { id: budgetId, userId } });
     if (!exists) {
-      throw new Error('Budget not found');
+      throw new BudgetNotFoundError();
     }
 
     const total = await prisma.incomeItem.count({ where: { budgetId } });
@@ -490,16 +505,16 @@ export class BudgetRepository extends BaseRepository<Budget> {
     page: number = 1,
     limit: number = 10
   ): Promise<{
-      items: ExpenseItem[]
-      total: number
-      page: number
-      limit: number
-      pages: number
-    }> {
+    items: ExpenseItem[]
+    total: number
+    page: number
+    limit: number
+    pages: number
+  }> {
     // Verify budget exists
     const exists = await this.model.findFirst({ where: { id: budgetId, userId } });
     if (!exists) {
-      throw new Error('Budget not found');
+      throw new BudgetNotFoundError();
     }
 
     const total = await prisma.expenseItem.count({ where: { budgetId } });

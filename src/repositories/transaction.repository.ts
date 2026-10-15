@@ -1,6 +1,7 @@
 import { BaseRepository } from './base.repository';
 import { type Transaction } from '@prisma/client';
 import { fromCents } from '../utils/money';
+import prisma from '../config/database';
 
 /**
  * Enhanced Transaction with related entities
@@ -49,14 +50,14 @@ export const transactionIncludes = {
 };
 
 export class TransactionRepository extends BaseRepository<Transaction> {
-  constructor() {
+  constructor () {
     super('transaction');
   }
 
   /**
    * Create a transaction with relations included
    */
-  async createTransaction(data: {
+  async createTransaction (data: {
     userId: string
     budgetId?: string
     date: Date
@@ -82,7 +83,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
   /**
    * Find transaction by ID and verify user ownership
    */
-  async findByIdAndUser(id: string, userId: string): Promise<EnhancedTransaction | null> {
+  async findByIdAndUser (id: string, userId: string): Promise<EnhancedTransaction | null> {
     return this.model.findFirst({
       where: { id, userId },
       include: transactionIncludes
@@ -92,7 +93,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
   /**
    * Find transactions by user with optional filters (paginated)
    */
-  async findByUserPaginated(
+  async findByUserPaginated (
     userId: string,
     filters: {
       type?: string
@@ -164,7 +165,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
   /**
    * Find transactions by user (no pagination)
    */
-  async findByUser(userId: string): Promise<EnhancedTransaction[]> {
+  async findByUser (userId: string): Promise<EnhancedTransaction[]> {
     return this.model.findMany({
       where: { userId },
       include: transactionIncludes,
@@ -175,7 +176,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
   /**
    * Find transactions by user and date range
    */
-  async findByUserAndDateRange(
+  async findByUserAndDateRange (
     userId: string,
     startDate: Date,
     endDate: Date
@@ -196,7 +197,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
   /**
    * Find transactions by budget
    */
-  async findByBudget(budgetId: string): Promise<EnhancedTransaction[]> {
+  async findByBudget (budgetId: string): Promise<EnhancedTransaction[]> {
     return this.model.findMany({
       where: { budgetId },
       include: transactionIncludes,
@@ -207,7 +208,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
   /**
    * Update transaction by ID (only if belongs to user)
    */
-  async updateByIdAndUser(
+  async updateByIdAndUser (
     id: string,
     userId: string,
     data: Partial<Transaction>
@@ -225,7 +226,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
   /**
    * Delete transaction by ID (only if belongs to user)
    */
-  async deleteByIdAndUser(
+  async deleteByIdAndUser (
     id: string,
     userId: string
   ): Promise<EnhancedTransaction | null> {
@@ -241,7 +242,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
   /**
    * Total spent against a specific expense item, in cents
    */
-  async getSpentCentsForExpenseItem(expenseItemId: string): Promise<number> {
+  async getSpentCentsForExpenseItem (expenseItemId: string): Promise<number> {
     const result = await this.model.aggregate({
       where: { expenseItemId },
       _sum: { amountCents: true }
@@ -252,7 +253,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
   /**
    * Total used from a specific income item, in cents
    */
-  async getUsedCentsForIncomeItem(incomeItemId: string): Promise<number> {
+  async getUsedCentsForIncomeItem (incomeItemId: string): Promise<number> {
     const result = await this.model.aggregate({
       where: { incomeItemId },
       _sum: { amountCents: true }
@@ -261,9 +262,37 @@ export class TransactionRepository extends BaseRepository<Transaction> {
   }
 
   /**
+   * Spent cents per expense item for many items in ONE grouped query.
+   * Items with no transactions are absent from the map (treat as 0).
+   */
+  async getSpentCentsByExpenseItems (expenseItemIds: string[]): Promise<Map<string, number>> {
+    if (expenseItemIds.length === 0) return new Map();
+    const rows = await prisma.transaction.groupBy({
+      by: ['expenseItemId'],
+      where: { expenseItemId: { in: expenseItemIds } },
+      _sum: { amountCents: true }
+    });
+    return new Map(rows.map((r) => [r.expenseItemId!, r._sum.amountCents ?? 0]));
+  }
+
+  /**
+   * Used cents per income item for many items in ONE grouped query.
+   * Items with no transactions are absent from the map (treat as 0).
+   */
+  async getUsedCentsByIncomeItems (incomeItemIds: string[]): Promise<Map<string, number>> {
+    if (incomeItemIds.length === 0) return new Map();
+    const rows = await prisma.transaction.groupBy({
+      by: ['incomeItemId'],
+      where: { incomeItemId: { in: incomeItemIds } },
+      _sum: { amountCents: true }
+    });
+    return new Map(rows.map((r) => [r.incomeItemId!, r._sum.amountCents ?? 0]));
+  }
+
+  /**
    * Get transaction summary (totals by type)
    */
-  async getTransactionSummary(
+  async getTransactionSummary (
     userId: string,
     year?: number,
     month?: number
@@ -305,7 +334,6 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       netBalance: fromCents(incomeCents - expenseCents)
     };
   }
-
 }
 
 export const transactionRepository = new TransactionRepository();

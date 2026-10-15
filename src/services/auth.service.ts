@@ -6,13 +6,12 @@ import { type RegisterRequestDto, type LoginRequestDto } from '../dto/request/au
 import { type AuthResponseDto, type LogoutResponseDto } from '../dto/response/auth.dto';
 import { blacklistToken, isTokenBlacklisted } from '../utils/tokenUtils';
 import { logger } from '../config/logger';
+import { getJwtSecret, getJwtExpiresIn, JWT_ALGORITHM } from '../config/env';
 import {
   InvalidCredentialsError,
   AccountDeactivatedError,
-  UserNotFoundError,
   UserAlreadyExistsError,
   TokenBlacklistedError,
-  SessionRevokedError,
   SessionAlreadyActiveError
 } from '../errors/AuthErrors';
 
@@ -22,6 +21,12 @@ import {
  * fresh login is allowed again — this prevents permanent lockout when a user
  * closes the app without logging out. Configurable via env.
  */
+/**
+ * bcrypt work factor for NEW hashes. Existing hashes keep their own cost
+ * (it's encoded in the hash), so raising this needs no migration.
+ */
+const BCRYPT_ROUNDS = 12;
+
 const SESSION_INACTIVITY_WINDOW_MIN = parseInt(
   process.env.SESSION_INACTIVITY_WINDOW_MIN ?? '20',
   10
@@ -60,7 +65,7 @@ export class AuthService {
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
     // Create user
     const user = await userRepository.create({
@@ -79,7 +84,7 @@ export class AuthService {
     // Generate JWT token bound to the session
     const { token, expiresIn } = this.generateToken(userId, user.email, sessionId);
 
-    logger.info(`New user registered: ${user.email}`);
+    logger.info(`New user registered: ${userId}`);
 
     return {
       token,
@@ -105,8 +110,13 @@ export class AuthService {
       throw new InvalidCredentialsError();
     }
 
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    // Verify password. Passwords used to be trimmed on register AND login;
+    // new ones are stored exactly as typed. Fall back to the trimmed form so
+    // accounts created under the old rule can still sign in.
+    let isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid && password.trim() !== password) {
+      isPasswordValid = await bcrypt.compare(password.trim(), user.password);
+    }
     if (!isPasswordValid) {
       throw new InvalidCredentialsError();
     }
@@ -122,7 +132,7 @@ export class AuthService {
     // (used within the inactivity window). The user must log out there — or let
     // that session go idle — before signing in again.
     if (isSessionActive((user as any).sessionId, (user as any).sessionLastActivityAt)) {
-      logger.info(`Login blocked, session already active: ${user.email}`);
+      logger.info(`Login blocked, session already active: ${userId}`);
       throw new SessionAlreadyActiveError();
     }
 
@@ -134,7 +144,7 @@ export class AuthService {
     // Generate JWT token bound to the session
     const { token, expiresIn } = this.generateToken(userId, user.email, sessionId);
 
-    logger.info(`User logged in: ${user.email}`);
+    logger.info(`User logged in: ${userId}`);
 
     return {
       token,
@@ -168,55 +178,13 @@ export class AuthService {
   }
 
   /**
-   * Verify token and get user
-   */
-  async verifyToken (token: string): Promise<any> {
-    // Check if token is blacklisted
-    const isBlacklisted = await isTokenBlacklisted(token);
-    if (isBlacklisted) {
-      throw new TokenBlacklistedError();
-    }
-
-    // Verify JWT
-    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
-    const decoded = jwt.verify(token, jwtSecret) as any;
-
-    // Get user from database
-    const user = await userRepository.findByIdWithoutPassword(decoded.userId);
-    if (!user) {
-      throw new UserNotFoundError();
-    }
-
-    if (!user.isActive) {
-      throw new AccountDeactivatedError('User account is deactivated');
-    }
-
-    // Single-session: the token is only valid for the user's current session.
-    if (decoded.sid !== (user as any).sessionId) {
-      throw new SessionRevokedError();
-    }
-
-    return {
-      userId: (user as any).id,
-      email: user.email,
-      role: user.role
-    };
-  }
-
-  /**
-   * Generate JWT token
-   */
-  /**
    * Generate JWT token
    */
   private generateToken (userId: string, email: string, sessionId: string): { token: string, expiresIn: number } {
-    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
-    const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '7d';
-
     const token = jwt.sign(
       { userId, email, id: userId, sid: sessionId },
-      jwtSecret,
-      { expiresIn: jwtExpiresIn } as jwt.SignOptions
+      getJwtSecret(),
+      { expiresIn: getJwtExpiresIn(), algorithm: JWT_ALGORITHM } as jwt.SignOptions
     );
 
     // Decode to get expiration time

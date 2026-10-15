@@ -3,6 +3,7 @@ import prisma from '../../config/database';
 import { logger } from '../../config/logger';
 import { budgetRepository } from '../../repositories/budget.repository';
 import { accountRepository } from '../../repositories/account.repository';
+import { BudgetNotFoundError, InvalidAccountReferenceError } from '../../errors/DomainErrors';
 import { NoTransactionsFoundError, UnmappedPaymentSourceError } from '../../errors/XlsxImportErrors';
 import { toCents, fromCents } from '../../utils/money';
 import { balanceDeltaCents, balanceIncrement } from '../ledgerRules';
@@ -58,9 +59,8 @@ export class XlsxImportService {
     const { budgetId, transactions, incomeItems, expenseItems } = payload;
 
     // Verify the budget belongs to the user.
-    const budget = await budgetRepository.findById(budgetId);
-    if (!budget) { throw new Error('Budget not found'); }
-    if (budget.userId !== userId) { throw new Error('Unauthorized access to budget'); }
+    const budget = await budgetRepository.findByIdAndUser(budgetId, userId);
+    if (!budget) { throw new BudgetNotFoundError(); }
 
     // Resolve transaction accounts and gather every account id we'll touch.
     const resolvedTx = transactions.map((row) => ({ row, accountId: this.resolveAccountId(row, payload) }));
@@ -68,11 +68,10 @@ export class XlsxImportService {
       ...resolvedTx.map((r) => r.accountId),
       ...incomeItems.map((i) => i.accountId)
     ]);
-    for (const accountId of accountIds) {
-      const account = await accountRepository.findByIdAndUser(accountId, userId);
-      if (!account) {
-        throw new Error(`Account ${accountId} not found or does not belong to user`);
-      }
+    const owned = await accountRepository.findOwnedIds([...accountIds], userId);
+    const foreign = [...accountIds].find((accountId) => !owned.has(accountId));
+    if (foreign !== undefined) {
+      throw new InvalidAccountReferenceError(foreign);
     }
 
     // Idempotency: one stable hash per row; rows already imported are skipped.

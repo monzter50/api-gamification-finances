@@ -1,7 +1,7 @@
 import express from 'express';
 import { transactionController } from '../controllers/transaction.controller';
 import { xlsxImportController } from '../controllers/xlsxImport.controller';
-import { authenticateJWT } from './auth';
+import { authenticateJWT } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { xlsxUpload } from '../middleware/xlsxUpload';
 import {
@@ -9,7 +9,8 @@ import {
   updateTransactionValidation,
   transactionIdValidation,
   transactionQueryValidation,
-  monthlySummaryValidation
+  monthlySummaryValidation,
+  budgetBalanceValidation
 } from '../validators/transaction.validator';
 import { confirmXlsxValidation } from '../validators/xlsxImport.validator';
 
@@ -40,6 +41,8 @@ router.get(
 router.get(
   '/budget/:budgetId/balance',
   authenticateJWT,
+  budgetBalanceValidation,
+  validate,
   transactionController.getBudgetBalance.bind(transactionController)
 );
 
@@ -268,15 +271,14 @@ router.post(
  *                       type: array
  *                       description: Transactions created by this call (skipped rows excluded).
  *                       items: { type: string, format: uuid }
- *       400: { $ref: '#/components/responses/BadRequestError' }
- *       401: { $ref: '#/components/responses/UnauthorizedError' }
- *       403:
- *         description: Budget or an account does not belong to the user
+ *       400:
+ *         description: Validation failed, or a referenced account does not exist / belong to the user (INVALID_ACCOUNT_REFERENCE)
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
+ *       401: { $ref: '#/components/responses/UnauthorizedError' }
  *       404:
- *         description: Budget not found
+ *         description: Budget not found (or belongs to another user)
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }

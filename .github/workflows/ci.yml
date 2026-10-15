@@ -1,0 +1,52 @@
+# Quality + security gates on every push and PR.
+# Mirrors CLAUDE.md "Things to verify before declaring a backend change done".
+name: ci
+
+on:
+  push:
+    branches: [main, development]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    env:
+      # Dummy values: tests mock the DB; nothing here touches a real database.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
+      JWT_SECRET: ci-only-secret-not-used-anywhere-real-000000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn prisma generate
+      - run: yarn type-check
+      - run: yarn lint
+      - run: yarn test --run
+      - run: yarn build
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Runtime deps only — that's what ships in the Docker image (dev deps are
+      # pruned). Yarn 1 exits non-zero when advisories at/above --level exist.
+      - run: yarn audit --groups dependencies --level high
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

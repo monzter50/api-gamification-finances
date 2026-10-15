@@ -1,0 +1,7 @@
+{
+  // Lint-only project: same compiler options as the build, but includes test
+  // files (excluded from tsconfig.json so they never land in dist/).
+  "extends": "./tsconfig.json",
+  "include": ["src/**/*", "vitest.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}

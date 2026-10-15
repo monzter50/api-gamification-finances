@@ -1,8 +1,8 @@
 generator client {
   provider      = "prisma-client-js"
   // native                       = host architecture (local dev on macOS)
-  // debian-openssl-3.0.x         = node:20-slim on x86_64 hosts (CI, cloud Linux)
-  // linux-arm64-openssl-3.0.x    = node:20-slim on ARM64 (Apple Silicon, AWS Graviton)
+  // debian-openssl-3.0.x         = node:22-slim on x86_64 hosts (CI, cloud Linux)
+  // linux-arm64-openssl-3.0.x    = node:22-slim on ARM64 (Apple Silicon, AWS Graviton)
   binaryTargets = ["native", "debian-openssl-3.0.x", "linux-arm64-openssl-3.0.x"]
 }
 

@@ -1,27 +1,41 @@
 import { type Request, type Response, type NextFunction } from 'express';
 import { Prisma } from '@prisma/client';
 import { logger } from '../config/logger';
-import { AuthError } from '../errors/AuthErrors';
+import { AppError } from '../errors/AppError';
 
 interface CustomError extends Error {
   statusCode?: number
+  status?: number
   code?: string | number
   errorCode?: string
+  /** Set by http-errors / body-parser when the message is safe to show. */
+  expose?: boolean
+  type?: string
 }
 
 /**
- * Global error handler.
+ * Standard error envelope:
  *
- * Most errors should already be caught + mapped inside controllers using
- * typed errors like `AuthError`. This handler is the last-resort safety net:
- * it normalizes anything that escapes a controller into a consistent JSON
- * envelope and logs context for debugging.
+ *   { success: false, message, error, errorCode }
+ *
+ * `message` and `error` carry the same human-readable text — `message`
+ * matches `ApiResponse`, `error` is kept for clients written against the
+ * older shape. Branch on `errorCode` (stable) or the HTTP status, never on
+ * the text.
+ */
+const sendError = (res: Response, statusCode: number, message: string, errorCode: string, extra: Record<string, unknown> = {}): void => {
+  res.status(statusCode).json({ success: false, message, error: message, errorCode, ...extra });
+};
+
+/**
+ * Global error handler — the ONE place that turns errors into HTTP responses.
+ * Controllers and middleware forward errors with `next(error)`.
  *
  * Order of checks:
- *   1. Typed app errors (`AuthError` subclasses) → respect their statusCode
+ *   1. Typed app errors (`AppError` subclasses) → their statusCode + errorCode
  *   2. Prisma errors → map known codes to HTTP statuses
- *   3. JWT errors → 401
- *   4. Everything else → 500 (generic, hides internals from clients)
+ *   3. Body-parser / http-errors with `expose` (malformed JSON, payload too large)
+ *   4. Everything else → 500, internals hidden outside development
  */
 export const errorHandler = (
   err: CustomError,
@@ -29,63 +43,56 @@ export const errorHandler = (
   res: Response,
   _next: NextFunction
 ): void => {
-  logger.error('❌ Error:', {
+  const statusHint = err instanceof AppError ? err.statusCode : (err.statusCode ?? err.status ?? 500);
+  const logContext = {
     message: err.message,
     name: err.name,
     code: err.code,
-    stack: err.stack,
-    url: req.url,
+    url: req.originalUrl,
     method: req.method,
     ip: req.ip,
-    userAgent: req.get('User-Agent')
-  });
+    userId: (req as Request & { user?: { userId?: string } }).user?.userId
+  };
+  if (statusHint >= 500) {
+    logger.error('❌ Error:', { ...logContext, stack: err.stack });
+  } else {
+    logger.warn('⚠️  Request failed:', { ...logContext, statusCode: statusHint });
+  }
 
   // 1. Typed application errors
-  if (err instanceof AuthError) {
-    res.status(err.statusCode).json({
-      success: false,
-      error: err.message,
-      errorCode: err.errorCode
-    });
+  if (err instanceof AppError) {
+    sendError(res, err.statusCode, err.message, err.errorCode);
     return;
   }
 
-  // 2. Prisma known request errors (see https://www.prisma.io/docs/orm/reference/error-reference)
+  // 2. Prisma errors (see https://www.prisma.io/docs/orm/reference/error-reference)
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     const { statusCode, message } = mapPrismaError(err);
-    res.status(statusCode).json({
-      success: false,
-      error: message,
-      errorCode: err.code
-    });
+    sendError(res, statusCode, message, err.code);
     return;
   }
-
   if (err instanceof Prisma.PrismaClientValidationError) {
-    res.status(400).json({
-      success: false,
-      error: 'Invalid query parameters'
-    });
+    sendError(res, 400, 'Invalid query parameters', 'INVALID_QUERY');
     return;
   }
 
-  // 3. JWT errors (thrown by jsonwebtoken's verify)
-  if (err.name === 'JsonWebTokenError') {
-    res.status(401).json({ success: false, error: 'Token inválido' });
-    return;
-  }
-  if (err.name === 'TokenExpiredError') {
-    res.status(401).json({ success: false, error: 'Token expirado' });
-    return;
-  }
-
-  // 4. Fallback — never leak the original message in production
+  // 3. Client errors raised by Express middleware (body-parser etc.)
   const isDev = process.env.NODE_ENV === 'development';
-  res.status(err.statusCode ?? 500).json({
-    success: false,
-    error: isDev ? (err.message || 'Internal server error') : 'Internal server error',
-    ...(isDev && { stack: err.stack })
-  });
+  if (statusHint >= 400 && statusHint < 500) {
+    const message = err.expose === true ? err.message : 'Bad request';
+    const errorCode = err.type === 'entity.too.large' ? 'PAYLOAD_TOO_LARGE' : 'BAD_REQUEST';
+    sendError(res, statusHint, message, errorCode);
+    return;
+  }
+
+  // 4. Fallback — never leak the original message or stack outside development
+  sendError(
+    res,
+    500,
+    isDev ? (err.message || 'Internal server error') : 'Internal server error',
+    'INTERNAL_ERROR',
+    isDev ? { stack: err.stack } : {}
+  );
 };
 
 /**

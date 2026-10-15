@@ -1,6 +1,7 @@
 import { BaseRepository } from './base.repository';
 import { type Account } from '@prisma/client';
 import { toCents, fromCents } from '../utils/money';
+import prisma from '../config/database';
 
 /**
  * `balanceCents` is the source of truth. Serve `balance` derived from it so
@@ -10,14 +11,14 @@ const withExactBalance = <T extends Account | null>(account: T): T =>
   account ? { ...account, balance: fromCents(account.balanceCents) } : account;
 
 export class AccountRepository extends BaseRepository<Account> {
-  constructor() {
+  constructor () {
     super('account');
   }
 
   /**
    * Find all accounts for a user
    */
-  async findByUser(userId: string): Promise<Account[]> {
+  async findByUser (userId: string): Promise<Account[]> {
     const accounts: Account[] = await this.model.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' }
@@ -28,7 +29,7 @@ export class AccountRepository extends BaseRepository<Account> {
   /**
    * Find account by ID and verify user ownership
    */
-  async findByIdAndUser(id: string, userId: string): Promise<Account | null> {
+  async findByIdAndUser (id: string, userId: string): Promise<Account | null> {
     return withExactBalance(await this.model.findFirst({
       where: { id, userId }
     }));
@@ -37,7 +38,7 @@ export class AccountRepository extends BaseRepository<Account> {
   /**
    * Create a new account for a user
    */
-  async createAccount(
+  async createAccount (
     userId: string,
     data: {
       name: string;
@@ -64,7 +65,7 @@ export class AccountRepository extends BaseRepository<Account> {
   /**
    * Update account by ID (only if belongs to user)
    */
-  async updateByIdAndUser(
+  async updateByIdAndUser (
     id: string,
     userId: string,
     data: Partial<Omit<Account, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'balanceCents'>>
@@ -92,7 +93,7 @@ export class AccountRepository extends BaseRepository<Account> {
   /**
    * Delete account by ID (only if belongs to user)
    */
-  async deleteByIdAndUser(id: string, userId: string): Promise<Account | null> {
+  async deleteByIdAndUser (id: string, userId: string): Promise<Account | null> {
     const exists = await this.model.findFirst({ where: { id, userId } });
     if (!exists) return null;
 
@@ -100,14 +101,24 @@ export class AccountRepository extends BaseRepository<Account> {
   }
 
   /**
+   * Of the given account IDs, return the ones owned by `userId` — one query
+   * instead of one lookup per ID.
+   */
+  async findOwnedIds (ids: string[], userId: string): Promise<Set<string>> {
+    if (ids.length === 0) return new Set();
+    const rows = await prisma.account.findMany({
+      where: { id: { in: ids }, userId },
+      select: { id: true }
+    });
+    return new Set(rows.map((r) => r.id));
+  }
+
+  /**
    * Check if account has transactions
    */
-  async hasTransactions(id: string): Promise<boolean> {
-    const count = await this.model.findFirst({
-      where: { id },
-      select: { _count: { select: { transactions: true } } }
-    });
-    return (count as any)?._count?.transactions > 0;
+  async hasTransactions (id: string): Promise<boolean> {
+    const count = await prisma.transaction.count({ where: { accountId: id } });
+    return count > 0;
   }
 }
 

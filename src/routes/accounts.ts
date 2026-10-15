@@ -1,6 +1,6 @@
 import express from 'express';
 import { accountController } from '../controllers/account.controller';
-import { authenticateJWT } from './auth';
+import { authenticateJWT } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import {
   createAccountValidation,
