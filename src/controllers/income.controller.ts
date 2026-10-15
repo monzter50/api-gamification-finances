@@ -16,7 +16,7 @@ export class IncomeController {
    */
   async getIncomeItems (req: BudgetRequest, res: Response): Promise<void> {
     try {
-      const id = req.params.id as string;
+      const id = req.params.id!;
       const userId = req.user!.userId;
       const page = req.query.page ? parseInt(req.query.page as string) : 1;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
@@ -57,7 +57,7 @@ export class IncomeController {
     }
 
     try {
-      const id = req.params.id as string;
+      const id = req.params.id!;
       const userId = req.user!.userId;
       const { description, amount, type, accountId } = req.body;
 
@@ -95,7 +95,7 @@ export class IncomeController {
     }
 
     try {
-      const id = req.params.id as string;
+      const id = req.params.id!;
       const userId = req.user!.userId;
       const { incomeItems } = req.body;
 
@@ -133,8 +133,8 @@ export class IncomeController {
     }
 
     try {
-      const id = req.params.id as string;
-      const incomeId = req.params.incomeId as string;
+      const id = req.params.id!;
+      const incomeId = req.params.incomeId!;
       const userId = req.user!.userId;
       const { description, amount, type, accountId } = req.body;
 
@@ -166,8 +166,8 @@ export class IncomeController {
    */
   async deleteIncomeItem (req: BudgetRequest, res: Response): Promise<void> {
     try {
-      const id = req.params.id as string;
-      const incomeId = req.params.incomeId as string;
+      const id = req.params.id!;
+      const incomeId = req.params.incomeId!;
       const userId = req.user!.userId;
 
       const result = await budgetService.removeIncomeItem(id, userId, incomeId);

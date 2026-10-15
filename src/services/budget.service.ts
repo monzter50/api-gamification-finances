@@ -18,7 +18,7 @@ export class BudgetService {
   /**
    * Get all budgets for a user with optional filters
    */
-  async getUserBudgets(
+  async getUserBudgets (
     userId: string,
     filters?: { year?: number, month?: number }
   ): Promise<EnhancedBudget[]> {
@@ -29,7 +29,7 @@ export class BudgetService {
   /**
    * Get budget by ID
    */
-  async getBudgetById(budgetId: string, userId: string): Promise<EnhancedBudget> {
+  async getBudgetById (budgetId: string, userId: string): Promise<EnhancedBudget> {
     const budget = await budgetRepository.findById(budgetId);
 
     if (!budget) {
@@ -47,7 +47,7 @@ export class BudgetService {
   /**
    * Get budget by period
    */
-  async getBudgetByPeriod(
+  async getBudgetByPeriod (
     userId: string,
     year: number,
     month: number
@@ -58,7 +58,7 @@ export class BudgetService {
   /**
    * Create new budget
    */
-  async createBudget(data: {
+  async createBudget (data: {
     userId: string
     year: number
     month: number
@@ -119,7 +119,7 @@ export class BudgetService {
    *
    * See Strategy B design note.
    */
-  async updateBudget(
+  async updateBudget (
     budgetId: string,
     userId: string,
     data: {
@@ -163,7 +163,7 @@ export class BudgetService {
    *   - Transactions are NEVER copied — they point at the source items, and
    *     duplicating them would corrupt historical history.
    */
-  async duplicateBudget(
+  async duplicateBudget (
     sourceBudgetId: string,
     userId: string,
     targetYear: number,
@@ -241,7 +241,7 @@ export class BudgetService {
   /**
    * Delete budget
    */
-  async deleteBudget(budgetId: string, userId: string): Promise<void> {
+  async deleteBudget (budgetId: string, userId: string): Promise<void> {
     // Verify budget exists and belongs to user
     await this.getBudgetById(budgetId, userId);
 
@@ -260,7 +260,7 @@ export class BudgetService {
   /**
    * Add/Update income items
    */
-  async updateIncomeItems(
+  async updateIncomeItems (
     budgetId: string,
     userId: string,
     incomeItems: IncomeItemInput[]
@@ -294,7 +294,7 @@ export class BudgetService {
   /**
    * Add single income item (Option B: returns { item, totals })
    */
-  async addIncomeItem(
+  async addIncomeItem (
     budgetId: string,
     userId: string,
     incomeItem: IncomeItemInput
@@ -325,7 +325,7 @@ export class BudgetService {
   /**
    * Remove income item (Option B: returns { totals } only)
    */
-  async removeIncomeItem(
+  async removeIncomeItem (
     budgetId: string,
     userId: string,
     itemId: string
@@ -350,7 +350,7 @@ export class BudgetService {
   /**
    * Add/Update expense items
    */
-  async updateExpenseItems(
+  async updateExpenseItems (
     budgetId: string,
     userId: string,
     expenseItems: ExpenseItemInput[]
@@ -378,7 +378,7 @@ export class BudgetService {
   /**
    * Add single expense item (Option B: returns { item, totals })
    */
-  async addExpenseItem(
+  async addExpenseItem (
     budgetId: string,
     userId: string,
     expenseItem: ExpenseItemInput
@@ -406,7 +406,7 @@ export class BudgetService {
   /**
    * Remove expense item (Option B: returns { totals } only)
    */
-  async removeExpenseItem(
+  async removeExpenseItem (
     budgetId: string,
     userId: string,
     itemId: string
@@ -431,14 +431,14 @@ export class BudgetService {
   /**
    * Get budget statistics for a user
    */
-  async getUserBudgetStats(userId: string) {
+  async getUserBudgetStats (userId: string) {
     return await budgetRepository.getUserBudgetStats(userId);
   }
 
   /**
    * Get paginated income items
    */
-  async getPaginatedIncomeItems(
+  async getPaginatedIncomeItems (
     budgetId: string,
     userId: string,
     page: number = 1,
@@ -453,7 +453,7 @@ export class BudgetService {
   /**
    * Get paginated expense items
    */
-  async getPaginatedExpenseItems(
+  async getPaginatedExpenseItems (
     budgetId: string,
     userId: string,
     page: number = 1,
@@ -468,7 +468,7 @@ export class BudgetService {
   /**
    * Update a single income item (Option B: returns { item, totals })
    */
-  async updateIncomeItem(
+  async updateIncomeItem (
     budgetId: string,
     userId: string,
     incomeId: string,
@@ -504,7 +504,7 @@ export class BudgetService {
   /**
    * Update a single expense item (Option B: returns { item, totals })
    */
-  async updateExpenseItem(
+  async updateExpenseItem (
     budgetId: string,
     userId: string,
     expenseId: string,
@@ -536,7 +536,7 @@ export class BudgetService {
    * so callers can map it to a 400 response. Deduplicates the same check
    * across income add/update/replace flows.
    */
-  private async assertAccountBelongsToUser(accountId: string, userId: string): Promise<void> {
+  private async assertAccountBelongsToUser (accountId: string, userId: string): Promise<void> {
     const account = await accountRepository.findByIdAndUser(accountId, userId);
     if (!account) {
       throw new Error(`Account ${accountId} not found or does not belong to user`);
@@ -546,7 +546,7 @@ export class BudgetService {
   /**
    * Validate single item
    */
-  private validateItem(
+  private validateItem (
     item: IncomeItemInput | ExpenseItemInput,
     type: 'income' | 'expense'
   ): void {
@@ -591,7 +591,7 @@ export class BudgetService {
   /**
    * Validate multiple items
    */
-  private validateItems(
+  private validateItems (
     items: Array<IncomeItemInput | ExpenseItemInput>,
     type: 'income' | 'expense'
   ): void {

@@ -5,7 +5,7 @@ import { accountService } from '../services/account.service';
 import { type AccountRequest, type CreateAccountBody, type UpdateAccountBody } from '../types/account.types';
 
 export class AccountController {
-  async getUserAccounts(req: AccountRequest, res: Response): Promise<void> {
+  async getUserAccounts (req: AccountRequest, res: Response): Promise<void> {
     try {
       const userId = req.user!.userId;
       const accounts = await accountService.getUserAccounts(userId);
@@ -46,7 +46,7 @@ export class AccountController {
     }
   }
 
-  async getAccountById(req: AccountRequest, res: Response): Promise<void> {
+  async getAccountById (req: AccountRequest, res: Response): Promise<void> {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({ success: false, errors: errors.array() });
@@ -72,7 +72,7 @@ export class AccountController {
     }
   }
 
-  async createAccount(req: AccountRequest<CreateAccountBody>, res: Response): Promise<void> {
+  async createAccount (req: AccountRequest<CreateAccountBody>, res: Response): Promise<void> {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({ success: false, errors: errors.array() });
@@ -92,7 +92,7 @@ export class AccountController {
     }
   }
 
-  async updateAccount(req: AccountRequest<UpdateAccountBody>, res: Response): Promise<void> {
+  async updateAccount (req: AccountRequest<UpdateAccountBody>, res: Response): Promise<void> {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({ success: false, errors: errors.array() });
@@ -118,7 +118,7 @@ export class AccountController {
     }
   }
 
-  async deleteAccount(req: AccountRequest, res: Response): Promise<void> {
+  async deleteAccount (req: AccountRequest, res: Response): Promise<void> {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       res.status(400).json({ success: false, errors: errors.array() });

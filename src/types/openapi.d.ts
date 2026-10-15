@@ -4,271 +4,253 @@
  */
 
 export interface paths {
-    "/api/auth/register": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
+  '/api/auth/register': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
          * Register a new user
          * @description Creates a new user account and returns a JWT for immediate use — the
          *     client does not need to call `/auth/login` after a successful register.
          *     Email is normalized (lowercased + trimmed) by validation before storage.
          */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["RegisterRequest"];
-                };
-            };
-            responses: {
-                /** @description User registered successfully */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["RegisterResponse"];
-                    };
-                };
-                400: components["responses"]["BadRequestError"];
-                /** @description A user with this email already exists */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        /**
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['RegisterRequest'];
+        };
+      };
+      responses: {
+        /** @description User registered successfully */
+        201: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': components['schemas']['RegisterResponse'];
+          };
+        };
+        400: components['responses']['BadRequestError'];
+        /** @description A user with this email already exists */
+        409: {
+          headers: Record<string, unknown>;
+          content: {
+            /**
                          * @example {
                          *       "success": false,
                          *       "message": "User with this email already exists",
                          *       "errorCode": "USER_ALREADY_EXISTS"
                          *     }
                          */
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
+            'application/json': components['schemas']['Error'];
+          };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+      };
     };
-    "/api/auth/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/auth/login': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
          * Log in with email + password
          * @description Returns a JWT on success. **Both "user not found" and "wrong password"
          *     intentionally return 401 with the same `INVALID_CREDENTIALS` errorCode**
          *     to avoid leaking which emails are registered. Do not surface a
          *     different UX for the two cases on the frontend.
          */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["LoginRequest"];
-                };
-            };
-            responses: {
-                /** @description Login successful */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["LoginResponse"];
-                    };
-                };
-                400: components["responses"]["BadRequestError"];
-                /** @description Invalid credentials (user not found OR wrong password) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        /**
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['LoginRequest'];
+        };
+      };
+      responses: {
+        /** @description Login successful */
+        200: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': components['schemas']['LoginResponse'];
+          };
+        };
+        400: components['responses']['BadRequestError'];
+        /** @description Invalid credentials (user not found OR wrong password) */
+        401: {
+          headers: Record<string, unknown>;
+          content: {
+            /**
                          * @example {
                          *       "success": false,
                          *       "message": "Invalid email or password",
                          *       "errorCode": "INVALID_CREDENTIALS"
                          *     }
                          */
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Account is deactivated */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        /**
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Account is deactivated */
+        403: {
+          headers: Record<string, unknown>;
+          content: {
+            /**
                          * @example {
                          *       "success": false,
                          *       "message": "Account is deactivated. Please contact support.",
                          *       "errorCode": "ACCOUNT_DEACTIVATED"
                          *     }
                          */
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /**
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /**
                  * @description Single active session — the user already has a session that has
                  *     been active within the inactivity window. They must log out of the
                  *     other session (or let it go idle) before signing in again.
                  */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        /**
+        409: {
+          headers: Record<string, unknown>;
+          content: {
+            /**
                          * @example {
                          *       "success": false,
                          *       "message": "You already have an active session on another device. Log out there or wait a few minutes, then try again.",
                          *       "errorCode": "SESSION_ALREADY_ACTIVE"
                          *     }
                          */
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
+            'application/json': components['schemas']['Error'];
+          };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+      };
     };
-    "/api/auth/logout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/auth/logout': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
          * Log out (blacklist the current token)
          * @description Adds the bearer token to a DB-backed blacklist so it cannot be reused,
          *     even before its natural expiry. Subsequent requests with the same
          *     token receive 401 `TOKEN_BLACKLISTED` from `authenticateJWT`.
          */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Logged out successfully; token has been invalidated */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["LogoutResponse"];
-                    };
-                };
-                401: components["responses"]["UnauthorizedError"];
-            };
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Logged out successfully; token has been invalidated */
+        200: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': components['schemas']['LogoutResponse'];
+          };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+        401: components['responses']['UnauthorizedError'];
+      };
     };
-    "/api/auth/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/auth/me': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
          * Get the authenticated user's profile
          * @description Returns the full profile of the user identified by the bearer token.
          *     Use this on app startup to hydrate the auth store after a page refresh.
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Profile retrieved successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example true */
-                            success?: boolean;
-                        } & components["schemas"]["UserProfile"];
-                    };
-                };
-                401: components["responses"]["UnauthorizedError"];
-                /** @description Authenticated user no longer exists in the database */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Profile retrieved successfully */
+        200: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': {
+              /** @example true */
+              success?: boolean;
+            } & components['schemas']['UserProfile'];
+          };
         };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+        401: components['responses']['UnauthorizedError'];
+        /** @description Authenticated user no longer exists in the database */
+        404: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
     };
-    "/api/budgets/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/budgets/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
          * Update budget scalar fields (year, month)
          * @description Updates ONLY the budget's own scalar fields. Income and expense items
          *     **must** be managed via the dedicated nested endpoints:
@@ -280,70 +262,68 @@ export interface paths {
          *     Rationale: bulk-replacing items would delete rows referenced by
          *     Transaction.incomeItemId / expenseItemId, breaking transaction history.
          */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    /**
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          /**
                      * @example {
                      *       "year": 2026,
                      *       "month": 3
                      *     }
                      */
-                    "application/json": {
-                        /** @example 2026 */
-                        year?: number;
-                        /** @example 3 */
-                        month?: number;
-                    };
-                };
-            };
-            responses: {
-                /** @description Budget updated successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example true */
-                            success?: boolean;
-                            /** @description Updated budget */
-                            data?: Record<string, never>;
-                            /** @example Budget updated successfully */
-                            message?: string;
-                        };
-                    };
-                };
-                400: components["responses"]["BadRequestError"];
-                401: components["responses"]["UnauthorizedError"];
-                404: components["responses"]["NotFoundError"];
-            };
+          'application/json': {
+            /** @example 2026 */
+            year?: number;
+            /** @example 3 */
+            month?: number;
+          };
         };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+      };
+      responses: {
+        /** @description Budget updated successfully */
+        200: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': {
+              /** @example true */
+              success?: boolean;
+              /** @description Updated budget */
+              data?: Record<string, never>;
+              /** @example Budget updated successfully */
+              message?: string;
+            };
+          };
+        };
+        400: components['responses']['BadRequestError'];
+        401: components['responses']['UnauthorizedError'];
+        404: components['responses']['NotFoundError'];
+      };
     };
-    "/api/budgets/{id}/duplicate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/budgets/{id}/duplicate': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
          * Duplicate a budget into a new (year, month)
          * @description Clones the source budget's `incomeItems` and `expenseItems` into a
          *     brand-new budget at the target `year`/`month`. **Transactions are NOT
@@ -361,139 +341,131 @@ export interface paths {
          *
          *     Items are NOT accepted in the body — pass only the target period.
          */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Source budget ID */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    /**
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description Source budget ID */
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          /**
                      * @example {
                      *       "year": 2026,
                      *       "month": 6
                      *     }
                      */
-                    "application/json": {
-                        /** @example 2026 */
-                        year: number;
-                        /**
+          'application/json': {
+            /** @example 2026 */
+            year: number;
+            /**
                          * @description 0-indexed (0 = January, 11 = December)
                          * @example 6
                          */
-                        month: number;
-                    };
-                };
+            month: number;
+          };
+        };
+      };
+      responses: {
+        /** @description Budget duplicated successfully */
+        201: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': {
+              /** @example true */
+              success?: boolean;
+              /** @description The newly created budget with cloned incomeItems and expenseItems */
+              data?: Record<string, never>;
+              /** @example Budget duplicated successfully */
+              message?: string;
             };
-            responses: {
-                /** @description Budget duplicated successfully */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example true */
-                            success?: boolean;
-                            /** @description The newly created budget with cloned incomeItems and expenseItems */
-                            data?: Record<string, never>;
-                            /** @example Budget duplicated successfully */
-                            message?: string;
-                        };
-                    };
-                };
-                400: components["responses"]["BadRequestError"];
-                401: components["responses"]["UnauthorizedError"];
-                /** @description Source budget does not belong to the caller */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                404: components["responses"]["NotFoundError"];
-                /** @description A budget already exists for the target period */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        /**
+          };
+        };
+        400: components['responses']['BadRequestError'];
+        401: components['responses']['UnauthorizedError'];
+        /** @description Source budget does not belong to the caller */
+        403: {
+          headers: Record<string, unknown>;
+          content?: never;
+        };
+        404: components['responses']['NotFoundError'];
+        /** @description A budget already exists for the target period */
+        409: {
+          headers: Record<string, unknown>;
+          content: {
+            /**
                          * @example {
                          *       "success": false,
                          *       "error": "Budget for 2026-7 already exists",
                          *       "statusCode": 409
                          *     }
                          */
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
+            'application/json': components['schemas']['Error'];
+          };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+      };
     };
-    "/api/budgets/{id}/income": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/budgets/{id}/income': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
          * List income items (paginated)
          * @description Returns the paginated income items for the given budget, plus the user's accounts (useful to resolve `accountId`).
          */
-        get: {
-            parameters: {
-                query?: {
-                    page?: number;
-                    limit?: number;
-                };
-                header?: never;
-                path: {
-                    /** @description Budget ID */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Income items retrieved successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["PaginatedIncomeResponse"];
-                    };
-                };
-                401: components["responses"]["UnauthorizedError"];
-                404: components["responses"]["NotFoundError"];
-            };
+    get: {
+      parameters: {
+        query?: {
+          page?: number;
+          limit?: number;
         };
-        put?: never;
-        /** Add a single income item */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    /**
+        header?: never;
+        path: {
+          /** @description Budget ID */
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Income items retrieved successfully */
+        200: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': components['schemas']['PaginatedIncomeResponse'];
+          };
+        };
+        401: components['responses']['UnauthorizedError'];
+        404: components['responses']['NotFoundError'];
+      };
+    };
+    put?: never;
+    /** Add a single income item */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          /**
                      * @example {
                      *       "description": "Monthly salary",
                      *       "amount": 25000,
@@ -501,386 +473,352 @@ export interface paths {
                      *       "accountId": "acc_01HX5A2B3C4D5E6F"
                      *     }
                      */
-                    "application/json": components["schemas"]["AddIncomeItemRequest"];
-                };
-            };
-            responses: {
-                /** @description Income item added successfully */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["IncomeItemMutationResponse"];
-                    };
-                };
-                400: components["responses"]["BadRequestError"];
-                401: components["responses"]["UnauthorizedError"];
-                /** @description Unauthorized access to budget */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                404: components["responses"]["NotFoundError"];
-            };
+          'application/json': components['schemas']['AddIncomeItemRequest'];
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
+      };
+      responses: {
+        /** @description Income item added successfully */
+        201: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': components['schemas']['IncomeItemMutationResponse'];
+          };
+        };
+        400: components['responses']['BadRequestError'];
+        401: components['responses']['UnauthorizedError'];
+        /** @description Unauthorized access to budget */
+        403: {
+          headers: Record<string, unknown>;
+          content?: never;
+        };
+        404: components['responses']['NotFoundError'];
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
          * Replace all income items for this budget
          * @description Overwrites the full income list. To add/update a single item, prefer POST or PUT.
          */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["UpdateIncomeItemsRequest"];
-                };
-            };
-            responses: {
-                /** @description Income items updated successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BudgetMutationResponse"];
-                    };
-                };
-                400: components["responses"]["BadRequestError"];
-                401: components["responses"]["UnauthorizedError"];
-                /** @description Unauthorized access to budget */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                404: components["responses"]["NotFoundError"];
-            };
+    patch: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
         };
-        trace?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['UpdateIncomeItemsRequest'];
+        };
+      };
+      responses: {
+        /** @description Income items updated successfully */
+        200: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': components['schemas']['BudgetMutationResponse'];
+          };
+        };
+        400: components['responses']['BadRequestError'];
+        401: components['responses']['UnauthorizedError'];
+        /** @description Unauthorized access to budget */
+        403: {
+          headers: Record<string, unknown>;
+          content?: never;
+        };
+        404: components['responses']['NotFoundError'];
+      };
     };
-    "/api/budgets/{id}/income/{incomeId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Update a single income item */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Budget ID */
-                    id: string;
-                    /** @description Income item ID */
-                    incomeId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["AddIncomeItemRequest"];
-                };
-            };
-            responses: {
-                /** @description Income item updated successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["IncomeItemMutationResponse"];
-                    };
-                };
-                400: components["responses"]["BadRequestError"];
-                401: components["responses"]["UnauthorizedError"];
-                /** @description Unauthorized access to budget */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                404: components["responses"]["NotFoundError"];
-            };
-        };
-        post?: never;
-        /** Delete a single income item */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                    incomeId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Income item deleted successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ItemRemovalResponse"];
-                    };
-                };
-                401: components["responses"]["UnauthorizedError"];
-                /** @description Unauthorized access to budget */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                404: components["responses"]["NotFoundError"];
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    trace?: never;
+  };
+  '/api/budgets/{id}/income/{incomeId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/budgets/{id}/expense": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    get?: never;
+    /** Update a single income item */
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description Budget ID */
+          id: string;
+          /** @description Income item ID */
+          incomeId: string;
         };
-        /** List expense items (paginated) */
-        get: {
-            parameters: {
-                query?: {
-                    page?: number;
-                    limit?: number;
-                };
-                header?: never;
-                path: {
-                    /** @description Budget ID */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Expense items retrieved successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["PaginatedExpenseResponse"];
-                    };
-                };
-                401: components["responses"]["UnauthorizedError"];
-                404: components["responses"]["NotFoundError"];
-            };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['AddIncomeItemRequest'];
         };
-        put?: never;
-        /** Add a single expense item */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    /**
+      };
+      responses: {
+        /** @description Income item updated successfully */
+        200: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': components['schemas']['IncomeItemMutationResponse'];
+          };
+        };
+        400: components['responses']['BadRequestError'];
+        401: components['responses']['UnauthorizedError'];
+        /** @description Unauthorized access to budget */
+        403: {
+          headers: Record<string, unknown>;
+          content?: never;
+        };
+        404: components['responses']['NotFoundError'];
+      };
+    };
+    post?: never;
+    /** Delete a single income item */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+          incomeId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Income item deleted successfully */
+        200: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': components['schemas']['ItemRemovalResponse'];
+          };
+        };
+        401: components['responses']['UnauthorizedError'];
+        /** @description Unauthorized access to budget */
+        403: {
+          headers: Record<string, unknown>;
+          content?: never;
+        };
+        404: components['responses']['NotFoundError'];
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/budgets/{id}/expense': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List expense items (paginated) */
+    get: {
+      parameters: {
+        query?: {
+          page?: number;
+          limit?: number;
+        };
+        header?: never;
+        path: {
+          /** @description Budget ID */
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Expense items retrieved successfully */
+        200: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': components['schemas']['PaginatedExpenseResponse'];
+          };
+        };
+        401: components['responses']['UnauthorizedError'];
+        404: components['responses']['NotFoundError'];
+      };
+    };
+    put?: never;
+    /** Add a single expense item */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          /**
                      * @example {
                      *       "description": "Rent",
                      *       "amount": 1200,
                      *       "type": "Fixed"
                      *     }
                      */
-                    "application/json": components["schemas"]["AddExpenseItemRequest"];
-                };
-            };
-            responses: {
-                /** @description Expense item added successfully */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ExpenseItemMutationResponse"];
-                    };
-                };
-                400: components["responses"]["BadRequestError"];
-                401: components["responses"]["UnauthorizedError"];
-                /** @description Unauthorized access to budget */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                404: components["responses"]["NotFoundError"];
-            };
+          'application/json': components['schemas']['AddExpenseItemRequest'];
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
+      };
+      responses: {
+        /** @description Expense item added successfully */
+        201: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': components['schemas']['ExpenseItemMutationResponse'];
+          };
+        };
+        400: components['responses']['BadRequestError'];
+        401: components['responses']['UnauthorizedError'];
+        /** @description Unauthorized access to budget */
+        403: {
+          headers: Record<string, unknown>;
+          content?: never;
+        };
+        404: components['responses']['NotFoundError'];
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
          * Replace all expense items for this budget
          * @description Overwrites the full expense list. To add/update a single item, prefer POST or PUT.
          */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["UpdateExpenseItemsRequest"];
-                };
-            };
-            responses: {
-                /** @description Expense items updated successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BudgetMutationResponse"];
-                    };
-                };
-                400: components["responses"]["BadRequestError"];
-                401: components["responses"]["UnauthorizedError"];
-                /** @description Unauthorized access to budget */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                404: components["responses"]["NotFoundError"];
-            };
+    patch: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
         };
-        trace?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['UpdateExpenseItemsRequest'];
+        };
+      };
+      responses: {
+        /** @description Expense items updated successfully */
+        200: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': components['schemas']['BudgetMutationResponse'];
+          };
+        };
+        400: components['responses']['BadRequestError'];
+        401: components['responses']['UnauthorizedError'];
+        /** @description Unauthorized access to budget */
+        403: {
+          headers: Record<string, unknown>;
+          content?: never;
+        };
+        404: components['responses']['NotFoundError'];
+      };
     };
-    "/api/budgets/{id}/expense/{expenseId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Update a single expense item */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Budget ID */
-                    id: string;
-                    /** @description Expense item ID */
-                    expenseId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["AddExpenseItemRequest"];
-                };
-            };
-            responses: {
-                /** @description Expense item updated successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ExpenseItemMutationResponse"];
-                    };
-                };
-                400: components["responses"]["BadRequestError"];
-                401: components["responses"]["UnauthorizedError"];
-                /** @description Unauthorized access to budget */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                404: components["responses"]["NotFoundError"];
-            };
-        };
-        post?: never;
-        /** Delete a single expense item */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                    expenseId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Expense item deleted successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ItemRemovalResponse"];
-                    };
-                };
-                401: components["responses"]["UnauthorizedError"];
-                /** @description Unauthorized access to budget */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                404: components["responses"]["NotFoundError"];
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    trace?: never;
+  };
+  '/api/budgets/{id}/expense/{expenseId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/transactions/import/xlsx/parse": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    get?: never;
+    /** Update a single expense item */
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          /** @description Budget ID */
+          id: string;
+          /** @description Expense item ID */
+          expenseId: string;
         };
-        get?: never;
-        put?: never;
-        /**
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['AddExpenseItemRequest'];
+        };
+      };
+      responses: {
+        /** @description Expense item updated successfully */
+        200: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': components['schemas']['ExpenseItemMutationResponse'];
+          };
+        };
+        400: components['responses']['BadRequestError'];
+        401: components['responses']['UnauthorizedError'];
+        /** @description Unauthorized access to budget */
+        403: {
+          headers: Record<string, unknown>;
+          content?: never;
+        };
+        404: components['responses']['NotFoundError'];
+      };
+    };
+    post?: never;
+    /** Delete a single expense item */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+          expenseId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Expense item deleted successfully */
+        200: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': components['schemas']['ItemRemovalResponse'];
+          };
+        };
+        401: components['responses']['UnauthorizedError'];
+        /** @description Unauthorized access to budget */
+        403: {
+          headers: Record<string, unknown>;
+          content?: never;
+        };
+        404: components['responses']['NotFoundError'];
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/transactions/import/xlsx/parse': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
          * Parse an uploaded .xlsx budget workbook (no DB writes)
          * @description Reads three sheets and returns the parsed rows for review — nothing is
          *     persisted:
@@ -893,138 +831,130 @@ export interface paths {
          *     Excel serial dates are converted to ISO. Max upload size is
          *     `MAX_UPLOAD_MB` (default 10).
          */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "multipart/form-data": {
-                        /**
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'multipart/form-data': {
+            /**
                          * Format: binary
                          * @description The .xlsx workbook.
                          */
-                        file: string;
-                    };
+            file: string;
+          };
+        };
+      };
+      responses: {
+        /** @description Workbook parsed successfully */
+        200: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': {
+              /** @example true */
+              success?: boolean;
+              message?: string;
+              data?: {
+                transactions?: Array<{
+                  /** @example 2026-04-15 */
+                  date?: string;
+                  /** @example 699 */
+                  amount?: number;
+                  /** @example telcel */
+                  vendor?: string;
+                  /** @enum {string} */
+                  type?: 'income' | 'expense';
+                  description?: string;
+                  /** @example Debits Cards / BBVA */
+                  paymentSource?: string;
+                }>;
+                incomeItems?: Array<{
+                  description?: string;
+                  amount?: number;
+                }>;
+                expenseItems?: Array<{
+                  description?: string;
+                  amount?: number;
+                  /** @enum {string} */
+                  type?: 'Fixed' | 'Variable';
+                }>;
+                paymentSources?: string[];
+                /** @description Transaction categories with no matching row in the Expenses sheet. Show them in the review step. */
+                unmatchedCategories?: string[];
+                counts?: {
+                  transactions?: number;
+                  incomeItems?: number;
+                  expenseItems?: number;
                 };
+              };
             };
-            responses: {
-                /** @description Workbook parsed successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example true */
-                            success?: boolean;
-                            message?: string;
-                            data?: {
-                                transactions?: {
-                                    /** @example 2026-04-15 */
-                                    date?: string;
-                                    /** @example 699 */
-                                    amount?: number;
-                                    /** @example telcel */
-                                    vendor?: string;
-                                    /** @enum {string} */
-                                    type?: "income" | "expense";
-                                    description?: string;
-                                    /** @example Debits Cards / BBVA */
-                                    paymentSource?: string;
-                                }[];
-                                incomeItems?: {
-                                    description?: string;
-                                    amount?: number;
-                                }[];
-                                expenseItems?: {
-                                    description?: string;
-                                    amount?: number;
-                                    /** @enum {string} */
-                                    type?: "Fixed" | "Variable";
-                                }[];
-                                paymentSources?: string[];
-                                /** @description Transaction categories with no matching row in the Expenses sheet. Show them in the review step. */
-                                unmatchedCategories?: string[];
-                                counts?: {
-                                    transactions?: number;
-                                    incomeItems?: number;
-                                    expenseItems?: number;
-                                };
-                            };
-                        };
-                    };
-                };
-                401: components["responses"]["UnauthorizedError"];
-                /** @description File exceeds the upload size limit */
-                413: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        /**
+          };
+        };
+        401: components['responses']['UnauthorizedError'];
+        /** @description File exceeds the upload size limit */
+        413: {
+          headers: Record<string, unknown>;
+          content: {
+            /**
                          * @example {
                          *       "success": false,
                          *       "message": "File exceeds the 10MB limit.",
                          *       "errorCode": "FILE_TOO_LARGE"
                          *     }
                          */
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Unsupported file type (not .xlsx) */
-                415: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        /**
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Unsupported file type (not .xlsx) */
+        415: {
+          headers: Record<string, unknown>;
+          content: {
+            /**
                          * @example {
                          *       "success": false,
                          *       "message": "Unsupported file type. Upload an .xlsx Excel file.",
                          *       "errorCode": "UNSUPPORTED_FILE_TYPE"
                          *     }
                          */
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description No transactions or budget items found in the workbook */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        /**
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description No transactions or budget items found in the workbook */
+        422: {
+          headers: Record<string, unknown>;
+          content: {
+            /**
                          * @example {
                          *       "success": false,
                          *       "message": "No transactions or budget items were found in the workbook.",
                          *       "errorCode": "NO_TRANSACTIONS_FOUND"
                          *     }
                          */
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
+            'application/json': components['schemas']['Error'];
+          };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+      };
     };
-    "/api/transactions/import/xlsx/confirm": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/transactions/import/xlsx/confirm': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
          * Bulk-create the reviewed import (atomic)
          * @description Creates budget income items + expense items + transactions in a single
          *     database transaction (all-or-nothing). Each transaction's account is
@@ -1032,553 +962,541 @@ export interface paths {
          *     `defaultAccountId`. Transactions move the account balance (income
          *     credits, expense debits); budget items do not.
          */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** Format: uuid */
-                        budgetId: string;
-                        /** Format: uuid */
-                        defaultAccountId: string;
-                        /** @description "Payment Method / Card" → accountId */
-                        accountMapping?: {
-                            [key: string]: string;
-                        };
-                        transactions: {
-                            /** Format: date-time */
-                            date: string;
-                            amount: number;
-                            vendor: string;
-                            /** @enum {string} */
-                            type: "income" | "expense";
-                            description?: string;
-                            paymentSource?: string;
-                        }[];
-                        incomeItems: {
-                            description: string;
-                            amount: number;
-                            /** @example Transfer */
-                            type: string;
-                            /** Format: uuid */
-                            accountId: string;
-                        }[];
-                        expenseItems: {
-                            description: string;
-                            amount: number;
-                            /** @enum {string} */
-                            type: "Fixed" | "Variable";
-                        }[];
-                    };
-                };
-            };
-            responses: {
-                /** @description Imported successfully */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example true */
-                            success?: boolean;
-                            message?: string;
-                            data?: {
-                                createdCount?: {
-                                    transactions?: number;
-                                    incomeItems?: number;
-                                    expenseItems?: number;
-                                };
-                                /** @description Items that already existed in the budget (same name) and were updated in place. */
-                                updatedCount?: {
-                                    incomeItems?: number;
-                                    expenseItems?: number;
-                                };
-                                /** @description Rows not created because an identical row was already imported. */
-                                skippedCount?: {
-                                    transactions?: number;
-                                };
-                                /** @description Categories that matched no expense item; their rows were created without expenseItemId. */
-                                unmatchedCategories?: string[];
-                                /** @description Transactions created by this call (skipped rows excluded). */
-                                transactionIds?: string[];
-                            };
-                        };
-                    };
-                };
-                400: components["responses"]["BadRequestError"];
-                401: components["responses"]["UnauthorizedError"];
-                /** @description Budget or an account does not belong to the user */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Budget not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            /** Format: uuid */
+            budgetId: string;
+            /** Format: uuid */
+            defaultAccountId: string;
+            /** @description "Payment Method / Card" → accountId */
+            accountMapping?: Record<string, string>;
+            transactions: Array<{
+              /** Format: date-time */
+              date: string;
+              amount: number;
+              vendor: string;
+              /** @enum {string} */
+              type: 'income' | 'expense';
+              description?: string;
+              paymentSource?: string;
+            }>;
+            incomeItems: Array<{
+              description: string;
+              amount: number;
+              /** @example Transfer */
+              type: string;
+              /** Format: uuid */
+              accountId: string;
+            }>;
+            expenseItems: Array<{
+              description: string;
+              amount: number;
+              /** @enum {string} */
+              type: 'Fixed' | 'Variable';
+            }>;
+          };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+      };
+      responses: {
+        /** @description Imported successfully */
+        201: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': {
+              /** @example true */
+              success?: boolean;
+              message?: string;
+              data?: {
+                createdCount?: {
+                  transactions?: number;
+                  incomeItems?: number;
+                  expenseItems?: number;
+                };
+                /** @description Items that already existed in the budget (same name) and were updated in place. */
+                updatedCount?: {
+                  incomeItems?: number;
+                  expenseItems?: number;
+                };
+                /** @description Rows not created because an identical row was already imported. */
+                skippedCount?: {
+                  transactions?: number;
+                };
+                /** @description Categories that matched no expense item; their rows were created without expenseItemId. */
+                unmatchedCategories?: string[];
+                /** @description Transactions created by this call (skipped rows excluded). */
+                transactionIds?: string[];
+              };
+            };
+          };
+        };
+        400: components['responses']['BadRequestError'];
+        401: components['responses']['UnauthorizedError'];
+        /** @description Budget or an account does not belong to the user */
+        403: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Budget not found */
+        404: {
+          headers: Record<string, unknown>;
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
     };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        ApiResponse: {
-            /** @description The actual data returned */
-            response?: unknown;
-            /**
+  schemas: {
+    ApiResponse: {
+      /** @description The actual data returned */
+      response?: unknown;
+      /**
              * @description Status of the response
              * @enum {string}
              */
-            status?: "ok" | "error";
-            /** @description HTTP status code */
-            statusCode?: number;
-            headers?: {
-                [key: string]: string;
-            };
-        };
-        Transaction: {
-            /**
+      status?: 'ok' | 'error';
+      /** @description HTTP status code */
+      statusCode?: number;
+      headers?: Record<string, string>;
+    };
+    Transaction: {
+      /**
              * @description Unique identifier
              * @example 507f1f77bcf86cd799439011
              */
-            id: string;
-            /**
+      id: string;
+      /**
              * @description Type of transaction
              * @example expense
              * @enum {string}
              */
-            type: "income" | "expense" | "savings";
-            /**
+      type: 'income' | 'expense' | 'savings';
+      /**
              * Format: float
              * @description Amount in MXN
              * @example 150.5
              */
-            amount: number;
-            /**
+      amount: number;
+      /**
              * @description Description of the transaction
              * @example Grocery shopping at supermarket
              */
-            description: string;
-            /**
+      description: string;
+      /**
              * Format: date
              * @description Date of the transaction (ISO 8601)
              * @example 2025-12-29
              */
-            date: string;
-            /**
+      date: string;
+      /**
              * @description ID of the user who owns this transaction
              * @example 507f1f77bcf86cd799439011
              */
-            userId: string;
-        };
-        CreateTransactionRequest: {
-            /**
+      userId: string;
+    };
+    CreateTransactionRequest: {
+      /**
              * @description Type of transaction
              * @example expense
              * @enum {string}
              */
-            type: "income" | "expense" | "savings";
-            /**
+      type: 'income' | 'expense' | 'savings';
+      /**
              * Format: float
              * @description Amount in MXN
              * @example 150.5
              */
-            amount: number;
-            /**
+      amount: number;
+      /**
              * @description Description of the transaction
              * @example Grocery shopping at supermarket
              */
-            description: string;
-            /**
+      description: string;
+      /**
              * Format: date
              * @description Date of the transaction (ISO 8601)
              * @example 2025-12-29
              */
-            date: string;
-        };
-        TransactionSummary: {
-            income?: {
-                /** @example 50000 */
-                total?: number;
-                /** @example 5 */
-                count?: number;
-                /** @example 100 */
-                experience?: number;
-                /** @example 50 */
-                coins?: number;
-            };
-            expense?: {
-                /** @example 30000 */
-                total?: number;
-                /** @example 15 */
-                count?: number;
-                /** @example 75 */
-                experience?: number;
-                /** @example 30 */
-                coins?: number;
-            };
-            savings?: {
-                /** @example 20000 */
-                total?: number;
-                /** @example 3 */
-                count?: number;
-                /** @example 50 */
-                experience?: number;
-                /** @example 20 */
-                coins?: number;
-            };
-            /**
+      date: string;
+    };
+    TransactionSummary: {
+      income?: {
+        /** @example 50000 */
+        total?: number;
+        /** @example 5 */
+        count?: number;
+        /** @example 100 */
+        experience?: number;
+        /** @example 50 */
+        coins?: number;
+      };
+      expense?: {
+        /** @example 30000 */
+        total?: number;
+        /** @example 15 */
+        count?: number;
+        /** @example 75 */
+        experience?: number;
+        /** @example 30 */
+        coins?: number;
+      };
+      savings?: {
+        /** @example 20000 */
+        total?: number;
+        /** @example 3 */
+        count?: number;
+        /** @example 50 */
+        experience?: number;
+        /** @example 20 */
+        coins?: number;
+      };
+      /**
              * @description Income - Expense
              * @example 20000
              */
-            netWorth?: number;
-            /**
+      netWorth?: number;
+      /**
              * @description Percentage of savings goal achieved
              * @example 65.5
              */
-            savingsProgress?: number;
-        };
-        Error: {
-            response?: {
-                /** @example An error occurred */
-                message?: string;
-                /** @example Detailed error message */
-                error?: string;
-            };
-            /** @enum {string} */
-            status?: "error";
-            /** @example 400 */
-            statusCode?: number;
-        };
-        Pagination: {
-            /** @example 1 */
-            page?: number;
-            /** @example 10 */
-            limit?: number;
-            /** @example 25 */
-            total?: number;
-            /** @example 3 */
-            pages?: number;
-        };
-        IncomeItem: {
-            /**
+      savingsProgress?: number;
+    };
+    Error: {
+      response?: {
+        /** @example An error occurred */
+        message?: string;
+        /** @example Detailed error message */
+        error?: string;
+      };
+      /** @enum {string} */
+      status?: 'error';
+      /** @example 400 */
+      statusCode?: number;
+    };
+    Pagination: {
+      /** @example 1 */
+      page?: number;
+      /** @example 10 */
+      limit?: number;
+      /** @example 25 */
+      total?: number;
+      /** @example 3 */
+      pages?: number;
+    };
+    IncomeItem: {
+      /**
              * @description Unique identifier of the income item
              * @example inc_01HX5A2B3C4D5E6F
              */
-            id: string;
-            /**
+      id: string;
+      /**
              * @description Description of the income item
              * @example Monthly salary
              */
-            description: string;
-            /**
+      description: string;
+      /**
              * Format: float
              * @description Amount in MXN
              * @example 25000
              */
-            amount: number;
-            /**
+      amount: number;
+      /**
              * @description Payment/receipt method
              * @example Transfer
              * @enum {string}
              */
-            type: "Debit Card" | "Cash" | "Vales" | "Transfer" | "Check" | "Other";
-            /**
+      type: 'Debit Card' | 'Cash' | 'Vales' | 'Transfer' | 'Check' | 'Other';
+      /**
              * Format: uuid
              * @description ID of the account this planned income will be deposited into. Required as of PR 1.
              * @example acc_01HX5A2B3C4D5E6F
              */
-            accountId: string;
-        };
-        ExpenseItem: {
-            /**
+      accountId: string;
+    };
+    ExpenseItem: {
+      /**
              * @description Unique identifier of the expense item
              * @example exp_01HX5A2B3C4D5E6F
              */
-            id: string;
-            /**
+      id: string;
+      /**
              * @description Description of the expense item
              * @example Rent
              */
-            description: string;
-            /**
+      description: string;
+      /**
              * Format: float
              * @description Amount in MXN
              * @example 1200
              */
-            amount: number;
-            /**
+      amount: number;
+      /**
              * @description Expense classification
              * @example Fixed
              * @enum {string}
              */
-            type: "Fixed" | "Variable";
-        };
-        AddIncomeItemRequest: {
-            /** @example Monthly salary */
-            description: string;
-            /**
+      type: 'Fixed' | 'Variable';
+    };
+    AddIncomeItemRequest: {
+      /** @example Monthly salary */
+      description: string;
+      /**
              * Format: float
              * @example 25000
              */
-            amount: number;
-            /**
+      amount: number;
+      /**
              * @example Transfer
              * @enum {string}
              */
-            type: "Debit Card" | "Cash" | "Vales" | "Transfer" | "Check" | "Other";
-            /**
+      type: 'Debit Card' | 'Cash' | 'Vales' | 'Transfer' | 'Check' | 'Other';
+      /**
              * Format: uuid
              * @description Required. Must be an account owned by the authenticated user. Response 400 if the account does not belong to this user.
              * @example acc_01HX5A2B3C4D5E6F
              */
-            accountId: string;
-        };
-        AddExpenseItemRequest: {
-            /** @example Rent */
-            description: string;
-            /**
+      accountId: string;
+    };
+    AddExpenseItemRequest: {
+      /** @example Rent */
+      description: string;
+      /**
              * Format: float
              * @example 1200
              */
-            amount: number;
-            /**
+      amount: number;
+      /**
              * @example Fixed
              * @enum {string}
              */
-            type: "Fixed" | "Variable";
-        };
-        UpdateIncomeItemsRequest: {
-            /** @description Full replacement of the income list for this budget */
-            incomeItems: components["schemas"]["AddIncomeItemRequest"][];
-        };
-        UpdateExpenseItemsRequest: {
-            /** @description Full replacement of the expense list for this budget */
-            expenseItems: components["schemas"]["AddExpenseItemRequest"][];
-        };
-        /** @description Shape returned by bulk replace-all endpoints (PATCH /income, PATCH /expense). Includes the full enriched budget with both item lists. */
-        BudgetMutationResponse: {
-            /** @example true */
-            success?: boolean;
-            /** @description Updated budget document with incomeItems[], expenseItems[], and derived totals */
-            data?: Record<string, never>;
-            /** @example Income items updated successfully */
-            message?: string;
-        };
-        /** @description Aggregate counters recomputed after any item-level mutation. */
-        BudgetTotals: {
-            /**
+      type: 'Fixed' | 'Variable';
+    };
+    UpdateIncomeItemsRequest: {
+      /** @description Full replacement of the income list for this budget */
+      incomeItems: Array<components['schemas']['AddIncomeItemRequest']>;
+    };
+    UpdateExpenseItemsRequest: {
+      /** @description Full replacement of the expense list for this budget */
+      expenseItems: Array<components['schemas']['AddExpenseItemRequest']>;
+    };
+    /** @description Shape returned by bulk replace-all endpoints (PATCH /income, PATCH /expense). Includes the full enriched budget with both item lists. */
+    BudgetMutationResponse: {
+      /** @example true */
+      success?: boolean;
+      /** @description Updated budget document with incomeItems[], expenseItems[], and derived totals */
+      data?: Record<string, never>;
+      /** @example Income items updated successfully */
+      message?: string;
+    };
+    /** @description Aggregate counters recomputed after any item-level mutation. */
+    BudgetTotals: {
+      /**
              * Format: float
              * @example 25000
              */
-            totalIncome: number;
-            /**
+      totalIncome: number;
+      /**
              * Format: float
              * @example 12000
              */
-            totalExpense: number;
-            /**
+      totalExpense: number;
+      /**
              * Format: float
              * @example 13000
              */
-            netSavings: number;
-            /**
+      netSavings: number;
+      /**
              * Format: float
              * @description Percent (0-100)
              * @example 52
              */
-            savingsRate: number;
-        };
-        /** @description Returned by POST /income and PUT /income/:incomeId. Includes ONLY the touched item plus recomputed totals — NOT the full parent budget. */
-        IncomeItemMutationResponse: {
-            /** @example true */
-            success?: boolean;
-            data?: {
-                item: components["schemas"]["IncomeItem"];
-                totals: components["schemas"]["BudgetTotals"];
-            };
-            /** @example Income item added successfully */
-            message?: string;
-        };
-        /** @description Returned by POST /expense and PUT /expense/:expenseId. Includes ONLY the touched item plus recomputed totals. */
-        ExpenseItemMutationResponse: {
-            /** @example true */
-            success?: boolean;
-            data?: {
-                item: components["schemas"]["ExpenseItem"];
-                totals: components["schemas"]["BudgetTotals"];
-            };
-            /** @example Expense item added successfully */
-            message?: string;
-        };
-        /** @description Returned by DELETE /income/:incomeId and DELETE /expense/:expenseId. The item no longer exists, so only the recomputed totals are returned. */
-        ItemRemovalResponse: {
-            /** @example true */
-            success?: boolean;
-            data?: {
-                totals: components["schemas"]["BudgetTotals"];
-            };
-            /** @example Income item deleted successfully */
-            message?: string;
-        };
-        PaginatedIncomeResponse: {
-            /** @example true */
-            success?: boolean;
-            data?: components["schemas"]["IncomeItem"][];
-            /** @description User accounts (used to resolve accountId) */
-            accounts?: Record<string, never>[];
-            pagination?: components["schemas"]["Pagination"];
-            /** @example Income items retrieved successfully */
-            message?: string;
-        };
-        RegisterRequest: {
-            /**
+      savingsRate: number;
+    };
+    /** @description Returned by POST /income and PUT /income/:incomeId. Includes ONLY the touched item plus recomputed totals — NOT the full parent budget. */
+    IncomeItemMutationResponse: {
+      /** @example true */
+      success?: boolean;
+      data?: {
+        item: components['schemas']['IncomeItem'];
+        totals: components['schemas']['BudgetTotals'];
+      };
+      /** @example Income item added successfully */
+      message?: string;
+    };
+    /** @description Returned by POST /expense and PUT /expense/:expenseId. Includes ONLY the touched item plus recomputed totals. */
+    ExpenseItemMutationResponse: {
+      /** @example true */
+      success?: boolean;
+      data?: {
+        item: components['schemas']['ExpenseItem'];
+        totals: components['schemas']['BudgetTotals'];
+      };
+      /** @example Expense item added successfully */
+      message?: string;
+    };
+    /** @description Returned by DELETE /income/:incomeId and DELETE /expense/:expenseId. The item no longer exists, so only the recomputed totals are returned. */
+    ItemRemovalResponse: {
+      /** @example true */
+      success?: boolean;
+      data?: {
+        totals: components['schemas']['BudgetTotals'];
+      };
+      /** @example Income item deleted successfully */
+      message?: string;
+    };
+    PaginatedIncomeResponse: {
+      /** @example true */
+      success?: boolean;
+      data?: Array<components['schemas']['IncomeItem']>;
+      /** @description User accounts (used to resolve accountId) */
+      accounts?: Array<Record<string, never>>;
+      pagination?: components['schemas']['Pagination'];
+      /** @example Income items retrieved successfully */
+      message?: string;
+    };
+    RegisterRequest: {
+      /**
              * Format: email
              * @example jane@example.com
              */
-            email: string;
-            /**
+      email: string;
+      /**
              * Format: password
              * @example hunter2!
              */
-            password: string;
-            /** @example Jane Doe */
-            name: string;
-        };
-        LoginRequest: {
-            /**
+      password: string;
+      /** @example Jane Doe */
+      name: string;
+    };
+    LoginRequest: {
+      /**
              * Format: email
              * @example jane@example.com
              */
-            email: string;
-            /**
+      email: string;
+      /**
              * Format: password
              * @example hunter2!
              */
-            password: string;
-        };
-        UserBasicInfo: {
-            /**
+      password: string;
+    };
+    UserBasicInfo: {
+      /**
              * Format: uuid
              * @example usr_01HX5A2B3C4D5E6F
              */
-            id: string;
-            /**
+      id: string;
+      /**
              * Format: email
              * @example jane@example.com
              */
-            email: string;
-            /** @example Jane Doe */
-            name: string;
-            /**
+      email: string;
+      /** @example Jane Doe */
+      name: string;
+      /**
              * @example user
              * @enum {string}
              */
-            role: "user" | "admin";
-        };
-        /** @description Canonical auth payload. LoginResponse and RegisterResponse are name-aliases of this shape so codegen tools generate distinct named types; they remain free to diverge later without breaking the shared contract. */
-        AuthResponse: {
-            /** @example true */
-            success: boolean;
-            /** @example Login successful */
-            message?: string;
-            /**
+      role: 'user' | 'admin';
+    };
+    /** @description Canonical auth payload. LoginResponse and RegisterResponse are name-aliases of this shape so codegen tools generate distinct named types; they remain free to diverge later without breaking the shared contract. */
+    AuthResponse: {
+      /** @example true */
+      success: boolean;
+      /** @example Login successful */
+      message?: string;
+      /**
              * @description JWT access token. Send as `Authorization: Bearer <token>` on subsequent requests.
              * @example eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
              */
-            token: string;
-            /**
+      token: string;
+      /**
              * @description Token lifetime in seconds from issue.
              * @example 86400
              */
-            expiresIn: number;
-            user: components["schemas"]["UserBasicInfo"];
-        };
-        /** @description Response shape for POST /api/auth/login. Identical to AuthResponse today; named separately to allow independent evolution. */
-        LoginResponse: components["schemas"]["AuthResponse"];
-        /** @description Response shape for POST /api/auth/register. Identical to AuthResponse today; named separately to allow independent evolution. */
-        RegisterResponse: components["schemas"]["AuthResponse"];
-        /** @description Returned by GET /api/auth/me. Full profile (no password hash). */
-        UserProfile: {
-            /**
+      expiresIn: number;
+      user: components['schemas']['UserBasicInfo'];
+    };
+    /** @description Response shape for POST /api/auth/login. Identical to AuthResponse today; named separately to allow independent evolution. */
+    LoginResponse: components['schemas']['AuthResponse'];
+    /** @description Response shape for POST /api/auth/register. Identical to AuthResponse today; named separately to allow independent evolution. */
+    RegisterResponse: components['schemas']['AuthResponse'];
+    /** @description Returned by GET /api/auth/me. Full profile (no password hash). */
+    UserProfile: {
+      /**
              * Format: uuid
              * @example usr_01HX5A2B3C4D5E6F
              */
-            id: string;
-            /**
+      id: string;
+      /**
              * Format: email
              * @example jane@example.com
              */
-            email: string;
-            /** @example Jane Doe */
-            name: string;
-            /**
+      email: string;
+      /** @example Jane Doe */
+      name: string;
+      /**
              * @example user
              * @enum {string}
              */
-            role: "user" | "admin";
-            /** @example true */
-            isActive: boolean;
-            /**
+      role: 'user' | 'admin';
+      /** @example true */
+      isActive: boolean;
+      /**
              * Format: date-time
              * @example 2026-05-18T14:23:00.000Z
              */
-            lastLogin?: string;
-            /**
+      lastLogin?: string;
+      /**
              * Format: date-time
              * @example 2025-11-02T08:00:00.000Z
              */
-            createdAt?: string;
-            /**
+      createdAt?: string;
+      /**
              * Format: date-time
              * @example 2026-05-19T09:00:00.000Z
              */
-            updatedAt?: string;
-        };
-        LogoutResponse: {
-            /** @example true */
-            success: boolean;
-            /** @example Logged out successfully */
-            message: string;
-        };
-        PaginatedExpenseResponse: {
-            /** @example true */
-            success?: boolean;
-            data?: components["schemas"]["ExpenseItem"][];
-            pagination?: components["schemas"]["Pagination"];
-            /** @example Expense items retrieved successfully */
-            message?: string;
-        };
+      updatedAt?: string;
     };
-    responses: {
-        /** @description Access token is missing or invalid */
-        UnauthorizedError: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                /**
+    LogoutResponse: {
+      /** @example true */
+      success: boolean;
+      /** @example Logged out successfully */
+      message: string;
+    };
+    PaginatedExpenseResponse: {
+      /** @example true */
+      success?: boolean;
+      data?: Array<components['schemas']['ExpenseItem']>;
+      pagination?: components['schemas']['Pagination'];
+      /** @example Expense items retrieved successfully */
+      message?: string;
+    };
+  };
+  responses: {
+    /** @description Access token is missing or invalid */
+    UnauthorizedError: {
+      headers: Record<string, unknown>;
+      content: {
+        /**
                  * @example {
                  *       "response": {
                  *         "message": "Unauthorized",
@@ -1588,16 +1506,14 @@ export interface components {
                  *       "statusCode": 401
                  *     }
                  */
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description Resource not found */
-        NotFoundError: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                /**
+        'application/json': components['schemas']['Error'];
+      };
+    };
+    /** @description Resource not found */
+    NotFoundError: {
+      headers: Record<string, unknown>;
+      content: {
+        /**
                  * @example {
                  *       "response": {
                  *         "message": "Not Found",
@@ -1607,16 +1523,14 @@ export interface components {
                  *       "statusCode": 404
                  *     }
                  */
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description Invalid request data */
-        BadRequestError: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                /**
+        'application/json': components['schemas']['Error'];
+      };
+    };
+    /** @description Invalid request data */
+    BadRequestError: {
+      headers: Record<string, unknown>;
+      content: {
+        /**
                  * @example {
                  *       "response": {
                  *         "message": "Bad Request",
@@ -1626,14 +1540,14 @@ export interface components {
                  *       "statusCode": 400
                  *     }
                  */
-                "application/json": components["schemas"]["Error"];
-            };
-        };
+        'application/json': components['schemas']['Error'];
+      };
     };
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  };
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;

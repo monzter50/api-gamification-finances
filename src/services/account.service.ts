@@ -2,11 +2,11 @@ import { accountRepository } from '../repositories/account.repository';
 import { type Account } from '@prisma/client';
 
 export class AccountService {
-  async getUserAccounts(userId: string): Promise<Account[]> {
-    return accountRepository.findByUser(userId);
+  async getUserAccounts (userId: string): Promise<Account[]> {
+    return await accountRepository.findByUser(userId);
   }
 
-  async getAccountById(id: string, userId: string): Promise<Account> {
+  async getAccountById (id: string, userId: string): Promise<Account> {
     const account = await accountRepository.findByIdAndUser(id, userId);
     if (!account) {
       throw new Error('Account not found');
@@ -14,7 +14,7 @@ export class AccountService {
     return account;
   }
 
-  async createAccount(
+  async createAccount (
     userId: string,
     data: {
       name: string;
@@ -24,10 +24,10 @@ export class AccountService {
       isActive?: boolean;
     }
   ): Promise<Account> {
-    return accountRepository.createAccount(userId, data);
+    return await accountRepository.createAccount(userId, data);
   }
 
-  async updateAccount(
+  async updateAccount (
     id: string,
     userId: string,
     data: Partial<Omit<Account, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'balanceCents'>>
@@ -39,7 +39,7 @@ export class AccountService {
     return updated;
   }
 
-  async deleteAccount(id: string, userId: string): Promise<Account> {
+  async deleteAccount (id: string, userId: string): Promise<Account> {
     const hasTransactions = await accountRepository.hasTransactions(id);
     if (hasTransactions) {
       throw new Error('Cannot delete account with existing transactions');
