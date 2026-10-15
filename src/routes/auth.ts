@@ -1,68 +1,11 @@
 import express from 'express';
-import type { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
 import { authController } from '../controllers/auth.controller';
 import { registerValidation, loginValidation } from '../validators/auth.validator';
 import { validate } from '../middleware/validate';
-import { isTokenBlacklisted } from '../utils/tokenUtils';
-import { userRepository } from '../repositories/user.repository';
-import { type AuthenticatedRequest } from '../types';
+import { authenticateJWT } from '../middleware/auth';
+import { authRateLimiter } from '../middleware/rateLimiters';
 
 const router = express.Router();
-
-// Only refresh sessionLastActivityAt when it's older than this, to bound the
-// per-request write to ~once/minute per active user.
-const ACTIVITY_TOUCH_THROTTLE_MS = 60 * 1000;
-
-// Auth middleware
-export async function authenticateJWT (req: Request, res: Response, next: NextFunction): Promise<void> {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ success: false, message: 'Unauthorized', errorCode: 'UNAUTHORIZED' });
-    return;
-  }
-  const token: string = authHeader.split(' ')[1]!;
-  try {
-    // Check if token is blacklisted
-    const isBlacklisted = await isTokenBlacklisted(token);
-    if (isBlacklisted) {
-      res.status(401).json({ success: false, message: 'Token has been revoked', errorCode: 'TOKEN_BLACKLISTED' });
-      return;
-    }
-
-    const JWT_SECRET = process.env.JWT_SECRET ?? 'default_secret';
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
-
-    // Single active session: the token is only valid for the user's CURRENT
-    // session. A mismatch means a newer login superseded this one.
-    const user = await userRepository.findByIdWithoutPassword(decoded.userId);
-    if (!user) {
-      res.status(401).json({ success: false, message: 'User not found', errorCode: 'USER_NOT_FOUND' });
-      return;
-    }
-    if (!user.isActive) {
-      res.status(403).json({ success: false, message: 'Account is deactivated. Please contact support.', errorCode: 'ACCOUNT_DEACTIVATED' });
-      return;
-    }
-    if (decoded.sid !== user.sessionId) {
-      // 440 is reserved for "session superseded" so the SPA can tell it apart
-      // from an ordinary 401 (which @aglaya/api-core surfaces only as a status).
-      res.status(440).json({ success: false, message: 'Your session was ended because your account was used on another device.', errorCode: 'SESSION_REVOKED' });
-      return;
-    }
-
-    // Slide the inactivity window forward (throttled).
-    const lastActivity = user.sessionLastActivityAt;
-    if (!lastActivity || Date.now() - new Date(lastActivity).getTime() > ACTIVITY_TOUCH_THROTTLE_MS) {
-      await userRepository.touchSessionActivity(decoded.userId);
-    }
-
-    (req as AuthenticatedRequest).user = decoded;
-    next();
-  } catch (err) {
-    res.status(401).json({ success: false, message: 'Invalid token', errorCode: 'INVALID_TOKEN' });
-  }
-}
 
 /**
  * @openapi
@@ -96,7 +39,7 @@ export async function authenticateJWT (req: Request, res: Response, next: NextFu
  *               message: 'User with this email already exists'
  *               errorCode: 'USER_ALREADY_EXISTS'
  */
-router.post('/register', registerValidation, validate, authController.register.bind(authController));
+router.post('/register', authRateLimiter, registerValidation, validate, authController.register.bind(authController));
 
 /**
  * @openapi
@@ -152,7 +95,7 @@ router.post('/register', registerValidation, validate, authController.register.b
  *               message: 'You already have an active session on another device. Log out there or wait a few minutes, then try again.'
  *               errorCode: 'SESSION_ALREADY_ACTIVE'
  */
-router.post('/login', loginValidation, validate, authController.login.bind(authController));
+router.post('/login', authRateLimiter, loginValidation, validate, authController.login.bind(authController));
 
 /**
  * @openapi

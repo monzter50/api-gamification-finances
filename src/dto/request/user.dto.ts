@@ -5,14 +5,4 @@
 
 export interface UpdateProfileRequestDto {
   name?: string
-  savingsGoal?: number
-}
-
-export interface AddExperienceRequestDto {
-  amount: number
-}
-
-export interface SpendCoinsRequestDto {
-  amount: number
-  description?: string
 }

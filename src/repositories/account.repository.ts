@@ -1,6 +1,7 @@
 import { BaseRepository } from './base.repository';
 import { type Account } from '@prisma/client';
 import { toCents, fromCents } from '../utils/money';
+import prisma from '../config/database';
 
 /**
  * `balanceCents` is the source of truth. Serve `balance` derived from it so
@@ -100,14 +101,24 @@ export class AccountRepository extends BaseRepository<Account> {
   }
 
   /**
+   * Of the given account IDs, return the ones owned by `userId` — one query
+   * instead of one lookup per ID.
+   */
+  async findOwnedIds (ids: string[], userId: string): Promise<Set<string>> {
+    if (ids.length === 0) return new Set();
+    const rows = await prisma.account.findMany({
+      where: { id: { in: ids }, userId },
+      select: { id: true }
+    });
+    return new Set(rows.map((r) => r.id));
+  }
+
+  /**
    * Check if account has transactions
    */
   async hasTransactions (id: string): Promise<boolean> {
-    const count = await this.model.findFirst({
-      where: { id },
-      select: { _count: { select: { transactions: true } } }
-    });
-    return (count)?._count?.transactions > 0;
+    const count = await prisma.transaction.count({ where: { accountId: id } });
+    return count > 0;
   }
 }
 

@@ -1,6 +1,7 @@
 import { BaseRepository } from './base.repository';
 import { type Transaction } from '@prisma/client';
 import { fromCents } from '../utils/money';
+import prisma from '../config/database';
 
 /**
  * Enhanced Transaction with related entities
@@ -258,6 +259,34 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       _sum: { amountCents: true }
     });
     return result._sum.amountCents || 0;
+  }
+
+  /**
+   * Spent cents per expense item for many items in ONE grouped query.
+   * Items with no transactions are absent from the map (treat as 0).
+   */
+  async getSpentCentsByExpenseItems (expenseItemIds: string[]): Promise<Map<string, number>> {
+    if (expenseItemIds.length === 0) return new Map();
+    const rows = await prisma.transaction.groupBy({
+      by: ['expenseItemId'],
+      where: { expenseItemId: { in: expenseItemIds } },
+      _sum: { amountCents: true }
+    });
+    return new Map(rows.map((r) => [r.expenseItemId!, r._sum.amountCents ?? 0]));
+  }
+
+  /**
+   * Used cents per income item for many items in ONE grouped query.
+   * Items with no transactions are absent from the map (treat as 0).
+   */
+  async getUsedCentsByIncomeItems (incomeItemIds: string[]): Promise<Map<string, number>> {
+    if (incomeItemIds.length === 0) return new Map();
+    const rows = await prisma.transaction.groupBy({
+      by: ['incomeItemId'],
+      where: { incomeItemId: { in: incomeItemIds } },
+      _sum: { amountCents: true }
+    });
+    return new Map(rows.map((r) => [r.incomeItemId!, r._sum.amountCents ?? 0]));
   }
 
   /**

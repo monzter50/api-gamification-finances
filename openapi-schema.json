@@ -160,14 +160,6 @@
               "count": {
                 "type": "number",
                 "example": 5
-              },
-              "experience": {
-                "type": "number",
-                "example": 100
-              },
-              "coins": {
-                "type": "number",
-                "example": 50
               }
             }
           },
@@ -181,14 +173,6 @@
               "count": {
                 "type": "number",
                 "example": 15
-              },
-              "experience": {
-                "type": "number",
-                "example": 75
-              },
-              "coins": {
-                "type": "number",
-                "example": 30
               }
             }
           },
@@ -202,14 +186,6 @@
               "count": {
                 "type": "number",
                 "example": 3
-              },
-              "experience": {
-                "type": "number",
-                "example": 50
-              },
-              "coins": {
-                "type": "number",
-                "example": 20
               }
             }
           },
@@ -227,29 +203,46 @@
       },
       "Error": {
         "type": "object",
+        "description": "Standard error envelope produced by the global errorHandler. Branch on `errorCode` or the HTTP status, not on the text.",
+        "required": [
+          "success",
+          "message",
+          "errorCode"
+        ],
         "properties": {
-          "response": {
-            "type": "object",
-            "properties": {
-              "message": {
-                "type": "string",
-                "example": "An error occurred"
-              },
-              "error": {
-                "type": "string",
-                "example": "Detailed error message"
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "example": "Budget not found"
+          },
+          "error": {
+            "type": "string",
+            "description": "Same text as `message` (kept for older clients)",
+            "example": "Budget not found"
+          },
+          "errorCode": {
+            "type": "string",
+            "example": "BUDGET_NOT_FOUND"
+          },
+          "errors": {
+            "type": "array",
+            "description": "Per-field details, only on VALIDATION_ERROR",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string",
+                  "example": "amount"
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Amount must be a positive number"
+                }
               }
             }
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "error"
-            ]
-          },
-          "statusCode": {
-            "type": "number",
-            "example": 400
           }
         }
       },
@@ -852,12 +845,10 @@
               "$ref": "#/components/schemas/Error"
             },
             "example": {
-              "response": {
-                "message": "Unauthorized",
-                "error": "No authentication token found"
-              },
-              "status": "error",
-              "statusCode": 401
+              "success": false,
+              "message": "Unauthorized",
+              "error": "Unauthorized",
+              "errorCode": "UNAUTHORIZED"
             }
           }
         }
@@ -870,12 +861,10 @@
               "$ref": "#/components/schemas/Error"
             },
             "example": {
-              "response": {
-                "message": "Not Found",
-                "error": "Transaction not found"
-              },
-              "status": "error",
-              "statusCode": 404
+              "success": false,
+              "message": "Transaction not found",
+              "error": "Transaction not found",
+              "errorCode": "TRANSACTION_NOT_FOUND"
             }
           }
         }
@@ -888,12 +877,16 @@
               "$ref": "#/components/schemas/Error"
             },
             "example": {
-              "response": {
-                "message": "Bad Request",
-                "error": "Amount must be greater than 0"
-              },
-              "status": "error",
-              "statusCode": 400
+              "success": false,
+              "message": "Validation failed",
+              "error": "Validation failed",
+              "errorCode": "VALIDATION_ERROR",
+              "errors": [
+                {
+                  "field": "amount",
+                  "message": "Amount must be a positive number"
+                }
+              ]
             }
           }
         }
@@ -919,1007 +912,6 @@
     }
   ],
   "paths": {
-    "/api/auth/register": {
-      "post": {
-        "tags": [
-          "Authentication"
-        ],
-        "summary": "Register a new user",
-        "description": "Creates a new user account and returns a JWT for immediate use — the\nclient does not need to call `/auth/login` after a successful register.\nEmail is normalized (lowercased + trimmed) by validation before storage.\n",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RegisterRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "User registered successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RegisterResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "409": {
-            "description": "A user with this email already exists",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "success": false,
-                  "message": "User with this email already exists",
-                  "errorCode": "USER_ALREADY_EXISTS"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/auth/login": {
-      "post": {
-        "tags": [
-          "Authentication"
-        ],
-        "summary": "Log in with email + password",
-        "description": "Returns a JWT on success. **Both \"user not found\" and \"wrong password\"\nintentionally return 401 with the same `INVALID_CREDENTIALS` errorCode**\nto avoid leaking which emails are registered. Do not surface a\ndifferent UX for the two cases on the frontend.\n",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LoginRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Login successful",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LoginResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "description": "Invalid credentials (user not found OR wrong password)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "success": false,
-                  "message": "Invalid email or password",
-                  "errorCode": "INVALID_CREDENTIALS"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Account is deactivated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "success": false,
-                  "message": "Account is deactivated. Please contact support.",
-                  "errorCode": "ACCOUNT_DEACTIVATED"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Single active session — the user already has a session that has\nbeen active within the inactivity window. They must log out of the\nother session (or let it go idle) before signing in again.\n",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "success": false,
-                  "message": "You already have an active session on another device. Log out there or wait a few minutes, then try again.",
-                  "errorCode": "SESSION_ALREADY_ACTIVE"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/auth/logout": {
-      "post": {
-        "tags": [
-          "Authentication"
-        ],
-        "summary": "Log out (blacklist the current token)",
-        "description": "Adds the bearer token to a DB-backed blacklist so it cannot be reused,\neven before its natural expiry. Subsequent requests with the same\ntoken receive 401 `TOKEN_BLACKLISTED` from `authenticateJWT`.\n",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Logged out successfully; token has been invalidated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LogoutResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          }
-        }
-      }
-    },
-    "/api/auth/me": {
-      "get": {
-        "tags": [
-          "Authentication"
-        ],
-        "summary": "Get the authenticated user's profile",
-        "description": "Returns the full profile of the user identified by the bearer token.\nUse this on app startup to hydrate the auth store after a page refresh.\n",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Profile retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "success": {
-                          "type": "boolean",
-                          "example": true
-                        }
-                      }
-                    },
-                    {
-                      "$ref": "#/components/schemas/UserProfile"
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "description": "Authenticated user no longer exists in the database",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/budgets/{id}": {
-      "put": {
-        "tags": [
-          "Budgets"
-        ],
-        "summary": "Update budget scalar fields (year, month)",
-        "description": "Updates ONLY the budget's own scalar fields. Income and expense items\n**must** be managed via the dedicated nested endpoints:\n\n- `/api/budgets/{id}/income` — add, update, or delete income items\n- `/api/budgets/{id}/expense` — add, update, or delete expense items\n\nSending `incomeItems` or `expenseItems` in this body returns `400`.\nRationale: bulk-replacing items would delete rows referenced by\nTransaction.incomeItemId / expenseItemId, breaking transaction history.\n",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "year": {
-                    "type": "integer",
-                    "minimum": 2000,
-                    "maximum": 2100,
-                    "example": 2026
-                  },
-                  "month": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 11,
-                    "example": 3
-                  }
-                }
-              },
-              "example": {
-                "year": 2026,
-                "month": 3
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Budget updated successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "data": {
-                      "type": "object",
-                      "description": "Updated budget"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Budget updated successfully"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          }
-        }
-      }
-    },
-    "/api/budgets/{id}/duplicate": {
-      "post": {
-        "tags": [
-          "Budgets"
-        ],
-        "summary": "Duplicate a budget into a new (year, month)",
-        "description": "Clones the source budget's `incomeItems` and `expenseItems` into a\nbrand-new budget at the target `year`/`month`. **Transactions are NOT\ncopied** — they are historical records pointing at the SOURCE items,\nand the cloned items are new rows with new IDs. Copying them would\nbreak transaction history.\n\nFails with:\n- `400` if the target month is out of range, or if any source income\n  item references an account that no longer belongs to the user\n  (error message lists the offending accountIds).\n- `403` if the source budget does not belong to the caller.\n- `404` if the source budget does not exist.\n- `409` if a budget already exists at the target `(year, month)`.\n\nItems are NOT accepted in the body — pass only the target period.\n",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "description": "Source budget ID"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "year",
-                  "month"
-                ],
-                "additionalProperties": false,
-                "properties": {
-                  "year": {
-                    "type": "integer",
-                    "minimum": 2000,
-                    "maximum": 2100,
-                    "example": 2026
-                  },
-                  "month": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 11,
-                    "example": 6,
-                    "description": "0-indexed (0 = January, 11 = December)"
-                  }
-                }
-              },
-              "example": {
-                "year": 2026,
-                "month": 6
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Budget duplicated successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "data": {
-                      "type": "object",
-                      "description": "The newly created budget with cloned incomeItems and expenseItems"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Budget duplicated successfully"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "403": {
-            "description": "Source budget does not belong to the caller"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "409": {
-            "description": "A budget already exists for the target period",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "success": false,
-                  "error": "Budget for 2026-7 already exists",
-                  "statusCode": 409
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/budgets/{id}/income": {
-      "get": {
-        "tags": [
-          "Income"
-        ],
-        "summary": "List income items (paginated)",
-        "description": "Returns the paginated income items for the given budget, plus the user's accounts (useful to resolve `accountId`).",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Budget ID"
-          },
-          {
-            "in": "query",
-            "name": "page",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 10
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Income items retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaginatedIncomeResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Income"
-        ],
-        "summary": "Add a single income item",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AddIncomeItemRequest"
-              },
-              "example": {
-                "description": "Monthly salary",
-                "amount": 25000,
-                "type": "Transfer",
-                "accountId": "acc_01HX5A2B3C4D5E6F"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Income item added successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/IncomeItemMutationResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "403": {
-            "description": "Unauthorized access to budget"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          }
-        }
-      },
-      "patch": {
-        "tags": [
-          "Income"
-        ],
-        "summary": "Replace all income items for this budget",
-        "description": "Overwrites the full income list. To add/update a single item, prefer POST or PUT.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateIncomeItemsRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Income items updated successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BudgetMutationResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "403": {
-            "description": "Unauthorized access to budget"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          }
-        }
-      }
-    },
-    "/api/budgets/{id}/income/{incomeId}": {
-      "put": {
-        "tags": [
-          "Income"
-        ],
-        "summary": "Update a single income item",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Budget ID"
-          },
-          {
-            "in": "path",
-            "name": "incomeId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Income item ID"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AddIncomeItemRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Income item updated successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/IncomeItemMutationResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "403": {
-            "description": "Unauthorized access to budget"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Income"
-        ],
-        "summary": "Delete a single income item",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "incomeId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Income item deleted successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ItemRemovalResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "403": {
-            "description": "Unauthorized access to budget"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          }
-        }
-      }
-    },
-    "/api/budgets/{id}/expense": {
-      "get": {
-        "tags": [
-          "Expense"
-        ],
-        "summary": "List expense items (paginated)",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Budget ID"
-          },
-          {
-            "in": "query",
-            "name": "page",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 10
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Expense items retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaginatedExpenseResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Expense"
-        ],
-        "summary": "Add a single expense item",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AddExpenseItemRequest"
-              },
-              "example": {
-                "description": "Rent",
-                "amount": 1200,
-                "type": "Fixed"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Expense item added successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ExpenseItemMutationResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "403": {
-            "description": "Unauthorized access to budget"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          }
-        }
-      },
-      "patch": {
-        "tags": [
-          "Expense"
-        ],
-        "summary": "Replace all expense items for this budget",
-        "description": "Overwrites the full expense list. To add/update a single item, prefer POST or PUT.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateExpenseItemsRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Expense items updated successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BudgetMutationResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "403": {
-            "description": "Unauthorized access to budget"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          }
-        }
-      }
-    },
-    "/api/budgets/{id}/expense/{expenseId}": {
-      "put": {
-        "tags": [
-          "Expense"
-        ],
-        "summary": "Update a single expense item",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Budget ID"
-          },
-          {
-            "in": "path",
-            "name": "expenseId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Expense item ID"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AddExpenseItemRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Expense item updated successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ExpenseItemMutationResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "403": {
-            "description": "Unauthorized access to budget"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Expense"
-        ],
-        "summary": "Delete a single expense item",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "expenseId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Expense item deleted successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ItemRemovalResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "403": {
-            "description": "Unauthorized access to budget"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          }
-        }
-      }
-    },
     "/api/transactions/import/xlsx/parse": {
       "post": {
         "tags": [
@@ -2338,13 +1330,7 @@
             }
           },
           "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "403": {
-            "description": "Budget or an account does not belong to the user",
+            "description": "Validation failed, or a referenced account does not exist / belong to the user (INVALID_ACCOUNT_REFERENCE)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2353,8 +1339,986 @@
               }
             }
           },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
           "404": {
-            "description": "Budget not found",
+            "description": "Budget not found (or belongs to another user)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/budgets/{id}": {
+      "put": {
+        "tags": [
+          "Budgets"
+        ],
+        "summary": "Update budget scalar fields (year, month)",
+        "description": "Updates ONLY the budget's own scalar fields. Income and expense items\n**must** be managed via the dedicated nested endpoints:\n\n- `/api/budgets/{id}/income` — add, update, or delete income items\n- `/api/budgets/{id}/expense` — add, update, or delete expense items\n\nSending `incomeItems` or `expenseItems` in this body returns `400`.\nRationale: bulk-replacing items would delete rows referenced by\nTransaction.incomeItemId / expenseItemId, breaking transaction history.\n",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "year": {
+                    "type": "integer",
+                    "minimum": 2000,
+                    "maximum": 2100,
+                    "example": 2026
+                  },
+                  "month": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 11,
+                    "example": 3
+                  }
+                }
+              },
+              "example": {
+                "year": 2026,
+                "month": 3
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Budget updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "description": "Updated budget"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Budget updated successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/api/budgets/{id}/duplicate": {
+      "post": {
+        "tags": [
+          "Budgets"
+        ],
+        "summary": "Duplicate a budget into a new (year, month)",
+        "description": "Clones the source budget's `incomeItems` and `expenseItems` into a\nbrand-new budget at the target `year`/`month`. **Transactions are NOT\ncopied** — they are historical records pointing at the SOURCE items,\nand the cloned items are new rows with new IDs. Copying them would\nbreak transaction history.\n\nFails with:\n- `400` if the target month is out of range, or if any source income\n  item references an account that no longer belongs to the user\n  (error message lists the offending accountIds).\n- `404` if the source budget does not exist or belongs to another user.\n- `409` if a budget already exists at the target `(year, month)`.\n\nItems are NOT accepted in the body — pass only the target period.\n",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Source budget ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "year",
+                  "month"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "year": {
+                    "type": "integer",
+                    "minimum": 2000,
+                    "maximum": 2100,
+                    "example": 2026
+                  },
+                  "month": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 11,
+                    "example": 6,
+                    "description": "0-indexed (0 = January, 11 = December)"
+                  }
+                }
+              },
+              "example": {
+                "year": 2026,
+                "month": 6
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Budget duplicated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "description": "The newly created budget with cloned incomeItems and expenseItems"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Budget duplicated successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "description": "A budget already exists for the target period",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Budget for 2026-7 already exists",
+                  "error": "Budget for 2026-7 already exists",
+                  "errorCode": "BUDGET_ALREADY_EXISTS"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/budgets/{id}/income": {
+      "get": {
+        "tags": [
+          "Income"
+        ],
+        "summary": "List income items (paginated)",
+        "description": "Returns the paginated income items for the given budget, plus the user's accounts (useful to resolve `accountId`).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Budget ID"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Income items retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedIncomeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Income"
+        ],
+        "summary": "Add a single income item",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddIncomeItemRequest"
+              },
+              "example": {
+                "description": "Monthly salary",
+                "amount": 25000,
+                "type": "Transfer",
+                "accountId": "acc_01HX5A2B3C4D5E6F"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Income item added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncomeItemMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Income"
+        ],
+        "summary": "Replace all income items for this budget",
+        "description": "Overwrites the full income list. To add/update a single item, prefer POST or PUT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIncomeItemsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Income items updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/api/budgets/{id}/income/{incomeId}": {
+      "put": {
+        "tags": [
+          "Income"
+        ],
+        "summary": "Update a single income item",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Budget ID"
+          },
+          {
+            "in": "path",
+            "name": "incomeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Income item ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddIncomeItemRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Income item updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncomeItemMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Income"
+        ],
+        "summary": "Delete a single income item",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "incomeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Income item deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemRemovalResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/api/budgets/{id}/expense": {
+      "get": {
+        "tags": [
+          "Expense"
+        ],
+        "summary": "List expense items (paginated)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Budget ID"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Expense items retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedExpenseResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Expense"
+        ],
+        "summary": "Add a single expense item",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddExpenseItemRequest"
+              },
+              "example": {
+                "description": "Rent",
+                "amount": 1200,
+                "type": "Fixed"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Expense item added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpenseItemMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Expense"
+        ],
+        "summary": "Replace all expense items for this budget",
+        "description": "Overwrites the full expense list. To add/update a single item, prefer POST or PUT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateExpenseItemsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Expense items updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/api/budgets/{id}/expense/{expenseId}": {
+      "put": {
+        "tags": [
+          "Expense"
+        ],
+        "summary": "Update a single expense item",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Budget ID"
+          },
+          {
+            "in": "path",
+            "name": "expenseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Expense item ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddExpenseItemRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Expense item updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpenseItemMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Expense"
+        ],
+        "summary": "Delete a single expense item",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "expenseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Expense item deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemRemovalResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Register a new user",
+        "description": "Creates a new user account and returns a JWT for immediate use — the\nclient does not need to call `/auth/login` after a successful register.\nEmail is normalized (lowercased + trimmed) by validation before storage.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "409": {
+            "description": "A user with this email already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "success": false,
+                  "message": "User with this email already exists",
+                  "errorCode": "USER_ALREADY_EXISTS"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Log in with email + password",
+        "description": "Returns a JWT on success. **Both \"user not found\" and \"wrong password\"\nintentionally return 401 with the same `INVALID_CREDENTIALS` errorCode**\nto avoid leaking which emails are registered. Do not surface a\ndifferent UX for the two cases on the frontend.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "description": "Invalid credentials (user not found OR wrong password)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Invalid email or password",
+                  "errorCode": "INVALID_CREDENTIALS"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account is deactivated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Account is deactivated. Please contact support.",
+                  "errorCode": "ACCOUNT_DEACTIVATED"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Single active session — the user already has a session that has\nbeen active within the inactivity window. They must log out of the\nother session (or let it go idle) before signing in again.\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "success": false,
+                  "message": "You already have an active session on another device. Log out there or wait a few minutes, then try again.",
+                  "errorCode": "SESSION_ALREADY_ACTIVE"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Log out (blacklist the current token)",
+        "description": "Adds the bearer token to a DB-backed blacklist so it cannot be reused,\neven before its natural expiry. Subsequent requests with the same\ntoken receive 401 `TOKEN_BLACKLISTED` from `authenticateJWT`.\n",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logged out successfully; token has been invalidated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Get the authenticated user's profile",
+        "description": "Returns the full profile of the user identified by the bearer token.\nUse this on app startup to hydrate the auth store after a page refresh.\n",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profile retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "example": true
+                        }
+                      }
+                    },
+                    {
+                      "$ref": "#/components/schemas/UserProfile"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "description": "Authenticated user no longer exists in the database",
             "content": {
               "application/json": {
                 "schema": {

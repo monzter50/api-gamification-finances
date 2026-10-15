@@ -1,18 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+import { transactionService } from '../../services/transaction.service';
+import { budgetRepository } from '../../repositories/budget.repository';
+import { accountRepository } from '../../repositories/account.repository';
+import { transactionRepository } from '../../repositories/transaction.repository';
+
 const tx = {
   transaction: { create: vi.fn(), update: vi.fn(), delete: vi.fn() },
   account: { update: vi.fn() }
 };
 
 vi.mock('../../config/database', () => ({
-  default: { $transaction: async (fn: (client: typeof tx) => unknown) => await fn(tx) }
+  default: { $transaction: async (fn: (client: typeof tx) => Promise<unknown>) => await fn(tx) }
 }));
 vi.mock('../../config/logger', () => ({
   logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() }
 }));
 vi.mock('../../repositories/budget.repository', () => ({
-  budgetRepository: { findById: vi.fn() }
+  budgetRepository: { findByIdAndUser: vi.fn() }
 }));
 vi.mock('../../repositories/account.repository', () => ({
   accountRepository: { findByIdAndUser: vi.fn() }
@@ -22,14 +27,11 @@ vi.mock('../../repositories/transaction.repository', () => ({
   transactionRepository: {
     findByIdAndUser: vi.fn(),
     getSpentCentsForExpenseItem: vi.fn(),
-    getUsedCentsForIncomeItem: vi.fn()
+    getUsedCentsForIncomeItem: vi.fn(),
+    getSpentCentsByExpenseItems: vi.fn(),
+    getUsedCentsByIncomeItems: vi.fn()
   }
 }));
-
-import { transactionService } from '../../services/transaction.service';
-import { budgetRepository } from '../../repositories/budget.repository';
-import { accountRepository } from '../../repositories/account.repository';
-import { transactionRepository } from '../../repositories/transaction.repository';
 
 const USER = 'user-1';
 // September fixture: Gas for Car — plan 5,000.00, real 5,201.29.
@@ -44,7 +46,7 @@ const budget = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(budgetRepository.findById).mockResolvedValue(budget as never);
+  vi.mocked(budgetRepository.findByIdAndUser).mockResolvedValue(budget as never);
   vi.mocked(accountRepository.findByIdAndUser).mockResolvedValue({ id: 'acc-1' } as never);
   tx.transaction.create.mockImplementation(async ({ data }) => ({ id: 'tx-1', ...data }));
   tx.transaction.update.mockImplementation(async ({ data }) => ({ id: 'tx-1', ...data }));
@@ -132,8 +134,8 @@ describe('TransactionService — overspend is recorded, not rejected (1.1)', () 
 
 describe('TransactionService.getBudgetBalance — status per line (1.1)', () => {
   it('reports Gas for Car as exceeded with a negative remaining', async () => {
-    vi.mocked(transactionRepository.getSpentCentsForExpenseItem).mockResolvedValue(520129);
-    vi.mocked(transactionRepository.getUsedCentsForIncomeItem).mockResolvedValue(0);
+    vi.mocked(transactionRepository.getSpentCentsByExpenseItems).mockResolvedValue(new Map([['exp-gas', 520129]]));
+    vi.mocked(transactionRepository.getUsedCentsByIncomeItems).mockResolvedValue(new Map());
 
     const balance = await transactionService.getBudgetBalance('budget-1', USER);
 

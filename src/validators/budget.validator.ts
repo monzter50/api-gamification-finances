@@ -304,3 +304,21 @@ export const updateExpenseItemValidation = [
     .isIn(EXPENSE_TYPES)
     .withMessage('Invalid expense type. Must be one of: Fixed, Variable')
 ];
+
+/**
+ * GET /budgets/:id/income and /budgets/:id/expense — budget UUID plus
+ * bounded pagination (an unbounded `limit` lets one request load everything).
+ */
+export const paginatedItemsValidation = [
+  param('id')
+    .isUUID()
+    .withMessage('Budget ID must be a valid UUID'),
+  query('page')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Page must be a positive integer'),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('Limit must be between 1 and 100')
+];

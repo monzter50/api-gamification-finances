@@ -9,6 +9,16 @@ import {
 } from '../types/budget.types';
 import { type IncomeType, type ExpenseType, INCOME_TYPES, EXPENSE_TYPES } from '../constants/budget.constants';
 import { logger } from '../config/logger';
+import {
+  BudgetAlreadyExistsError,
+  BudgetNotFoundError,
+  ExpenseItemNotFoundError,
+  IncomeItemNotFoundError,
+  InvalidAccountReferenceError,
+  InvalidBudgetItemError,
+  InvalidMonthError,
+  StaleAccountReferencesError
+} from '../errors/DomainErrors';
 
 /**
  * Budget Service
@@ -30,17 +40,12 @@ export class BudgetService {
    * Get budget by ID
    */
   async getBudgetById (budgetId: string, userId: string): Promise<EnhancedBudget> {
-    const budget = await budgetRepository.findById(budgetId);
-
+    // Scoped by owner: someone else's budget is indistinguishable from a
+    // missing one (404), so budget IDs can't be probed.
+    const budget = await budgetRepository.findByIdAndUser(budgetId, userId);
     if (!budget) {
-      throw new Error('Budget not found');
+      throw new BudgetNotFoundError();
     }
-
-    // Verify ownership
-    if (budget.userId.toString() !== userId) {
-      throw new Error('Unauthorized access to budget');
-    }
-
     return budget;
   }
 
@@ -67,7 +72,7 @@ export class BudgetService {
   }): Promise<EnhancedBudget> {
     // Validate month range (0-11)
     if (data.month < 0 || data.month > 11) {
-      throw new Error('Month must be between 0 and 11');
+      throw new InvalidMonthError();
     }
 
     // Check if budget already exists for this period
@@ -78,19 +83,14 @@ export class BudgetService {
     );
 
     if (existingBudget) {
-      throw new Error(
-        `Budget for ${data.year}-${data.month + 1} already exists`
-      );
+      throw new BudgetAlreadyExistsError(data.year, data.month);
     }
 
     // Validate every income item's accountId belongs to this user BEFORE
     // attempting the create. We do this here (not in the repo) because
     // account ownership is a cross-aggregate concern — the repo shouldn't
     // know about Account semantics.
-    const incomeAccountIds = Array.from(new Set((data.incomeItems ?? []).map(i => i.accountId)));
-    for (const accountId of incomeAccountIds) {
-      await this.assertAccountBelongsToUser(accountId, data.userId);
-    }
+    await this.assertAccountsBelongToUser((data.incomeItems ?? []).map(i => i.accountId), data.userId);
 
     try {
       const budget = await budgetRepository.createBudget({
@@ -132,7 +132,7 @@ export class BudgetService {
 
     // Validate month if provided
     if (data.month !== undefined && (data.month < 0 || data.month > 11)) {
-      throw new Error('Month must be between 0 and 11');
+      throw new InvalidMonthError();
     }
 
     const updatedBudget = await budgetRepository.updateByIdAndUser(
@@ -142,7 +142,7 @@ export class BudgetService {
     );
 
     if (!updatedBudget) {
-      throw new Error('Failed to update budget');
+      throw new BudgetNotFoundError(); // vanished after the ownership check
     }
 
     logger.info(`Budget updated: ${budgetId}`);
@@ -153,7 +153,7 @@ export class BudgetService {
    * Duplicate a budget into a new (year, month) period.
    *
    * Behavior:
-   *   - Source budget must exist and belong to the caller (404 / 403 via
+   *   - Source budget must exist and belong to the caller (404 via
    *     `getBudgetById`).
    *   - Target month must be 0–11.
    *   - Target period must not already have a budget (409).
@@ -171,19 +171,16 @@ export class BudgetService {
   ): Promise<EnhancedBudget> {
     // Validate target month range
     if (targetMonth < 0 || targetMonth > 11) {
-      throw new Error('Month must be between 0 and 11');
+      throw new InvalidMonthError();
     }
 
-    // Verify source exists + belongs to user (throws 'Budget not found' or
-    // 'Unauthorized access to budget' — controller maps to 404/403)
+    // Verify source exists + belongs to user (BudgetNotFoundError → 404)
     const source = await this.getBudgetById(sourceBudgetId, userId);
 
     // Reject same-period clone explicitly — the unique constraint would also
     // catch it, but this gives a clearer 409 message.
     if (source.year === targetYear && source.month === targetMonth) {
-      throw new Error(
-        `Budget for ${targetYear}-${targetMonth + 1} already exists`
-      );
+      throw new BudgetAlreadyExistsError(targetYear, targetMonth);
     }
 
     // Check target period not already occupied
@@ -193,9 +190,7 @@ export class BudgetService {
       targetMonth
     );
     if (targetExists) {
-      throw new Error(
-        `Budget for ${targetYear}-${targetMonth + 1} already exists`
-      );
+      throw new BudgetAlreadyExistsError(targetYear, targetMonth);
     }
 
     // Re-verify every source accountId still belongs to user. Collect ALL
@@ -204,15 +199,10 @@ export class BudgetService {
     const accountIds = Array.from(
       new Set(source.incomeItems.map((i) => i.accountId))
     );
-    const offenders: string[] = [];
-    for (const accountId of accountIds) {
-      const ok = await accountRepository.findByIdAndUser(accountId, userId);
-      if (!ok) offenders.push(accountId);
-    }
+    const owned = await accountRepository.findOwnedIds(accountIds, userId);
+    const offenders = accountIds.filter((accountId) => !owned.has(accountId));
     if (offenders.length > 0) {
-      throw new Error(
-        `Cannot duplicate: source budget references account(s) that no longer belong to user: ${offenders.join(', ')}`
-      );
+      throw new StaleAccountReferencesError(offenders);
     }
 
     try {
@@ -225,7 +215,7 @@ export class BudgetService {
 
       if (!duplicated) {
         // Source disappeared between getBudgetById and duplicateBudget — race.
-        throw new Error('Budget not found');
+        throw new BudgetNotFoundError();
       }
 
       logger.info(
@@ -251,7 +241,7 @@ export class BudgetService {
     );
 
     if (!deletedBudget) {
-      throw new Error('Failed to delete budget');
+      throw new BudgetNotFoundError(); // vanished after the ownership check
     }
 
     logger.info(`Budget deleted: ${budgetId}`);
@@ -272,10 +262,7 @@ export class BudgetService {
     this.validateItems(incomeItems, 'income');
 
     // Every accountId must belong to this user
-    const incomeAccountIds = Array.from(new Set(incomeItems.map(i => i.accountId)));
-    for (const accountId of incomeAccountIds) {
-      await this.assertAccountBelongsToUser(accountId, userId);
-    }
+    await this.assertAccountsBelongToUser(incomeItems.map(i => i.accountId), userId);
 
     const updatedBudget = await budgetRepository.updateIncomeItems(
       budgetId,
@@ -284,7 +271,7 @@ export class BudgetService {
     );
 
     if (!updatedBudget) {
-      throw new Error('Failed to update income items');
+      throw new BudgetNotFoundError(); // vanished after the ownership check
     }
 
     logger.info(`Income items updated for budget: ${budgetId}`);
@@ -315,7 +302,7 @@ export class BudgetService {
     );
 
     if (!result) {
-      throw new Error('Failed to add income item');
+      throw new BudgetNotFoundError(); // vanished after the ownership check
     }
 
     logger.info(`Income item added to budget: ${budgetId}`);
@@ -340,7 +327,7 @@ export class BudgetService {
     );
 
     if (!result) {
-      throw new Error('Failed to remove income item');
+      throw new BudgetNotFoundError(); // vanished after the ownership check
     }
 
     logger.info(`Income item removed from budget: ${budgetId}`);
@@ -368,7 +355,7 @@ export class BudgetService {
     );
 
     if (!updatedBudget) {
-      throw new Error('Failed to update expense items');
+      throw new BudgetNotFoundError(); // vanished after the ownership check
     }
 
     logger.info(`Expense items updated for budget: ${budgetId}`);
@@ -396,7 +383,7 @@ export class BudgetService {
     );
 
     if (!result) {
-      throw new Error('Failed to add expense item');
+      throw new BudgetNotFoundError(); // vanished after the ownership check
     }
 
     logger.info(`Expense item added to budget: ${budgetId}`);
@@ -421,7 +408,7 @@ export class BudgetService {
     );
 
     if (!result) {
-      throw new Error('Failed to remove expense item');
+      throw new BudgetNotFoundError(); // vanished after the ownership check
     }
 
     logger.info(`Expense item removed from budget: ${budgetId}`);
@@ -494,7 +481,7 @@ export class BudgetService {
     // Budget ownership was verified above, so a null here means the item row
     // is not in this budget — surface as 404 via the controller.
     if (!result) {
-      throw new Error('Income item not found');
+      throw new IncomeItemNotFoundError();
     }
 
     logger.info(`Income item ${incomeId} updated in budget: ${budgetId}`);
@@ -524,7 +511,7 @@ export class BudgetService {
     );
 
     if (!result) {
-      throw new Error('Expense item not found');
+      throw new ExpenseItemNotFoundError();
     }
 
     logger.info(`Expense item ${expenseId} updated in budget: ${budgetId}`);
@@ -532,14 +519,21 @@ export class BudgetService {
   }
 
   /**
-   * Verify an account belongs to the given user. Throws a consistent error
-   * so callers can map it to a 400 response. Deduplicates the same check
+   * Verify an account belongs to the given user. Throws
+   * InvalidAccountReferenceError (400) — the ID came from the request body. Deduplicates the same check
    * across income add/update/replace flows.
    */
   private async assertAccountBelongsToUser (accountId: string, userId: string): Promise<void> {
-    const account = await accountRepository.findByIdAndUser(accountId, userId);
-    if (!account) {
-      throw new Error(`Account ${accountId} not found or does not belong to user`);
+    await this.assertAccountsBelongToUser([accountId], userId);
+  }
+
+  /** Same check for many IDs in one query; reports the first offender. */
+  private async assertAccountsBelongToUser (accountIds: string[], userId: string): Promise<void> {
+    const unique = Array.from(new Set(accountIds));
+    const owned = await accountRepository.findOwnedIds(unique, userId);
+    const offender = unique.find((accountId) => !owned.has(accountId));
+    if (offender !== undefined) {
+      throw new InvalidAccountReferenceError(offender);
     }
   }
 
@@ -551,28 +545,28 @@ export class BudgetService {
     type: 'income' | 'expense'
   ): void {
     if (!item.description || item.description.trim() === '') {
-      throw new Error(`${type} description is required`);
+      throw new InvalidBudgetItemError(`${type} description is required`);
     }
 
     if (item.amount === undefined || item.amount === null) {
-      throw new Error(`${type} amount is required`);
+      throw new InvalidBudgetItemError(`${type} amount is required`);
     }
 
     if (item.amount < 0) {
-      throw new Error(`${type} amount must be positive`);
+      throw new InvalidBudgetItemError(`${type} amount must be positive`);
     }
 
     // Validate income type if it's an income item
     if (type === 'income' && 'type' in item) {
       const incomeItem = item as IncomeItemInput;
       if (!incomeItem.type) {
-        throw new Error('Income type is required');
+        throw new InvalidBudgetItemError('Income type is required');
       }
       if (!INCOME_TYPES.includes(incomeItem.type as IncomeType)) {
-        throw new Error(`Invalid income type. Must be one of: ${INCOME_TYPES.join(', ')}`);
+        throw new InvalidBudgetItemError(`Invalid income type. Must be one of: ${INCOME_TYPES.join(', ')}`);
       }
       if (!incomeItem.accountId) {
-        throw new Error('Income accountId is required');
+        throw new InvalidBudgetItemError('Income accountId is required');
       }
     }
 
@@ -580,10 +574,10 @@ export class BudgetService {
     if (type === 'expense' && 'type' in item) {
       const expenseItem = item as ExpenseItemInput;
       if (!expenseItem.type) {
-        throw new Error('Expense type is required');
+        throw new InvalidBudgetItemError('Expense type is required');
       }
       if (!EXPENSE_TYPES.includes(expenseItem.type as ExpenseType)) {
-        throw new Error(`Invalid expense type. Must be one of: ${EXPENSE_TYPES.join(', ')}`);
+        throw new InvalidBudgetItemError(`Invalid expense type. Must be one of: ${EXPENSE_TYPES.join(', ')}`);
       }
     }
   }
@@ -596,14 +590,14 @@ export class BudgetService {
     type: 'income' | 'expense'
   ): void {
     if (!Array.isArray(items)) {
-      throw new Error(`${type} items must be an array`);
+      throw new InvalidBudgetItemError(`${type} items must be an array`);
     }
 
     items.forEach((item, index) => {
       try {
         this.validateItem(item, type);
       } catch (error) {
-        throw new Error(
+        throw new InvalidBudgetItemError(
           `Invalid ${type} item at index ${index}: ${(error as Error).message}`
         );
       }

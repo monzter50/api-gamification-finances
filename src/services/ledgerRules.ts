@@ -1,3 +1,5 @@
+import { UnsupportedTransactionTypeError } from '../errors/DomainErrors';
+
 /**
  * Budget line status — the "Estado" column of the spreadsheet.
  *
@@ -26,9 +28,7 @@ export const statusOf = (budgetedCents: number, spentCents: number): ItemStatus 
 export const balanceDeltaCents = (type: string, amountCents: number): number => {
   if (type === 'income') return amountCents;
   if (type === 'expense') return -amountCents;
-  throw new Error(
-    `Unsupported transaction type "${type}" for balance update. Expected 'income' or 'expense'.`
-  );
+  throw new UnsupportedTransactionTypeError(type);
 };
 
 /**

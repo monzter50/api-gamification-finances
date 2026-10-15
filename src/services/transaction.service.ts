@@ -6,6 +6,13 @@ import prisma from '../config/database';
 import { logger } from '../config/logger';
 import { toCents, fromCents } from '../utils/money';
 import { statusOf, balanceDeltaCents, balanceIncrement } from './ledgerRules';
+import {
+  BudgetNotFoundError,
+  IncomeLimitExceededError,
+  InvalidAccountReferenceError,
+  InvalidBudgetItemReferenceError,
+  TransactionNotFoundError
+} from '../errors/DomainErrors';
 
 /**
  * Transaction Service
@@ -28,7 +35,7 @@ export class TransactionService {
   private async assertAccountBelongsToUser (accountId: string, userId: string): Promise<void> {
     const account = await accountRepository.findByIdAndUser(accountId, userId);
     if (!account) {
-      throw new Error(`Account ${accountId} not found or does not belong to user`);
+      throw new InvalidAccountReferenceError(accountId);
     }
   }
 
@@ -50,13 +57,10 @@ export class TransactionService {
     installmentTotal?: number
     installmentOriginal?: number
   }): Promise<EnhancedTransaction> {
-    // 1. Verify budget exists and belongs to user
-    const budget = await budgetRepository.findById(data.budgetId);
+    // 1. Verify budget exists and belongs to user (not owned ≡ not found → 404)
+    const budget = await budgetRepository.findByIdAndUser(data.budgetId, userId);
     if (!budget) {
-      throw new Error('Budget not found');
-    }
-    if (budget.userId !== userId) {
-      throw new Error('Unauthorized access to budget');
+      throw new BudgetNotFoundError();
     }
 
     // 2. Verify account belongs to the same user (prevents cross-user balance writes)
@@ -68,13 +72,13 @@ export class TransactionService {
     if (data.incomeItemId) {
       const incomeItem = budget.incomeItems.find(i => i.id === data.incomeItemId);
       if (!incomeItem) {
-        throw new Error('Income item not found in this budget');
+        throw new InvalidBudgetItemReferenceError('Income item not found in this budget');
       }
 
       const usedCents = await transactionRepository.getUsedCentsForIncomeItem(data.incomeItemId);
       const remainingCents = incomeItem.amountCents - usedCents;
       if (amountCents > remainingCents) {
-        throw new Error(
+        throw new IncomeLimitExceededError(
           `Transaction amount (${fromCents(amountCents)}) exceeds remaining income balance (${fromCents(remainingCents).toFixed(2)}) for "${incomeItem.description}"`
         );
       }
@@ -86,7 +90,7 @@ export class TransactionService {
     if (data.expenseItemId) {
       const expenseItem = budget.expenseItems.find(e => e.id === data.expenseItemId);
       if (!expenseItem) {
-        throw new Error('Expense item not found in this budget');
+        throw new InvalidBudgetItemReferenceError('Expense item not found in this budget');
       }
     }
 
@@ -167,7 +171,7 @@ export class TransactionService {
     const transaction = await transactionRepository.findByIdAndUser(id, userId);
 
     if (!transaction) {
-      throw new Error('Transaction not found');
+      throw new TransactionNotFoundError();
     }
 
     return transaction;
@@ -211,14 +215,14 @@ export class TransactionService {
     const budgetId = existing.budgetId;
 
     if (budgetId && (data.incomeItemId !== undefined || data.expenseItemId !== undefined || data.amount !== undefined)) {
-      const budget = await budgetRepository.findById(budgetId);
-      if (!budget) throw new Error('Budget not found');
+      const budget = await budgetRepository.findByIdAndUser(budgetId, userId);
+      if (!budget) throw new BudgetNotFoundError();
 
       const existingIncomeItemId = existing.incomeItemId;
       const newIncomeItemId = data.incomeItemId !== undefined ? data.incomeItemId : existingIncomeItemId;
       if (newIncomeItemId) {
         const incomeItem = budget.incomeItems.find(i => i.id === newIncomeItemId);
-        if (!incomeItem) throw new Error('Income item not found in this budget');
+        if (!incomeItem) throw new InvalidBudgetItemReferenceError('Income item not found in this budget');
 
         const usedCents = await transactionRepository.getUsedCentsForIncomeItem(newIncomeItemId);
         // Exclude the current row's contribution since we're updating it in place
@@ -228,7 +232,7 @@ export class TransactionService {
         const remainingCents = incomeItem.amountCents - usedExcludingCurrent;
 
         if (newAmountCents > remainingCents) {
-          throw new Error(
+          throw new IncomeLimitExceededError(
             `Transaction amount (${fromCents(newAmountCents)}) exceeds remaining income balance (${fromCents(remainingCents).toFixed(2)}) for "${incomeItem.description}"`
           );
         }
@@ -238,7 +242,7 @@ export class TransactionService {
       const newExpenseItemId = data.expenseItemId !== undefined ? data.expenseItemId : existing.expenseItemId;
       if (newExpenseItemId) {
         const expenseItem = budget.expenseItems.find(e => e.id === newExpenseItemId);
-        if (!expenseItem) throw new Error('Expense item not found in this budget');
+        if (!expenseItem) throw new InvalidBudgetItemReferenceError('Expense item not found in this budget');
       }
     }
 
@@ -347,42 +351,43 @@ export class TransactionService {
      * Get budget balance info — shows how much is spent vs budgeted
      */
   async getBudgetBalance (budgetId: string, userId: string) {
-    // Verify budget belongs to user
-    const budget = await budgetRepository.findById(budgetId);
-    if (!budget) throw new Error('Budget not found');
-    if (budget.userId !== userId) throw new Error('Unauthorized access to budget');
+    // Verify budget belongs to user (not owned ≡ not found → 404)
+    const budget = await budgetRepository.findByIdAndUser(budgetId, userId);
+    if (!budget) throw new BudgetNotFoundError();
+
+    // One grouped sum per item kind instead of one query per budget line (N+1).
+    const [spentByExpenseItem, usedByIncomeItem] = await Promise.all([
+      transactionRepository.getSpentCentsByExpenseItems(budget.expenseItems.map((item) => item.id)),
+      transactionRepository.getUsedCentsByIncomeItems(budget.incomeItems.map((item) => item.id))
+    ]);
 
     // For each expense item: spent vs budgeted, plus its status. `remaining`
     // goes negative when a line is overspent.
-    const expenseBreakdown = await Promise.all(
-      budget.expenseItems.map(async (item) => {
-        const spentCents = await transactionRepository.getSpentCentsForExpenseItem(item.id);
-        return {
-          id: item.id,
-          description: item.description,
-          budgeted: fromCents(item.amountCents),
-          spent: fromCents(spentCents),
-          remaining: fromCents(item.amountCents - spentCents),
-          percentUsed: item.amountCents > 0 ? (spentCents / item.amountCents) * 100 : 0,
-          status: statusOf(item.amountCents, spentCents)
-        };
-      })
-    );
+    const expenseBreakdown = budget.expenseItems.map((item) => {
+      const spentCents = spentByExpenseItem.get(item.id) ?? 0;
+      return {
+        id: item.id,
+        description: item.description,
+        budgeted: fromCents(item.amountCents),
+        spent: fromCents(spentCents),
+        remaining: fromCents(item.amountCents - spentCents),
+        percentUsed: item.amountCents > 0 ? (spentCents / item.amountCents) * 100 : 0,
+        status: statusOf(item.amountCents, spentCents)
+      };
+    });
 
     // For each income item, calculate used vs available
-    const incomeBreakdown = await Promise.all(
-      budget.incomeItems.map(async (item) => {
-        const usedCents = await transactionRepository.getUsedCentsForIncomeItem(item.id);
-        return {
-          id: item.id,
-          description: item.description,
-          available: fromCents(item.amountCents),
-          used: fromCents(usedCents),
-          remaining: fromCents(item.amountCents - usedCents),
-          percentUsed: item.amountCents > 0 ? (usedCents / item.amountCents) * 100 : 0
-        };
-      })
-    );
+    const incomeBreakdown = budget.incomeItems.map((item) => {
+      const usedCents = usedByIncomeItem.get(item.id) ?? 0;
+      return {
+        id: item.id,
+        description: item.description,
+        available: fromCents(item.amountCents),
+        used: fromCents(usedCents),
+        remaining: fromCents(item.amountCents - usedCents),
+        percentUsed: item.amountCents > 0 ? (usedCents / item.amountCents) * 100 : 0
+      };
+    });
 
     return {
       budgetId,

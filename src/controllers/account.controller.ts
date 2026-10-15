@@ -1,11 +1,10 @@
-import { type Response } from 'express';
-import { validationResult } from 'express-validator';
+import { type Response, type NextFunction } from 'express';
 import crypto from 'crypto';
 import { accountService } from '../services/account.service';
 import { type AccountRequest, type CreateAccountBody, type UpdateAccountBody } from '../types/account.types';
 
 export class AccountController {
-  async getUserAccounts (req: AccountRequest, res: Response): Promise<void> {
+  async getUserAccounts (req: AccountRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.userId;
       const accounts = await accountService.getUserAccounts(userId);
@@ -42,17 +41,11 @@ export class AccountController {
         message: 'Accounts retrieved successfully'
       });
     } catch (error) {
-      res.status(500).json({ success: false, error: (error as Error).message, statusCode: 500 });
+      next(error);
     }
   }
 
-  async getAccountById (req: AccountRequest, res: Response): Promise<void> {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(400).json({ success: false, errors: errors.array() });
-      return;
-    }
-
+  async getAccountById (req: AccountRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.userId;
       const { id } = req.params as { id: string };
@@ -63,22 +56,11 @@ export class AccountController {
         message: 'Account retrieved successfully'
       });
     } catch (error) {
-      const message = (error as Error).message;
-      if (message === 'Account not found') {
-        res.status(404).json({ success: false, error: message, statusCode: 404 });
-        return;
-      }
-      res.status(500).json({ success: false, error: message, statusCode: 500 });
+      next(error);
     }
   }
 
-  async createAccount (req: AccountRequest<CreateAccountBody>, res: Response): Promise<void> {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(400).json({ success: false, errors: errors.array() });
-      return;
-    }
-
+  async createAccount (req: AccountRequest<CreateAccountBody>, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.userId;
       const account = await accountService.createAccount(userId, req.body);
@@ -88,17 +70,11 @@ export class AccountController {
         message: 'Account created successfully'
       });
     } catch (error) {
-      res.status(500).json({ success: false, error: (error as Error).message, statusCode: 500 });
+      next(error);
     }
   }
 
-  async updateAccount (req: AccountRequest<UpdateAccountBody>, res: Response): Promise<void> {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(400).json({ success: false, errors: errors.array() });
-      return;
-    }
-
+  async updateAccount (req: AccountRequest<UpdateAccountBody>, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.userId;
       const { id } = req.params as { id: string };
@@ -109,22 +85,11 @@ export class AccountController {
         message: 'Account updated successfully'
       });
     } catch (error) {
-      const message = (error as Error).message;
-      if (message === 'Account not found') {
-        res.status(404).json({ success: false, error: message, statusCode: 404 });
-        return;
-      }
-      res.status(500).json({ success: false, error: message, statusCode: 500 });
+      next(error);
     }
   }
 
-  async deleteAccount (req: AccountRequest, res: Response): Promise<void> {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(400).json({ success: false, errors: errors.array() });
-      return;
-    }
-
+  async deleteAccount (req: AccountRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.userId;
       const { id } = req.params as { id: string };
@@ -135,16 +100,7 @@ export class AccountController {
         message: 'Account deleted successfully'
       });
     } catch (error) {
-      const message = (error as Error).message;
-      if (message === 'Account not found') {
-        res.status(404).json({ success: false, error: message, statusCode: 404 });
-        return;
-      }
-      if (message === 'Cannot delete account with existing transactions') {
-        res.status(409).json({ success: false, error: message, statusCode: 409 });
-        return;
-      }
-      res.status(500).json({ success: false, error: message, statusCode: 500 });
+      next(error);
     }
   }
 }

@@ -20,17 +20,20 @@ export const createTransactionValidation = [
   body('vendor')
     .trim()
     .notEmpty()
-    .withMessage('Vendor is required'),
+    .withMessage('Vendor is required')
+    .isLength({ max: 200 })
+    .withMessage('Vendor must not exceed 200 characters'),
   body('type')
     .isIn(['income', 'expense'])
     .withMessage('Type must be either income or expense'),
   body('accountId')
-    .trim()
-    .notEmpty()
-    .withMessage('Account ID is required'),
+    .isUUID()
+    .withMessage('Account ID must be a valid UUID'),
   body('description')
     .optional()
-    .trim(),
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Description must not exceed 500 characters'),
   body('incomeItemId')
     .optional()
     .isUUID()
@@ -72,19 +75,22 @@ export const updateTransactionValidation = [
     .optional()
     .trim()
     .notEmpty()
-    .withMessage('Vendor cannot be empty'),
+    .withMessage('Vendor cannot be empty')
+    .isLength({ max: 200 })
+    .withMessage('Vendor must not exceed 200 characters'),
   body('type')
     .optional()
     .isIn(['income', 'expense'])
     .withMessage('Type must be either income or expense'),
   body('accountId')
     .optional()
-    .trim()
-    .notEmpty()
-    .withMessage('Account ID cannot be empty'),
+    .isUUID()
+    .withMessage('Account ID must be a valid UUID'),
   body('description')
     .optional()
-    .trim(),
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Description must not exceed 500 characters'),
   body('incomeItemId')
     .optional({ values: 'null' })
     .isUUID()
@@ -156,4 +162,13 @@ export const monthlySummaryValidation = [
   param('month')
     .isInt({ min: 1, max: 12 })
     .withMessage('Month must be between 1 and 12')
+];
+
+/**
+ * GET /transactions/budget/:budgetId/balance
+ */
+export const budgetBalanceValidation = [
+  param('budgetId')
+    .isUUID()
+    .withMessage('Budget ID must be a valid UUID')
 ];

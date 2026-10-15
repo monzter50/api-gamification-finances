@@ -2,6 +2,7 @@ import { userRepository } from '../repositories/user.repository';
 import { type UpdateProfileRequestDto } from '../dto/request/user.dto';
 import { type UserProfileResponseDto } from '../dto/response/user.dto';
 import { logger } from '../config/logger';
+import { UserNotFoundError } from '../errors/AuthErrors';
 
 /**
  * User Service
@@ -15,7 +16,7 @@ export class UserService {
     const user = await userRepository.findByIdWithoutPassword(userId);
 
     if (!user) {
-      throw new Error('User not found');
+      throw new UserNotFoundError();
     }
 
     return {
@@ -34,9 +35,9 @@ export class UserService {
    * Update user profile
    */
   async updateProfile (userId: string, data: UpdateProfileRequestDto): Promise<UserProfileResponseDto> {
-    const user = await userRepository.findById(userId);
+    const user = await userRepository.findByIdWithoutPassword(userId);
     if (!user) {
-      throw new Error('User not found');
+      throw new UserNotFoundError();
     }
 
     // Update user name if provided
