@@ -9,6 +9,51 @@ import {
   type ItemRemovalResult
 } from '../types/budget.types';
 import prisma from '../config/database';
+import { toCents, fromCents } from '../utils/money';
+
+/**
+ * Money columns for an item write: `amountCents` is the source of truth and
+ * the legacy Float `amount` is normalised from it, so both always agree.
+ */
+const moneyColumns = (amount: number): { amount: number, amountCents: number } => {
+  const amountCents = toCents(amount);
+  return { amount: fromCents(amountCents), amountCents };
+};
+
+const incomeItemData = (item: IncomeItemInput): {
+  description: string
+  type: string
+  accountId: string
+  amount: number
+  amountCents: number
+} => ({
+  description: item.description,
+  type: item.type,
+  accountId: item.accountId,
+  ...moneyColumns(item.amount)
+});
+
+const expenseItemData = (item: ExpenseItemInput): {
+  description: string
+  type: string
+  amount: number
+  amountCents: number
+} => ({
+  description: item.description,
+  type: item.type,
+  ...moneyColumns(item.amount)
+});
+
+/** Totals derived from integer-cent sums, exposed in decimal units. */
+const totalsFromCents = (incomeCents: number, expenseCents: number): BudgetTotals => {
+  const netCents = incomeCents - expenseCents;
+  return {
+    totalIncome: fromCents(incomeCents),
+    totalExpense: fromCents(expenseCents),
+    netSavings: fromCents(netCents),
+    savingsRate: incomeCents === 0 ? 0 : (netCents / incomeCents) * 100
+  };
+};
 
 export type EnhancedBudget = Budget & {
   incomeItems: IncomeItem[]
@@ -30,17 +75,12 @@ export class BudgetRepository extends BaseRepository<Budget> {
 
   // Helper to enrich budget with virtual fields
   private enrichBudget (budget: Budget & { incomeItems: IncomeItem[], expenseItems: ExpenseItem[] }): EnhancedBudget {
-    const totalIncome = budget.incomeItems.reduce((sum, item) => sum + item.amount, 0);
-    const totalExpense = budget.expenseItems.reduce((sum, item) => sum + item.amount, 0);
-    const netSavings = totalIncome - totalExpense;
-    const savingsRate = totalIncome === 0 ? 0 : (netSavings / totalIncome) * 100;
+    const incomeCents = budget.incomeItems.reduce((sum, item) => sum + item.amountCents, 0);
+    const expenseCents = budget.expenseItems.reduce((sum, item) => sum + item.amountCents, 0);
 
     return {
       ...budget,
-      totalIncome,
-      totalExpense,
-      netSavings,
-      savingsRate
+      ...totalsFromCents(incomeCents, expenseCents)
     };
   }
 
@@ -54,20 +94,15 @@ export class BudgetRepository extends BaseRepository<Budget> {
     const [income, expense] = await Promise.all([
       prisma.incomeItem.aggregate({
         where: { budgetId },
-        _sum: { amount: true }
+        _sum: { amountCents: true }
       }),
       prisma.expenseItem.aggregate({
         where: { budgetId },
-        _sum: { amount: true }
+        _sum: { amountCents: true }
       })
     ]);
 
-    const totalIncome = income._sum.amount ?? 0;
-    const totalExpense = expense._sum.amount ?? 0;
-    const netSavings = totalIncome - totalExpense;
-    const savingsRate = totalIncome === 0 ? 0 : (netSavings / totalIncome) * 100;
-
-    return { totalIncome, totalExpense, netSavings, savingsRate };
+    return totalsFromCents(income._sum.amountCents ?? 0, expense._sum.amountCents ?? 0);
   }
 
   /**
@@ -148,10 +183,10 @@ export class BudgetRepository extends BaseRepository<Budget> {
         year: data.year,
         month: data.month,
         incomeItems: {
-          create: data.incomeItems || []
+          create: (data.incomeItems ?? []).map(incomeItemData)
         },
         expenseItems: {
-          create: data.expenseItems || []
+          create: (data.expenseItems ?? []).map(expenseItemData)
         }
       },
       include: { incomeItems: true, expenseItems: true }
@@ -228,13 +263,7 @@ export class BudgetRepository extends BaseRepository<Budget> {
     if (!exists) return null;
 
     const created = await prisma.incomeItem.create({
-      data: {
-        description: incomeItem.description,
-        amount: incomeItem.amount,
-        type: incomeItem.type,
-        accountId: incomeItem.accountId,
-        budgetId
-      }
+      data: { ...incomeItemData(incomeItem), budgetId }
     });
 
     const totals = await this.computeBudgetTotals(budgetId);
@@ -260,7 +289,7 @@ export class BudgetRepository extends BaseRepository<Budget> {
         where: { id: budgetId },
         data: {
           incomeItems: {
-            create: incomeItems
+            create: incomeItems.map(incomeItemData)
           }
         },
         include: { incomeItems: true, expenseItems: true }
@@ -315,12 +344,7 @@ export class BudgetRepository extends BaseRepository<Budget> {
     if (!exists) return null;
 
     const created = await prisma.expenseItem.create({
-      data: {
-        description: expenseItem.description,
-        amount: expenseItem.amount,
-        type: expenseItem.type,
-        budgetId
-      }
+      data: { ...expenseItemData(expenseItem), budgetId }
     });
 
     const totals = await this.computeBudgetTotals(budgetId);
@@ -344,7 +368,7 @@ export class BudgetRepository extends BaseRepository<Budget> {
         where: { id: budgetId },
         data: {
           expenseItems: {
-            create: expenseItems
+            create: expenseItems.map(expenseItemData)
           }
         },
         include: { incomeItems: true, expenseItems: true }
@@ -515,12 +539,7 @@ export class BudgetRepository extends BaseRepository<Budget> {
 
     const result = await prisma.incomeItem.updateMany({
       where: { id: incomeId, budgetId },
-      data: {
-        description: incomeItem.description,
-        amount: incomeItem.amount,
-        type: incomeItem.type,
-        accountId: incomeItem.accountId
-      }
+      data: incomeItemData(incomeItem)
     });
     if (result.count === 0) return null;
 
@@ -562,6 +581,7 @@ export class BudgetRepository extends BaseRepository<Budget> {
     const incomeData = source.incomeItems.map((i: IncomeItem) => ({
       description: i.description,
       amount: i.amount,
+      amountCents: i.amountCents,
       type: i.type,
       accountId: i.accountId
     }));
@@ -569,6 +589,7 @@ export class BudgetRepository extends BaseRepository<Budget> {
     const expenseData = source.expenseItems.map((e: ExpenseItem) => ({
       description: e.description,
       amount: e.amount,
+      amountCents: e.amountCents,
       type: e.type
     }));
 
@@ -604,11 +625,7 @@ export class BudgetRepository extends BaseRepository<Budget> {
 
     const result = await prisma.expenseItem.updateMany({
       where: { id: expenseId, budgetId },
-      data: {
-        description: expenseItem.description,
-        amount: expenseItem.amount,
-        type: expenseItem.type
-      }
+      data: expenseItemData(expenseItem)
     });
     if (result.count === 0) return null;
 

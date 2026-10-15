@@ -31,7 +31,7 @@ export const createBudgetValidation = [
   body('incomeItems.*.type')
     .optional()
     .isIn(INCOME_TYPES)
-    .withMessage('Invalid income type. Must be one of: Debit Card, Credit Card, Cash, Vales, Transfer, Check, Other'),
+    .withMessage('Invalid income type. Must be one of: Debit Card, Cash, Vales, Transfer, Check, Other'),
   body('incomeItems.*.accountId')
     .if(body('incomeItems').exists())
     .isUUID()
@@ -104,7 +104,7 @@ export const updateIncomeItemsValidation = [
     .withMessage('Income item amount must be a positive number'),
   body('incomeItems.*.type')
     .isIn(INCOME_TYPES)
-    .withMessage('Invalid income type. Must be one of: Debit Card, Credit Card, Cash, Vales, Transfer, Check, Other'),
+    .withMessage('Invalid income type. Must be one of: Debit Card, Cash, Vales, Transfer, Check, Other'),
   body('incomeItems.*.accountId')
     .isUUID()
     .withMessage('Income item accountId is required and must be a valid UUID')
@@ -207,7 +207,7 @@ export const addIncomeItemValidation = [
     .withMessage('Amount must be a positive number'),
   body('type')
     .isIn(INCOME_TYPES)
-    .withMessage('Invalid income type. Must be one of: Debit Card, Credit Card, Cash, Vales, Transfer, Check, Other'),
+    .withMessage('Invalid income type. Must be one of: Debit Card, Cash, Vales, Transfer, Check, Other'),
   body('accountId')
     .isUUID()
     .withMessage('accountId is required and must be a valid UUID')
@@ -251,7 +251,7 @@ export const updateIncomeItemValidation = [
     .withMessage('Amount must be a positive number'),
   body('type')
     .isIn(INCOME_TYPES)
-    .withMessage('Invalid income type. Must be one of: Debit Card, Credit Card, Cash, Vales, Transfer, Check, Other'),
+    .withMessage('Invalid income type. Must be one of: Debit Card, Cash, Vales, Transfer, Check, Other'),
   body('accountId')
     .isUUID()
     .withMessage('accountId is required and must be a valid UUID')

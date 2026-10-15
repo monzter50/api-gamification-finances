@@ -43,6 +43,9 @@ model Account {
   name         String
   type         String        // 'checking' | 'savings' | 'credit_card' | 'vales'
   balance      Float         @default(0)
+  // Money is migrating to integer cents (expand/contract). `balanceCents` is the
+  // source of truth; `balance` is kept in sync until the contract migration drops it.
+  balanceCents Int           @default(0)
   currency     String        @default("MXN")
   isActive     Boolean       @default(true)
   createdAt    DateTime      @default(now())
@@ -62,6 +65,7 @@ model Transaction {
   account          Account  @relation(fields: [accountId], references: [id])
   date             DateTime
   amount           Float
+  amountCents      Int
   vendor           String
   description      String?
   type             String   // 'income' | 'expense'
@@ -76,6 +80,11 @@ model Transaction {
   installmentCurrent  Int?
   installmentTotal    Int?
   installmentOriginal Float?
+  installmentOriginalCents Int?
+
+  // Set only for rows created by the Excel import. Unique per user so that
+  // re-importing the same workbook does not duplicate transactions.
+  importHash       String?
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -86,6 +95,7 @@ model Transaction {
   @@index([incomeItemId])
   @@index([expenseItemId])
   @@index([accountId])
+  @@unique([userId, importHash])
 }
 
 model Budget {
@@ -114,6 +124,7 @@ model IncomeItem {
   account      Account       @relation(fields: [accountId], references: [id])
   description  String
   amount       Float
+  amountCents  Int
   type         String        // Enum handled as string: 'Debit Card', etc.
   transactions Transaction[]
 
@@ -126,6 +137,7 @@ model ExpenseItem {
   budget       Budget        @relation(fields: [budgetId], references: [id], onDelete: Cascade)
   description  String
   amount       Float
+  amountCents  Int
   type         String        // Enum handled as string: 'Fixed', 'Variable'
   transactions Transaction[]
 }

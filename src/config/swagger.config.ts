@@ -227,7 +227,7 @@ const options: swaggerJsdoc.Options = {
             },
             type: {
               type: 'string',
-              enum: ['Debit Card', 'Credit Card', 'Cash', 'Vales', 'Transfer', 'Check', 'Other'],
+              enum: ['Debit Card', 'Cash', 'Vales', 'Transfer', 'Check', 'Other'],
               description: 'Payment/receipt method',
               example: 'Transfer'
             },
@@ -276,7 +276,7 @@ const options: swaggerJsdoc.Options = {
             amount: { type: 'number', format: 'float', minimum: 0.01, example: 25000 },
             type: {
               type: 'string',
-              enum: ['Debit Card', 'Credit Card', 'Cash', 'Vales', 'Transfer', 'Check', 'Other'],
+              enum: ['Debit Card', 'Cash', 'Vales', 'Transfer', 'Check', 'Other'],
               example: 'Transfer'
             },
             accountId: {

@@ -1,5 +1,6 @@
 import { BaseRepository } from './base.repository';
 import { type Transaction } from '@prisma/client';
+import { fromCents } from '../utils/money';
 
 /**
  * Enhanced Transaction with related entities
@@ -20,12 +21,14 @@ export type EnhancedTransaction = Transaction & {
     id: string
     description: string
     amount: number
+    amountCents: number
     type: string
   } | null
   expenseItem?: {
     id: string
     description: string
     amount: number
+    amountCents: number
     type: string
   } | null
 };
@@ -38,10 +41,10 @@ export const transactionIncludes = {
     select: { id: true, year: true, month: true }
   },
   incomeItem: {
-    select: { id: true, description: true, amount: true, type: true }
+    select: { id: true, description: true, amount: true, amountCents: true, type: true }
   },
   expenseItem: {
-    select: { id: true, description: true, amount: true, type: true }
+    select: { id: true, description: true, amount: true, amountCents: true, type: true }
   }
 };
 
@@ -58,6 +61,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     budgetId?: string
     date: Date
     amount: number
+    amountCents: number
     vendor: string
     type: string
     accountId: string
@@ -67,6 +71,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     installmentCurrent?: number
     installmentTotal?: number
     installmentOriginal?: number
+    installmentOriginalCents?: number
   }): Promise<EnhancedTransaction> {
     return this.model.create({
       data,
@@ -135,14 +140,14 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       this.model.groupBy({
         by: ['type'],
         where: totalsWhere,
-        _sum: { amount: true },
+        _sum: { amountCents: true },
         _count: true
       })
     ]);
 
     const totals = { income: 0, expense: 0, savings: 0, count: 0 };
-    for (const g of grouped as Array<{ type: string, _sum: { amount: number | null }, _count: number }>) {
-      const sum = g._sum.amount ?? 0;
+    for (const g of grouped as Array<{ type: string, _sum: { amountCents: number | null }, _count: number }>) {
+      const sum = fromCents(g._sum.amountCents ?? 0);
       totals.count += g._count;
       if (g.type === 'income') { totals.income = sum; } else if (g.type === 'expense') { totals.expense = sum; } else if (g.type === 'savings') { totals.savings = sum; }
     }
@@ -234,25 +239,25 @@ export class TransactionRepository extends BaseRepository<Transaction> {
   }
 
   /**
-   * Get total spent against a specific expense item
+   * Total spent against a specific expense item, in cents
    */
-  async getSpentForExpenseItem(expenseItemId: string): Promise<number> {
+  async getSpentCentsForExpenseItem(expenseItemId: string): Promise<number> {
     const result = await this.model.aggregate({
       where: { expenseItemId },
-      _sum: { amount: true }
+      _sum: { amountCents: true }
     });
-    return result._sum.amount || 0;
+    return result._sum.amountCents || 0;
   }
 
   /**
-   * Get total used from a specific income item
+   * Total used from a specific income item, in cents
    */
-  async getUsedForIncomeItem(incomeItemId: string): Promise<number> {
+  async getUsedCentsForIncomeItem(incomeItemId: string): Promise<number> {
     const result = await this.model.aggregate({
       where: { incomeItemId },
-      _sum: { amount: true }
+      _sum: { amountCents: true }
     });
-    return result._sum.amount || 0;
+    return result._sum.amountCents || 0;
   }
 
   /**
@@ -279,25 +284,25 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     const [income, expense] = await Promise.all([
       this.model.aggregate({
         where: { userId, type: 'income', ...dateFilter },
-        _sum: { amount: true },
+        _sum: { amountCents: true },
         _count: { id: true }
       }),
       this.model.aggregate({
         where: { userId, type: 'expense', ...dateFilter },
-        _sum: { amount: true },
+        _sum: { amountCents: true },
         _count: { id: true }
       })
     ]);
 
-    const totalIncome = income._sum.amount || 0;
-    const totalExpense = expense._sum.amount || 0;
+    const incomeCents: number = income._sum.amountCents || 0;
+    const expenseCents: number = expense._sum.amountCents || 0;
 
     return {
-      totalIncome,
-      totalExpense,
+      totalIncome: fromCents(incomeCents),
+      totalExpense: fromCents(expenseCents),
       incomeCount: income._count.id || 0,
       expenseCount: expense._count.id || 0,
-      netBalance: totalIncome - totalExpense
+      netBalance: fromCents(incomeCents - expenseCents)
     };
   }
 

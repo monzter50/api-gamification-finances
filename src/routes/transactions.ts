@@ -134,6 +134,10 @@ router.get(
  *                     paymentSources:
  *                       type: array
  *                       items: { type: string }
+ *                     unmatchedCategories:
+ *                       type: array
+ *                       description: Transaction categories with no matching row in the Expenses sheet. Show them in the review step.
+ *                       items: { type: string }
  *                     counts:
  *                       type: object
  *                       properties:
@@ -245,8 +249,24 @@ router.post(
  *                         transactions: { type: integer }
  *                         incomeItems: { type: integer }
  *                         expenseItems: { type: integer }
+ *                     updatedCount:
+ *                       type: object
+ *                       description: Items that already existed in the budget (same name) and were updated in place.
+ *                       properties:
+ *                         incomeItems: { type: integer }
+ *                         expenseItems: { type: integer }
+ *                     skippedCount:
+ *                       type: object
+ *                       description: Rows not created because an identical row was already imported.
+ *                       properties:
+ *                         transactions: { type: integer }
+ *                     unmatchedCategories:
+ *                       type: array
+ *                       description: Categories that matched no expense item; their rows were created without expenseItemId.
+ *                       items: { type: string }
  *                     transactionIds:
  *                       type: array
+ *                       description: Transactions created by this call (skipped rows excluded).
  *                       items: { type: string, format: uuid }
  *       400: { $ref: '#/components/responses/BadRequestError' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }

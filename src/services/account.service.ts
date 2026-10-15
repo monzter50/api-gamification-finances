@@ -30,7 +30,7 @@ export class AccountService {
   async updateAccount(
     id: string,
     userId: string,
-    data: Partial<Omit<Account, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>
+    data: Partial<Omit<Account, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'balanceCents'>>
   ): Promise<Account> {
     const updated = await accountRepository.updateByIdAndUser(id, userId, data);
     if (!updated) {

@@ -41,6 +41,12 @@ export interface ParseResult {
   incomeItems: ParsedIncomeItem[]
   expenseItems: ParsedExpenseItem[]
   paymentSources: string[]
+  /**
+   * Transaction categories with no matching row in the workbook's "Expenses"
+   * sheet. Surface these in the review step: unless the budget already has an
+   * item with that name, those rows import without an expense item.
+   */
+  unmatchedCategories: string[]
   counts: { transactions: number, incomeItems: number, expenseItems: number }
 }
 
@@ -73,5 +79,12 @@ export interface ConfirmXlsxPayload {
 
 export interface ConfirmXlsxResult {
   createdCount: { transactions: number, incomeItems: number, expenseItems: number }
+  /** Items that already existed in the budget (same name) and were updated in place. */
+  updatedCount: { incomeItems: number, expenseItems: number }
+  /** Rows not created because an identical row was already imported. */
+  skippedCount: { transactions: number }
+  /** Categories that matched no expense item; their rows have no expenseItemId. */
+  unmatchedCategories: string[]
+  /** Ids of the transactions created by THIS call (skipped rows excluded). */
   transactionIds: string[]
 }
