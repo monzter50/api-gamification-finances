@@ -548,6 +548,10 @@ const options: swaggerJsdoc.Options = {
         description: 'Transaction management endpoints'
       },
       {
+        name: 'Integrations',
+        description: 'Google Sheets export (per-user Google OAuth, drive.file scope)'
+      },
+      {
         name: 'Authentication',
         description: 'User authentication endpoints'
       },

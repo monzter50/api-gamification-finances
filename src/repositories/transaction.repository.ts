@@ -1,5 +1,5 @@
 import { BaseRepository } from './base.repository';
-import { type Transaction } from '@prisma/client';
+import { type Prisma, type Transaction } from '@prisma/client';
 import { fromCents } from '../utils/money';
 import prisma from '../config/database';
 
@@ -259,6 +259,31 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       _sum: { amountCents: true }
     });
     return result._sum.amountCents || 0;
+  }
+
+  /**
+   * Transactions for a spreadsheet export: always scoped to `userId`,
+   * oldest first, and bounded by `take` (callers pass max+1 to detect overflow).
+   */
+  async findForExport (
+    userId: string,
+    filters: { from?: Date, to?: Date, budgetId?: string },
+    take: number
+  ): Promise<Array<Prisma.TransactionGetPayload<{ include: typeof transactionIncludes }>>> {
+    const where: Prisma.TransactionWhereInput = { userId };
+    if (filters.budgetId !== undefined) where.budgetId = filters.budgetId;
+    if (filters.from !== undefined || filters.to !== undefined) {
+      where.date = {
+        ...(filters.from !== undefined ? { gte: filters.from } : {}),
+        ...(filters.to !== undefined ? { lte: filters.to } : {})
+      };
+    }
+    return await prisma.transaction.findMany({
+      where,
+      include: transactionIncludes,
+      orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
+      take
+    });
   }
 
   /**

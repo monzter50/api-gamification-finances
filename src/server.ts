@@ -12,6 +12,7 @@ import { errorHandler } from './middleware/errorHandler';
 import { routes } from './routes/index';
 import { logger } from './config/logger';
 import { assertRequiredEnv, isApiDocsEnabled } from './config/env';
+import { redactUrl } from './utils/redactUrl';
 
 const app: Application = express();
 const PORT: number = parseInt(process.env.PORT || '3000', 10);
@@ -86,7 +87,10 @@ app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 // Compression middleware
 app.use(compression() as any);
 
-// Logging middleware
+// Logging middleware.
+// Never log secrets carried in query strings (OAuth `code`/`state`, tokens):
+// override morgan's built-in :url token with a redacted version.
+morgan.token('url', (req: Request) => redactUrl(req.originalUrl ?? req.url ?? ''));
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 } else {

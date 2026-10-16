@@ -34,6 +34,8 @@ model User {
   transactions Transaction[]
   budgets      Budget[]
   accounts     Account[]
+
+  googleIntegration GoogleIntegration?
 }
 
 model Account {
@@ -155,3 +157,21 @@ model BlacklistedToken {
   @@index([expiresAt])
 }
 
+
+/// A user's connection to their Google account for the Sheets export.
+/// One per user. The refresh token is stored ENCRYPTED (AES-256-GCM, see
+/// src/utils/crypto.ts) — never in plain text. Scope is `drive.file`, so the
+/// app can only touch spreadsheets it created for this user.
+model GoogleIntegration {
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  googleEmail     String?
+  refreshTokenEnc String
+  scope           String
+  /// Spreadsheet the app created in the user's Drive (null until first sync).
+  spreadsheetId   String?
+  lastSyncAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
