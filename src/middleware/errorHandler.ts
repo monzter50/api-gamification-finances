@@ -2,6 +2,7 @@ import { type Request, type Response, type NextFunction } from 'express';
 import { Prisma } from '@prisma/client';
 import { logger } from '../config/logger';
 import { AppError } from '../errors/AppError';
+import { redactUrl } from '../utils/redactUrl';
 
 interface CustomError extends Error {
   statusCode?: number
@@ -48,7 +49,7 @@ export const errorHandler = (
     message: err.message,
     name: err.name,
     code: err.code,
-    url: req.originalUrl,
+    url: redactUrl(req.originalUrl),
     method: req.method,
     ip: req.ip,
     userId: (req as Request & { user?: { userId?: string } }).user?.userId

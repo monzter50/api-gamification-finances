@@ -271,6 +271,379 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/integrations/google/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Start connecting a Google account (Sheets export)
+         * @description Returns Google's consent URL. Send the browser there; Google redirects back to
+         *     `/api/integrations/google/callback`, which then redirects to
+         *     `FRONTEND_URL/settings/integrations?google=connected` (or `google=error&reason=...`).
+         *     Scope is `drive.file`: the app can only access spreadsheets it creates.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Consent URL */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example true */
+                            success?: boolean;
+                            data?: {
+                                /** Format: uri */
+                                url?: string;
+                            };
+                        };
+                    };
+                };
+                401: components["responses"]["UnauthorizedError"];
+                /** @description Google integration not configured on this server (GOOGLE_NOT_CONFIGURED) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integrations/google/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * OAuth redirect target (called by Google, not by the SPA)
+         * @description Public endpoint — the user is identified by the signed, 10-minute `state`.
+         *     Always responds with a 302 to the frontend. Possible `reason` values:
+         *     `access_denied`, `google_error`, `invalid_request`, `invalid_state`,
+         *     `missing_scope`, `exchange_failed`.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    code?: string;
+                    state?: string;
+                    error?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Redirect to the frontend integrations page */
+                302: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integrations/google/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Google connection status for the current user */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Status */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example true */
+                            success?: boolean;
+                            data?: {
+                                /** @description Server has Google credentials */
+                                configured?: boolean;
+                                connected?: boolean;
+                                googleEmail?: string | null;
+                                spreadsheetId?: string | null;
+                                spreadsheetUrl?: string | null;
+                                /** Format: date-time */
+                                lastSyncAt?: string | null;
+                            };
+                        };
+                    };
+                };
+                401: components["responses"]["UnauthorizedError"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integrations/google/sheet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a new export spreadsheet in the user's Drive
+         * @description Replaces the stored export target. The old spreadsheet is left untouched in Drive.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Spreadsheet created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example true */
+                            success?: boolean;
+                            data?: {
+                                spreadsheetId?: string;
+                                /** Format: uri */
+                                spreadsheetUrl?: string;
+                            };
+                        };
+                    };
+                };
+                401: components["responses"]["UnauthorizedError"];
+                /** @description Google not connected (GOOGLE_NOT_CONNECTED) or must be reconnected (GOOGLE_REAUTH_REQUIRED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Google unavailable or not configured */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integrations/google/sheet/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Export transactions to the Google spreadsheet (on demand)
+         * @description Replaces the contents of the tab "Transacciones (app)" — other tabs are never touched.
+         *     Creates the spreadsheet on first use, or again if the user deleted it.
+         *     Values are written literally (no formula execution). Max 20,000 rows per sync.
+         *     Rate limited per user (6/min by default).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: date
+                         * @example 2026-09-01
+                         */
+                        from?: string;
+                        /**
+                         * Format: date
+                         * @example 2026-09-30
+                         */
+                        to?: string;
+                        /** Format: uuid */
+                        budgetId?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Exported */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example true */
+                            success?: boolean;
+                            data?: {
+                                spreadsheetId?: string;
+                                /** Format: uri */
+                                spreadsheetUrl?: string;
+                                rowsWritten?: number;
+                                /** Format: date-time */
+                                syncedAt?: string;
+                                createdSpreadsheet?: boolean;
+                            };
+                        };
+                    };
+                };
+                400: components["responses"]["BadRequestError"];
+                401: components["responses"]["UnauthorizedError"];
+                /** @description Budget not found (when filtering by budgetId) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Google not connected (GOOGLE_NOT_CONNECTED) or must be reconnected (GOOGLE_REAUTH_REQUIRED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description More than 20,000 transactions in range (EXPORT_TOO_LARGE) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Too many syncs (TOO_MANY_SYNCS) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Google unavailable (GOOGLE_UNAVAILABLE) or not configured (GOOGLE_NOT_CONFIGURED) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integrations/google": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Disconnect Google (revokes access at Google and deletes the stored token)
+         * @description The exported spreadsheet stays in the user's Drive.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Disconnected (idempotent) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                401: components["responses"]["UnauthorizedError"];
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/budgets/{id}": {
         parameters: {
             query?: never;

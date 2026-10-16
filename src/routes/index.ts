@@ -5,6 +5,7 @@ import { userRoutes } from './users';
 import { transactionRoutes } from './transactions';
 import { budgetRoutes } from './budgets';
 import { accountRoutes } from './accounts';
+import { integrationRoutes } from './integrations';
 import { isApiDocsEnabled } from '../config/env';
 
 const router = express.Router();
@@ -60,6 +61,14 @@ if (isApiDocsEnabled()) {
           'PUT /transactions/:id': 'Update transaction',
           'DELETE /transactions/:id': 'Delete transaction (reverses the balance)'
         },
+        integrations: {
+          'GET /integrations/google/connect': 'Get the Google consent URL',
+          'GET /integrations/google/callback': 'OAuth redirect target (called by Google)',
+          'GET /integrations/google/status': 'Google connection status',
+          'POST /integrations/google/sheet': 'Create a new export spreadsheet',
+          'POST /integrations/google/sheet/sync': 'Export transactions to Google Sheets',
+          'DELETE /integrations/google': 'Disconnect Google (revokes access)'
+        },
         budgets: {
           'GET /budgets': 'Get all budgets (with optional year/month filters)',
           'GET /budgets/stats': 'Get budget statistics',
@@ -90,5 +99,6 @@ router.use('/users', userRoutes);
 router.use('/transactions', transactionRoutes);
 router.use('/budgets', budgetRoutes);
 router.use('/accounts', accountRoutes);
+router.use('/integrations', integrationRoutes);
 
 export { router as routes };
