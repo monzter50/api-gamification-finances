@@ -120,6 +120,18 @@ For a "Foo" resource, add these files in lockstep:
 - JSON body limit is `100kb` (`JSON_BODY_LIMIT`); only `/api/transactions/import/*` gets `10mb` (`IMPORT_JSON_BODY_LIMIT`). File uploads go through multer, not the JSON parser.
 - Swagger UI, `/api-docs.json`, `/api/schema.json` and `/api/docs` are served only when `isApiDocsEnabled()` — on by default outside production, **off in production** unless `ENABLE_API_DOCS=true`. If codegen points at staging and staging runs with `NODE_ENV=production`, set `ENABLE_API_DOCS=true` there.
 
+### Google Sheets export (`src/services/googleSheets/`)
+
+- Per-user Google OAuth, **on-demand** export of transactions (API → Sheet). Endpoints under `/api/integrations/google` (`connect`, `callback`, `status`, `sheet`, `sheet/sync`, `DELETE`).
+- **Port & adapter**: the service only knows `googleGateway.port.ts`; `adapters/google.adapter.ts` is the only file importing `google-auth-library` / `@googleapis/sheets`, and it translates Google failures into `errors/GoogleErrors.ts`. Tests use a fake gateway.
+- **Scope is `drive.file` only** (+ `openid email`): the app can only touch spreadsheets it created. Don't widen it to `spreadsheets`/`drive` — that's a sensitive scope (Google verification, 100-user cap) and lets a leaked token read the user's whole Drive.
+- **Refresh tokens are encrypted** (`utils/crypto.ts`, AES-256-GCM, `TOKEN_ENCRYPTION_KEY`) with the userId as AAD. Never log, return or store them in plain text.
+- **OAuth `state`** is an HMAC-signed, 10-minute token bound to the user (`utils/signedState.ts`) — the callback is public and identifies the user only through it. The callback always redirects to the fixed `FRONTEND_URL` (no open redirect).
+- The export writes **only** the tab `Transacciones (app)`, with `valueInputOption: RAW` (no formula injection). Dates go as Sheets serial numbers, money from cents.
+- Google problems never return **401** (the SPA would log the user out): reconnect = 409 `GOOGLE_REAUTH_REQUIRED`, not connected = 409 `GOOGLE_NOT_CONNECTED`, Google down = 503.
+- Optional feature: enabled when `GOOGLE_CLIENT_ID` is set; then all Google vars + a valid `TOKEN_ENCRYPTION_KEY` are required at boot (see `env.example`).
+- Access logs redact `code`/`state`/token query params (`utils/redactUrl.ts`).
+
 ## TypeScript strictness — known gotchas
 
 `tsconfig.json` enables `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `noEmitOnError`. Two recurring patterns this forces:

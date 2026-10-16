@@ -123,6 +123,20 @@ an external system** (AI model output, uploaded files, third-party APIs).
   provider with no-retention terms; don't log images or full model responses in prod.
 - **Timeouts and limits** on every outbound call (`AbortSignal.timeout`), so a slow
   provider can't exhaust the server.
+
+### Third-party OAuth (Google Sheets export is the reference implementation)
+
+- **Least-privilege scopes**: `drive.file` (only files the app creates), never `drive` /
+  `spreadsheets`. Reject the grant if the user unticked the scope you need.
+- **Store refresh tokens encrypted** (`utils/crypto.ts`: AES-256-GCM, key from
+  `TOKEN_ENCRYPTION_KEY`, userId as AAD so a ciphertext can't be moved to another row).
+- **Signed, expiring `state`** bound to the user (`utils/signedState.ts`) — the callback
+  is public and must not trust anything else in the query.
+- **Fixed post-login redirect** (`FRONTEND_URL`), never a URL taken from the request.
+- **Disconnect = revoke at the provider + delete locally**, even if revoke fails.
+- **Redact `code`/`state`/tokens from logs** (`utils/redactUrl.ts`).
+- Provider failures map to non-401 codes (the SPA logs out on 401).
+- Spreadsheet exports write values RAW (CSV/formula injection).
 - API keys for hosted providers live in Railway variables, never in code or logs.
 
 ## 7. Secrets & configuration
@@ -207,6 +221,7 @@ Fixed (keep them fixed — the tests in `src/tests/security/` guard most of thes
 | 65 runtime + 86 dev dependency advisories (5 critical) | In-range runtime upgrades; Vitest 1→4, ESLint 8→10 (neostandard), supertest 6→7; `resolutions` for `fast-uri`, `source-map-js`, `uuid`, `vite` → **0 advisories** |
 | Node 20 runtime (EOL April 2026, no security patches) | Node 22 LTS in Docker, CI and `engines` |
 | No CI | `.github/workflows/ci.yml`: gates + runtime audit + gitleaks |
+| OAuth `code`/`state` written to access logs | `utils/redactUrl.ts` in morgan + errorHandler |
 
 Still open:
 

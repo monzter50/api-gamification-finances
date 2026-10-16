@@ -52,7 +52,7 @@ flowchart TD
 | Services | `src/services/` | business rules, orchestration, transactions | touch `req`/`res`, know status codes |
 | Repositories | `src/repositories/` | Prisma queries, user scoping | throw HTTP errors, hold rules |
 | Pure rules | `src/services/ledgerRules.ts`, `src/utils/money.ts` | deterministic domain functions | do I/O |
-| Ports & adapters | `src/services/ai/` (on the receipt branch) | interface to an external system + its implementations | leak vendor types into services |
+| Ports & adapters | `src/services/googleSheets/` (Google Sheets export), `src/services/ai/` (receipt branch) | interface to an external system + its implementations | leak vendor types into services |
 | Cross-cutting | `src/middleware/` (`auth.ts`, `validate.ts`, `errorHandler.ts`, `rateLimiters.ts`, uploads), `src/errors/` (`AppError` + domain errors), `src/config/` (`env.ts`, `database.ts`, `logger.ts`) | auth, validation, uploads, errors, config, DB client | — |
 
 **Dependency direction is one-way: down.** A lower layer never imports a higher one.
@@ -97,6 +97,7 @@ This is why switching from an AI model to a non-AI OCR engine (e.g. tesseract.js
 | Rate limiting | **express-rate-limit** | on `/api/`; needs `TRUST_PROXY_HOPS` behind a proxy |
 | Uploads | **multer** (memory storage) | per-type middleware: `xlsxUpload`, `imageUpload` (receipt branch) |
 | Excel parsing | **exceljs** | `services/xlsxImport/parser.ts` |
+| Google OAuth / Sheets | **google-auth-library** + **@googleapis/sheets** (not the full `googleapis` bundle) | only imported by `services/googleSheets/adapters/google.adapter.ts` |
 | Logging (app) | **@aglaya/logger** via `config/logger.ts` | never `console.*` |
 | Logging (HTTP) | **morgan** | `dev` locally, `combined` elsewhere |
 | Compression | **compression** | |
