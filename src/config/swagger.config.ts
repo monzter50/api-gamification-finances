@@ -27,8 +27,8 @@ const options: swaggerJsdoc.Options = {
         bearerAuth: {
           type: 'http',
           scheme: 'bearer',
-          bearerFormat: 'JWT',
-          description: 'Enter your JWT token in the format: Bearer <token>'
+          bearerFormat: 'JWT or fpat_ API token',
+          description: 'App session JWT, or a personal API token (`fpat_…`) on endpoints that accept one. Format: Bearer <token>'
         }
       },
       schemas: {
@@ -183,6 +183,19 @@ const options: swaggerJsdoc.Options = {
                 }
               }
             }
+          }
+        },
+        ApiToken: {
+          type: 'object',
+          description: 'A personal API token. The secret itself is only returned once, on creation.',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            name: { type: 'string', example: 'Claude MCP (laptop)' },
+            tokenPrefix: { type: 'string', description: 'First characters, to recognize the token', example: 'fpat_3q2K' },
+            scopes: { type: 'array', items: { type: 'string', enum: ['read', 'write'] } },
+            expiresAt: { type: 'string', format: 'date-time' },
+            lastUsedAt: { type: 'string', format: 'date-time', nullable: true },
+            createdAt: { type: 'string', format: 'date-time' }
           }
         },
         Pagination: {
@@ -543,6 +556,10 @@ const options: swaggerJsdoc.Options = {
       }
     },
     tags: [
+      {
+        name: 'API Tokens',
+        description: 'Personal API tokens for the MCP server, scripts and automations'
+      },
       {
         name: 'Transactions',
         description: 'Transaction management endpoints'

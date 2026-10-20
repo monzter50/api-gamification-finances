@@ -1,10 +1,10 @@
 import { type Request } from 'express';
-import { type JWTPayload } from './index';
+import { type AuthUser } from './index';
 
 export type AccountType = 'checking' | 'savings' | 'credit_card' | 'vales';
 
 export interface AccountRequest<T = any> extends Request {
-  user?: JWTPayload;
+  user?: AuthUser;
   body: T;
 }
 

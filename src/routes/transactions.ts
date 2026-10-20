@@ -1,7 +1,7 @@
 import express from 'express';
 import { transactionController } from '../controllers/transaction.controller';
 import { xlsxImportController } from '../controllers/xlsxImport.controller';
-import { authenticateJWT } from '../middleware/auth';
+import { authenticateJWT, authenticateUserOrApiToken } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { xlsxUpload } from '../middleware/xlsxUpload';
 import {
@@ -24,14 +24,14 @@ const router = express.Router();
 // Get financial summary (must be before /:id)
 router.get(
   '/summary',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   transactionController.getFinancialSummary.bind(transactionController)
 );
 
 // Get monthly summary (must be before /:id)
 router.get(
   '/monthly/:year/:month',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   monthlySummaryValidation,
   validate,
   transactionController.getMonthlySummary.bind(transactionController)
@@ -40,7 +40,7 @@ router.get(
 // Get budget balance breakdown (must be before /:id)
 router.get(
   '/budget/:budgetId/balance',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   budgetBalanceValidation,
   validate,
   transactionController.getBudgetBalance.bind(transactionController)
@@ -49,7 +49,7 @@ router.get(
 // Get all transactions (with optional filters & pagination)
 router.get(
   '/',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   transactionQueryValidation,
   validate,
   transactionController.getAllTransactions.bind(transactionController)
@@ -58,7 +58,7 @@ router.get(
 // Get transaction by ID
 router.get(
   '/:id',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   transactionIdValidation,
   validate,
   transactionController.getTransactionById.bind(transactionController)
@@ -294,7 +294,7 @@ router.post(
 // Create new transaction
 router.post(
   '/',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   createTransactionValidation,
   validate,
   transactionController.createTransaction.bind(transactionController)
@@ -303,7 +303,7 @@ router.post(
 // Update transaction
 router.put(
   '/:id',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   updateTransactionValidation,
   validate,
   transactionController.updateTransaction.bind(transactionController)
@@ -312,7 +312,7 @@ router.put(
 // Delete transaction
 router.delete(
   '/:id',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   transactionIdValidation,
   validate,
   transactionController.deleteTransaction.bind(transactionController)

@@ -4,6 +4,197 @@
  */
 
 export interface paths {
+    "/api/users/tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List active personal API tokens
+         * @description Never returns the token or its hash — only the display prefix.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Active (not revoked, not expired) tokens */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example true */
+                            success?: boolean;
+                            data?: components["schemas"]["ApiToken"][];
+                        };
+                    };
+                };
+                401: components["responses"]["UnauthorizedError"];
+                /** @description Called with an API token (API_TOKEN_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Create a personal API token
+         * @description For the MCP server, scripts and automations. **The raw `token` is in
+         *     this response only** — it's stored as a hash and can't be shown again.
+         *
+         *     Requires an app session (JWT); an API token can't create tokens.
+         *     `read` allows GET requests; `write` (implies `read`) also allows
+         *     POST/PUT/PATCH/DELETE — but only on endpoints that accept API tokens
+         *     (accounts, transactions, budgets, profile reads). Max 10 active tokens.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @example Claude MCP (laptop) */
+                        name: string;
+                        /**
+                         * @example [
+                         *       "read"
+                         *     ]
+                         */
+                        scopes: ("read" | "write")[];
+                        /** @default 90 */
+                        expiresInDays?: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Token created (copy `data.token` now) */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example true */
+                            success?: boolean;
+                            message?: string;
+                            data?: components["schemas"]["ApiToken"] & {
+                                /** @example fpat_3q2+7w… */
+                                token?: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Validation error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                401: components["responses"]["UnauthorizedError"];
+                /** @description Called with an API token (API_TOKEN_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Too many active tokens (API_TOKEN_LIMIT_REACHED) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/tokens/{tokenId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke a personal API token
+         * @description Takes effect immediately. Another user's token id → 404.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tokenId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Token revoked */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                401: components["responses"]["UnauthorizedError"];
+                /** @description Called with an API token (API_TOKEN_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown, already revoked or not yours (API_TOKEN_NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/transactions/import/xlsx/parse": {
         parameters: {
             query?: never;
@@ -1203,6 +1394,25 @@ export interface components {
                 /** @example Amount must be a positive number */
                 message?: string;
             }[];
+        };
+        /** @description A personal API token. The secret itself is only returned once, on creation. */
+        ApiToken: {
+            /** Format: uuid */
+            id?: string;
+            /** @example Claude MCP (laptop) */
+            name?: string;
+            /**
+             * @description First characters, to recognize the token
+             * @example fpat_3q2K
+             */
+            tokenPrefix?: string;
+            scopes?: ("read" | "write")[];
+            /** Format: date-time */
+            expiresAt?: string;
+            /** Format: date-time */
+            lastUsedAt?: string | null;
+            /** Format: date-time */
+            createdAt?: string;
         };
         Pagination: {
             /** @example 1 */

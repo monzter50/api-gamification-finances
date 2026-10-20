@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 REST API for personal finance management. **Express 4 + TypeScript (strict) + Prisma 5 + PostgreSQL.** Auth via JWT with DB-backed blacklist. Dockerized for staging/prod, deployed to Railway with a managed Postgres (Prisma Cloud) external DB.
 
-Current Prisma models: `User`, `Account`, `Transaction`, `Budget`, `IncomeItem`, `ExpenseItem`, `BlacklistedToken`. An earlier "gamification" module was removed (see migration `20260119000139_remove_gamification_models`) — if you see leftover references to badges, achievements, levels, coins, or experience anywhere in the code, they're dead and safe to delete.
+Current Prisma models: `User`, `Account`, `Transaction`, `Budget`, `IncomeItem`, `ExpenseItem`, `BlacklistedToken`, `ApiToken`. An earlier "gamification" module was removed (see migration `20260119000139_remove_gamification_models`) — if you see leftover references to badges, achievements, levels, coins, or experience anywhere in the code, they're dead and safe to delete.
 
 ## Common commands
 
@@ -109,11 +109,19 @@ For a "Foo" resource, add these files in lockstep:
 
 - JWT in `Authorization: Bearer <token>` header, **HS256 only** (pinned on sign and verify via `JWT_ALGORITHM` in `src/config/env.ts`).
 - Middleware `authenticateJWT` lives in `src/middleware/auth.ts`. Order: header → DB-backed blacklist (`isTokenBlacklisted`, so logout invalidates tokens) → signature/expiry → user exists + active → token `sid` matches `User.sessionId` (single active session; mismatch → **440 `SESSION_REVOKED`**, a status reserved for this). Failures are forwarded as typed errors.
-- Decoded JWT payload is stuffed on `req.user` and typed as `AuthenticatedRequest` from `src/types/index.ts`.
+- The caller is put on `req.user` as an `AuthUser` (`src/types/index.ts`, via `AuthenticatedRequest`): `authMethod: 'session'` (JWT, has `sid`) or `'api_token'` (has `apiTokenId`, `scopes`). Controllers only read `req.user.userId`.
 - **Secrets have no defaults.** `getJwtSecret()` throws if `JWT_SECRET` is unset, and `assertRequiredEnv()` (called first thing in `startServer`) refuses to boot without `JWT_SECRET` / `DATABASE_URL`. Never add `process.env.X ?? 'fallback'` for a secret.
   - Gotcha when testing this locally: Prisma's client loads `.env` on import, so unsetting the var in your shell isn't enough — set it to an empty string (`JWT_SECRET= node dist/server.js`).
 - Passwords: bcrypt cost 12 for new hashes; register requires 8–72 bytes and **does not trim**. Login compares the raw password first and falls back to the trimmed one for accounts created under the old "trim" rule.
 - `/auth/login` and `/auth/register` have an extra `authRateLimiter` (`src/middleware/rateLimiters.ts`, 10 failed attempts / 15 min per IP by default) on top of the global `/api/` limiter.
+
+### Personal API tokens (MCP server, scripts)
+
+- `fpat_` + 32 random bytes (`src/utils/apiToken.ts`). The raw token is returned **once** by `POST /api/users/tokens`; only its **SHA-256** is stored (`ApiToken.tokenHash`) — high-entropy tokens don't need bcrypt. Never log or return it again (the list shows `tokenPrefix` only). `.gitleaks.toml` has a rule for the format.
+- **Opt-in per route.** `authenticateJWT` is session-only and answers an API token with **403 `API_TOKEN_NOT_ALLOWED`**. Only routes that use `authenticateUserOrApiToken` accept tokens: accounts, transactions (not `/import/*`), budgets, `GET /users/profile`, `GET /auth/me`. Token management, login/logout, profile writes, imports and integrations stay session-only. **New endpoints default to `authenticateJWT`;** opening one to tokens is a deliberate decision, and `src/tests/apiTokens/routeExposure.test.ts` snapshots the allow-list so it can't widen silently.
+- **Scopes by HTTP method:** `read` → GET/HEAD; `write` (implies `read`) → everything else. Missing scope → 403 `INSUFFICIENT_SCOPE`.
+- Tokens **don't touch the web session** (no `sid` check, no `sessionLastActivityAt` write), so an MCP client never logs the user out or blocks their login. Web logout doesn't revoke tokens; `DELETE /api/users/tokens/:tokenId` does (immediately). Unknown/revoked/expired → the same 401 `INVALID_TOKEN`; the reason goes to logs only.
+- Expiry is mandatory: default 90 days, max 365. Max 10 active tokens per user (409 `API_TOKEN_LIMIT_REACHED`). `lastUsedAt` is updated at most once a minute.
 
 ### HTTP hardening (in `server.ts`)
 
@@ -180,7 +188,7 @@ Production secrets should live in the platform's secret manager (Railway dashboa
 2. `yarn lint` passes
 3. If schema changed: migration created, `yarn prisma generate` run, types updated in DTOs
 4. If API surface changed: OpenAPI schema regenerated (`yarn export:schema`) and `openapi-schema.json` committed
-5. New endpoints have a `validate` middleware + `authenticateJWT` (unless explicitly public like `/auth/login`); every `:id` is `isUUID()`-validated and list endpoints cap `limit` at 100
+5. New endpoints have a `validate` middleware + `authenticateJWT` (unless explicitly public like `/auth/login`; use `authenticateUserOrApiToken` only if API tokens should reach it, and update the route-exposure snapshot); every `:id` is `isUUID()`-validated and list endpoints cap `limit` at 100
 6. `yarn test` passes; new business/ownership rules have tests (see `src/tests/security/` for the ownership, auth-middleware and error-handler patterns)
 7. `yarn audit --groups dependencies --level high` is clean (CI enforces it)
 

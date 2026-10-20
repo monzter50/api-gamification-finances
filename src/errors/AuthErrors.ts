@@ -101,3 +101,24 @@ export class SessionAlreadyActiveError extends AuthError {
     super(message, 409, 'SESSION_ALREADY_ACTIVE');
   }
 }
+
+/**
+ * A personal API token was used on an endpoint that only accepts a signed-in
+ * app session (token management, logout, imports...). 403, not 401: the
+ * credential is valid, it just can't do this.
+ */
+export class ApiTokenNotAllowedError extends AuthError {
+  constructor (message: string = 'This endpoint can\'t be used with an API token. Sign in to the app instead.') {
+    super(message, 403, 'API_TOKEN_NOT_ALLOWED');
+  }
+}
+
+/**
+ * The API token is valid but lacks the scope for this request
+ * (e.g. a `read` token calling POST/PUT/PATCH/DELETE).
+ */
+export class InsufficientScopeError extends AuthError {
+  constructor (requiredScope: string) {
+    super(`This API token is missing the "${requiredScope}" scope.`, 403, 'INSUFFICIENT_SCOPE');
+  }
+}

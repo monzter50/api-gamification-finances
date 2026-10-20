@@ -1,4 +1,5 @@
 import { type Request } from 'express';
+import { type ApiTokenScope } from './apiToken.types';
 
 /**
  * Shared, app-wide types.
@@ -27,11 +28,28 @@ export interface JWTPayload {
 }
 
 /**
- * Express Request widened with the decoded JWT payload.
- * Use this in routes/controllers that sit behind `authenticateJWT`.
+ * Who is calling, attached to `req.user` by the auth middleware.
+ *  - `session`: a signed-in app user (JWT). Carries the session id.
+ *  - `api_token`: a personal API token (MCP server, scripts). Carries its scopes.
+ * Controllers only need `userId`; the rest is for the auth layer and logs.
+ */
+export type AuthUser = {
+  id: string
+  userId: string
+  email: string
+  name: string
+} & (
+  | { authMethod: 'session', sid: string }
+  | { authMethod: 'api_token', apiTokenId: string, scopes: ApiTokenScope[] }
+);
+
+/**
+ * Express Request widened with the authenticated caller.
+ * Use this in routes/controllers that sit behind `authenticateJWT` or
+ * `authenticateUserOrApiToken`.
  */
 export interface AuthenticatedRequest extends Request {
-  user?: JWTPayload
+  user?: AuthUser
 }
 
 /**

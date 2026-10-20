@@ -81,6 +81,7 @@ request is ambiguous on any of these and the choice is user-visible, ask once.
 
 ### 8. Routes (`src/routes/foo.ts`) and mount (`src/routes/index.ts`)
 - Order per route: `authenticateJWT` (from `../middleware/auth`), validators, `validate`, `controller.method.bind(controller)`.
+- `authenticateJWT` = app session only. Use `authenticateUserOrApiToken` only if personal API tokens (MCP, scripts) should reach the endpoint — then update the snapshot in `src/tests/apiTokens/routeExposure.test.ts`.
 - Static paths above `/:id`.
 - `@openapi` JSDoc block per endpoint.
 - Mount: `router.use('/foos', fooRoutes);` — also add it to the `/docs` endpoint list if

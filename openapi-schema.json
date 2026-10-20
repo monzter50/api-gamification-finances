@@ -24,8 +24,8 @@
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "bearerFormat": "JWT",
-        "description": "Enter your JWT token in the format: Bearer <token>"
+        "bearerFormat": "JWT or fpat_ API token",
+        "description": "App session JWT, or a personal API token (`fpat_…`) on endpoints that accept one. Format: Bearer <token>"
       }
     },
     "schemas": {
@@ -243,6 +243,48 @@
                 }
               }
             }
+          }
+        }
+      },
+      "ApiToken": {
+        "type": "object",
+        "description": "A personal API token. The secret itself is only returned once, on creation.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Claude MCP (laptop)"
+          },
+          "tokenPrefix": {
+            "type": "string",
+            "description": "First characters, to recognize the token",
+            "example": "fpat_3q2K"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "read",
+                "write"
+              ]
+            }
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -895,6 +937,10 @@
   },
   "tags": [
     {
+      "name": "API Tokens",
+      "description": "Personal API tokens for the MCP server, scripts and automations"
+    },
+    {
       "name": "Transactions",
       "description": "Transaction management endpoints"
     },
@@ -912,6 +958,232 @@
     }
   ],
   "paths": {
+    "/api/users/tokens": {
+      "post": {
+        "tags": [
+          "API Tokens"
+        ],
+        "summary": "Create a personal API token",
+        "description": "For the MCP server, scripts and automations. **The raw `token` is in\nthis response only** — it's stored as a hash and can't be shown again.\n\nRequires an app session (JWT); an API token can't create tokens.\n`read` allows GET requests; `write` (implies `read`) also allows\nPOST/PUT/PATCH/DELETE — but only on endpoints that accept API tokens\n(accounts, transactions, budgets, profile reads). Max 10 active tokens.\n",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "scopes"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 60,
+                    "example": "Claude MCP (laptop)"
+                  },
+                  "scopes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "read",
+                        "write"
+                      ]
+                    },
+                    "example": [
+                      "read"
+                    ]
+                  },
+                  "expiresInDays": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 365,
+                    "default": 90
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Token created (copy `data.token` now)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/ApiToken"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "token": {
+                              "type": "string",
+                              "example": "fpat_3q2+7w…"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "description": "Called with an API token (API_TOKEN_NOT_ALLOWED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Too many active tokens (API_TOKEN_LIMIT_REACHED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "API Tokens"
+        ],
+        "summary": "List active personal API tokens",
+        "description": "Never returns the token or its hash — only the display prefix.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active (not revoked, not expired) tokens",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ApiToken"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "description": "Called with an API token (API_TOKEN_NOT_ALLOWED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/tokens/{tokenId}": {
+      "delete": {
+        "tags": [
+          "API Tokens"
+        ],
+        "summary": "Revoke a personal API token",
+        "description": "Takes effect immediately. Another user's token id → 404.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tokenId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Token revoked"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "description": "Called with an API token (API_TOKEN_NOT_ALLOWED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, already revoked or not yours (API_TOKEN_NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/transactions/import/xlsx/parse": {
       "post": {
         "tags": [
