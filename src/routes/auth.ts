@@ -2,7 +2,7 @@ import express from 'express';
 import { authController } from '../controllers/auth.controller';
 import { registerValidation, loginValidation } from '../validators/auth.validator';
 import { validate } from '../middleware/validate';
-import { authenticateJWT } from '../middleware/auth';
+import { authenticateJWT, authenticateUserOrApiToken } from '../middleware/auth';
 import { authRateLimiter } from '../middleware/rateLimiters';
 
 const router = express.Router();
@@ -148,6 +148,6 @@ router.post('/logout', authenticateJWT, authController.logout.bind(authControlle
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-router.get('/me', authenticateJWT, authController.getCurrentUser.bind(authController));
+router.get('/me', authenticateUserOrApiToken, authController.getCurrentUser.bind(authController));
 
 export { router as authRoutes };

@@ -2,7 +2,7 @@ import express from 'express';
 import { budgetController } from '../controllers/budget.controller';
 import { incomeController } from '../controllers/income.controller';
 import { expenseController } from '../controllers/expense.controller';
-import { authenticateJWT } from '../middleware/auth';
+import { authenticateUserOrApiToken } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import {
   createBudgetValidation,
@@ -31,14 +31,14 @@ const router = express.Router();
 // Get budget statistics
 router.get(
   '/stats',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   budgetController.getUserStats.bind(budgetController)
 );
 
 // Get all budgets (with optional filters)
 router.get(
   '/',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   budgetQueryValidation,
   validate,
   budgetController.getAllBudgets.bind(budgetController)
@@ -47,7 +47,7 @@ router.get(
 // Get budget by ID
 router.get(
   '/:id',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   budgetIdValidation,
   validate,
   budgetController.getBudgetById.bind(budgetController)
@@ -56,7 +56,7 @@ router.get(
 // Create new budget
 router.post(
   '/',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   createBudgetValidation,
   validate,
   budgetController.createBudget.bind(budgetController)
@@ -115,7 +115,7 @@ router.post(
  */
 router.put(
   '/:id',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   updateBudgetValidation,
   validate,
   budgetController.updateBudget.bind(budgetController)
@@ -124,7 +124,7 @@ router.put(
 // Delete budget
 router.delete(
   '/:id',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   budgetIdValidation,
   validate,
   budgetController.deleteBudget.bind(budgetController)
@@ -200,7 +200,7 @@ router.delete(
  */
 router.post(
   '/:id/duplicate',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   duplicateBudgetValidation,
   validate,
   budgetController.duplicateBudget.bind(budgetController)
@@ -243,7 +243,7 @@ router.post(
  */
 router.get(
   '/:id/income',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   paginatedItemsValidation,
   validate,
   incomeController.getIncomeItems.bind(incomeController)
@@ -284,7 +284,7 @@ router.get(
  */
 router.post(
   '/:id/income',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   addIncomeItemValidation,
   validate,
   incomeController.addIncomeItem.bind(incomeController)
@@ -321,7 +321,7 @@ router.post(
  */
 router.patch(
   '/:id/income',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   updateIncomeItemsValidation,
   validate,
   incomeController.updateIncomeItems.bind(incomeController)
@@ -363,7 +363,7 @@ router.patch(
  */
 router.put(
   '/:id/income/:incomeId',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   updateIncomeItemValidation,
   validate,
   incomeController.updateIncomeItem.bind(incomeController)
@@ -397,7 +397,7 @@ router.put(
  */
 router.delete(
   '/:id/income/:incomeId',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   deleteIncomeItemValidation,
   validate,
   incomeController.deleteIncomeItem.bind(incomeController)
@@ -439,7 +439,7 @@ router.delete(
  */
 router.get(
   '/:id/expense',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   paginatedItemsValidation,
   validate,
   expenseController.getExpenseItems.bind(expenseController)
@@ -479,7 +479,7 @@ router.get(
  */
 router.post(
   '/:id/expense',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   addExpenseItemValidation,
   validate,
   expenseController.addExpenseItem.bind(expenseController)
@@ -516,7 +516,7 @@ router.post(
  */
 router.patch(
   '/:id/expense',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   updateExpenseItemsValidation,
   validate,
   expenseController.updateExpenseItems.bind(expenseController)
@@ -558,7 +558,7 @@ router.patch(
  */
 router.put(
   '/:id/expense/:expenseId',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   updateExpenseItemValidation,
   validate,
   expenseController.updateExpenseItem.bind(expenseController)
@@ -592,7 +592,7 @@ router.put(
  */
 router.delete(
   '/:id/expense/:expenseId',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   deleteExpenseItemValidation,
   validate,
   expenseController.deleteExpenseItem.bind(expenseController)

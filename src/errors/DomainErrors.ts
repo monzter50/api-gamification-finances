@@ -118,3 +118,17 @@ export class UnsupportedTransactionTypeError extends AppError {
     );
   }
 }
+
+// ---- Personal API tokens --------------------------------------------------
+
+export class ApiTokenNotFoundError extends AppError {
+  constructor (message: string = 'API token not found') {
+    super(message, 404, 'API_TOKEN_NOT_FOUND');
+  }
+}
+
+export class ApiTokenLimitReachedError extends AppError {
+  constructor (max: number) {
+    super(`You can have at most ${max} active API tokens. Revoke one first.`, 409, 'API_TOKEN_LIMIT_REACHED');
+  }
+}

@@ -1,12 +1,12 @@
 import { type Request } from 'express';
-import { type JWTPayload } from './index';
+import { type AuthUser } from './index';
 
 /**
  * Transaction Request Type
  * Extends Express Request for transaction-specific operations
  */
 export interface TransactionRequest<T = any> extends Request {
-  user?: JWTPayload
+  user?: AuthUser
   body: T
 }
 

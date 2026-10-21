@@ -24,6 +24,7 @@ index on a table that will hold 50 rows is Low, not Medium).
 ## A. Authorization & data isolation
 
 - [ ] Every new route uses `authenticateJWT` unless deliberately public (and the reason is stated).
+- [ ] A route switched to `authenticateUserOrApiToken` is safe to automate, isn't token management/auth/import/integration, and the route-exposure snapshot was updated on purpose.
 - [ ] `userId` comes from `req.user.userId` — never from body, query, or params.
 - [ ] Every Prisma query on user data has `userId` in `where` (or is scoped through a
       parent: `budget: { userId }`). Watch for `findUnique({ where: { id } })`,

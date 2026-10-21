@@ -39,7 +39,10 @@ if (isApiDocsEnabled()) {
         },
         users: {
           'GET /users/profile': 'Obtener perfil del usuario',
-          'PUT /users/profile': 'Actualizar perfil del usuario'
+          'PUT /users/profile': 'Actualizar perfil del usuario',
+          'POST /users/tokens': 'Create a personal API token (session only; token shown once)',
+          'GET /users/tokens': 'List active API tokens (session only)',
+          'DELETE /users/tokens/:tokenId': 'Revoke an API token (session only)'
         },
         accounts: {
           'GET /accounts': 'List accounts',
