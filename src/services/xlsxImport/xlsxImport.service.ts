@@ -8,7 +8,13 @@ import { NoTransactionsFoundError, UnmappedPaymentSourceError } from '../../erro
 import { toCents, fromCents } from '../../utils/money';
 import { balanceDeltaCents, balanceIncrement } from '../ledgerRules';
 import { parseWorkbook } from './parser';
-import { computeImportHashes, findUnmatchedCategories, normalizeKey } from './dedupe';
+import {
+  computeImportHashes,
+  findUnmatchedCategories,
+  matchLegacyRows,
+  normalizeKey,
+  type LedgerIdentityRow
+} from './dedupe';
 import {
   type ConfirmXlsxPayload,
   type ConfirmXlsxResult,
@@ -54,6 +60,22 @@ export class XlsxImportService {
     return payload.defaultAccountId;
   }
 
+  /**
+   * Hash-less rows of this user inside the payload's date range — the only
+   * ones that can match. Bounded by date so it never scans the whole ledger.
+   */
+  private async findLegacyCandidates (userId: string, rows: ParsedTransaction[]): Promise<LedgerIdentityRow[]> {
+    const days = rows.map((row) => row.date.slice(0, 10)).filter((day) => day !== '').sort();
+    if (days.length === 0) { return []; }
+    const from = new Date(`${days[0]!}T00:00:00.000Z`);
+    const until = new Date(`${days[days.length - 1]!}T00:00:00.000Z`);
+    until.setUTCDate(until.getUTCDate() + 1);
+    return await prisma.transaction.findMany({
+      where: { userId, importHash: null, date: { gte: from, lt: until } },
+      select: { id: true, date: true, amountCents: true, vendor: true, type: true, createdAt: true }
+    });
+  }
+
   /** Step 2: atomically create expense items + income items + transactions. */
   async confirmImport (userId: string, payload: ConfirmXlsxPayload): Promise<ConfirmXlsxResult> {
     const { budgetId, transactions, incomeItems, expenseItems } = payload;
@@ -81,6 +103,15 @@ export class XlsxImportService {
         where: { userId, importHash: { in: hashes } },
         select: { importHash: true }
       })).map((t) => t.importHash)
+    );
+
+    // Legacy rows (written before importHash existed) are invisible to the
+    // hash check. Match them by natural key so a re-import doesn't duplicate
+    // them, and let them adopt the hash so the next import takes the fast path.
+    const legacyMatches = matchLegacyRows(
+      transactions,
+      await this.findLegacyCandidates(userId, transactions),
+      (index) => !alreadyImported.has(hashes[index]!)
     );
 
     const outcome = await prisma.$transaction(async (tx) => {
@@ -135,9 +166,20 @@ export class XlsxImportService {
       // Transactions (move the account balance: income +, expense −).
       const ids: string[] = [];
       let skipped = 0;
+      let adoptedLegacy = 0;
       for (const [index, { row, accountId }] of resolvedTx.entries()) {
         const importHash = hashes[index]!;
         if (alreadyImported.has(importHash)) { skipped++; continue; }
+
+        const legacyId = legacyMatches[index];
+        if (legacyId) {
+          // Already in the ledger (and already counted in the balance): only
+          // stamp it with its identity, no money moves.
+          await tx.transaction.update({ where: { id: legacyId }, data: { importHash } });
+          skipped++;
+          adoptedLegacy++;
+          continue;
+        }
 
         const amountCents = toCents(row.amount);
         const txData: Prisma.TransactionUncheckedCreateInput = {
@@ -169,6 +211,7 @@ export class XlsxImportService {
       return {
         ids,
         skipped,
+        adoptedLegacy,
         updatedCount,
         createdItems,
         unmatchedCategories: findUnmatchedCategories(
@@ -191,7 +234,8 @@ export class XlsxImportService {
     };
     logger.info(
       `Excel import for user ${userId}: ${result.createdCount.transactions} tx created, ` +
-      `${result.skippedCount.transactions} skipped as already imported, ` +
+      `${result.skippedCount.transactions} skipped as already imported ` +
+      `(${outcome.adoptedLegacy} of them pre-hash rows that adopted their hash), ` +
       `${result.createdCount.incomeItems}+${result.updatedCount.incomeItems} income items, ` +
       `${result.createdCount.expenseItems}+${result.updatedCount.expenseItems} expense items (created+updated), ` +
       `${result.unmatchedCategories.length} unmatched categories`
