@@ -1627,6 +1627,266 @@
         }
       }
     },
+    "/api/transactions/import/screenshots/check": {
+      "post": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Which screenshot hashes were already imported",
+        "description": "Lets the client skip OCR for images it has sent before.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "sha256s"
+                ],
+                "properties": {
+                  "sha256s": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 50,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-fA-F0-9]{64}$"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hashes already imported (subset of the request, lowercase)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "imported": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
+        }
+      }
+    },
+    "/api/transactions/import/screenshots": {
+      "post": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Idempotent import of movements read from bank screenshots",
+        "description": "Rows are grouped by the image they were read from. Re-importing the same\nscreenshots, or overlapping ones, inserts nothing new; two identical\npurchases inside one screenshot stay two. An image whose SHA-256 was\nimported before is skipped whole. The year is inferred (screenshots\ndon't show it), local time is America/Cancun, and each row's budget is\nderived from its date (`budgetId` stays null when that month has no\nbudget). Atomic: all rows commit together with the account balance.\n",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "accountId",
+                  "images"
+                ],
+                "properties": {
+                  "accountId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "images": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 50,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "sha256",
+                        "rows"
+                      ],
+                      "properties": {
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[a-fA-F0-9]{64}$"
+                        },
+                        "rows": {
+                          "type": "array",
+                          "maxItems": 100,
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "day",
+                              "month",
+                              "time",
+                              "rawDescriptor",
+                              "amount",
+                              "type"
+                            ],
+                            "properties": {
+                              "day": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 31
+                              },
+                              "month": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 12,
+                                "description": "January = 1"
+                              },
+                              "time": {
+                                "type": "string",
+                                "example": "10:10",
+                                "description": "HH:mm, local time"
+                              },
+                              "rawDescriptor": {
+                                "type": "string",
+                                "example": "Stripe *unicef mx"
+                              },
+                              "amount": {
+                                "type": "number",
+                                "example": 59
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "income",
+                                  "expense"
+                                ]
+                              },
+                              "description": {
+                                "type": "string",
+                                "description": "Free-text note; never the category"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Batch recorded (possibly with 0 inserted)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "batchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "inserted": {
+                          "type": "integer"
+                        },
+                        "skippedAsDuplicate": {
+                          "type": "integer"
+                        },
+                        "skippedImages": {
+                          "type": "integer"
+                        },
+                        "unbudgeted": {
+                          "type": "integer",
+                          "description": "Inserted rows whose month has no budget"
+                        },
+                        "transactionIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed, invalid date (INVALID_SCREENSHOT_ROW) or account not owned (INVALID_ACCOUNT_REFERENCE)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "description": "API token without the write scope (INSUFFICIENT_SCOPE)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/budgets/{id}": {
       "put": {
         "tags": [

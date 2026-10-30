@@ -31,10 +31,12 @@ model User {
   sessionId             String?
   sessionLastActivityAt DateTime?
 
-  transactions Transaction[]
-  budgets      Budget[]
-  accounts     Account[]
-  apiTokens    ApiToken[]
+  transactions  Transaction[]
+  budgets       Budget[]
+  accounts      Account[]
+  apiTokens     ApiToken[]
+  importBatches ImportBatch[]
+  importImages  ImportImage[]
 }
 
 model Account {
@@ -87,10 +89,30 @@ model Transaction {
   // re-importing the same workbook does not duplicate transactions.
   importHash String?
 
+  // Screenshot import (idempotency plan, Oct 2026).
+  // `occurredAt` is the real instant of the movement (local time in
+  // America/Cancun, stored as UTC). EXPAND step: nullable so the previous app
+  // version keeps working during a rolling deploy; every write path sets it and
+  // the migration backfills it, a later CONTRACT migration makes it NOT NULL.
+  occurredAt     DateTime?    @db.Timestamptz(3)
+  // Merchant descriptor exactly as captured ("Stripe *unicef mx") and its
+  // normalised form ("stripeunicefmx"), the input of `fingerprint`.
+  rawDescriptor  String?
+  descriptorNorm String?
+  // sha256(user|account|local minute|cents|type|descriptorNorm). NOT unique:
+  // two identical purchases in the same minute are legitimate; the import
+  // reconciles counts per fingerprint instead (see screenshotImport service).
+  fingerprint    String?      @db.Char(64)
+  importBatchId  String?
+  importBatch    ImportBatch? @relation(fields: [importBatchId], references: [id])
+  source         String       @default("manual") // 'manual' | 'xlsx' | 'screenshot' | 'statement'
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([userId, importHash])
+  @@index([userId, fingerprint])
+  @@index([importBatchId])
   @@index([userId, date])
   @@index([userId, type, date])
   @@index([budgetId])
@@ -174,4 +196,38 @@ model ApiToken {
   createdAt   DateTime  @default(now())
 
   @@index([userId])
+}
+
+// One call to POST /api/transactions/import/screenshots. Traceability only:
+// which transactions a batch created and what it skipped.
+model ImportBatch {
+  id                 String   @id @default(uuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id])
+  accountId          String
+  source             String // 'screenshot'
+  inserted           Int
+  skippedAsDuplicate Int
+  skippedImages      Int
+  createdAt          DateTime @default(now())
+
+  transactions Transaction[]
+  images       ImportImage[]
+
+  @@index([userId, createdAt])
+}
+
+// A screenshot already imported, by content hash. Unique per user so the same
+// image is rejected before OCR (POST .../screenshots/check) and on import.
+model ImportImage {
+  id         String      @id @default(uuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id])
+  sha256     String      @db.Char(64)
+  batchId    String
+  batch      ImportBatch @relation(fields: [batchId], references: [id])
+  uploadedAt DateTime    @default(now())
+
+  @@unique([userId, sha256])
+  @@index([batchId])
 }

@@ -68,8 +68,9 @@ an external system** (AI model output, uploaded files, third-party APIs).
   shown once, mandatory expiry (≤ 365 d), `read`/`write` scopes by HTTP method. Accepted
   **only** on routes that use `authenticateUserOrApiToken` — everything else is
   session-only (403 `API_TOKEN_NOT_ALLOWED`). Never open token management, login/logout,
-  imports or integrations to tokens (a leaked token must not be able to mint new ones or
-  persist). Tokens must not touch the web session (`sid`/activity). The allow-list is
+  the Excel import or integrations to tokens (a leaked token must not be able to mint new
+  ones or persist). The screenshot import is the one reviewed exception (write scope; its
+  client is the MCP server). Tokens must not touch the web session (`sid`/activity). The allow-list is
   snapshotted in `src/tests/apiTokens/routeExposure.test.ts`.
 - **Brute force:** `authRateLimiter` on `/api/auth/login` and `/register` (failed
   attempts only, 10 / 15 min per IP by default) on top of the global `/api/` limiter.

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 REST API for personal finance management. **Express 4 + TypeScript (strict) + Prisma 5 + PostgreSQL.** Auth via JWT with DB-backed blacklist. Dockerized for staging/prod, deployed to Railway with a managed Postgres (Prisma Cloud) external DB.
 
-Current Prisma models: `User`, `Account`, `Transaction`, `Budget`, `IncomeItem`, `ExpenseItem`, `BlacklistedToken`, `ApiToken`. An earlier "gamification" module was removed (see migration `20260119000139_remove_gamification_models`) — if you see leftover references to badges, achievements, levels, coins, or experience anywhere in the code, they're dead and safe to delete.
+Current Prisma models: `User`, `Account`, `Transaction`, `Budget`, `IncomeItem`, `ExpenseItem`, `BlacklistedToken`, `ApiToken`, `ImportBatch`, `ImportImage`. An earlier "gamification" module was removed (see migration `20260119000139_remove_gamification_models`) — if you see leftover references to badges, achievements, levels, coins, or experience anywhere in the code, they're dead and safe to delete.
 
 ## Common commands
 
@@ -86,6 +86,16 @@ For a "Foo" resource, add these files in lockstep:
 
 `src/repositories/base.repository.ts` uses `prisma[modelName]` indexing with `@ts-expect-error`. **The `modelName` string MUST match the Prisma model name with a lowercase first letter** (e.g. `'user'`, `'transaction'`). Mismatch = silent runtime crash. The base class loses strong typing through this indirection — repositories that need typed queries should write them out longhand rather than relying on the base methods.
 
+### Screenshot import and idempotency
+
+`POST /api/transactions/import/screenshots` takes movements read from bank screenshots, grouped by image with each image's SHA-256. The OCR happens in the client (Claude via the `finances-mcp` server). Rules (`src/services/screenshotImport/`):
+- An image hash already in `ImportImage` (unique `userId, sha256`) is skipped whole; `/check` lets the client skip OCR for it.
+- `fingerprint` = sha256(user | account | local minute | cents | type | `normDescriptor`). Its index is **not unique**: two identical purchases in one minute are legitimate. Idempotency comes from **count reconciliation** (`planInsertions`): per fingerprint, `n` = max occurrences in a single image, insert `max(0, n − existing)`. Runs inside `$transaction` after `pg_advisory_xact_lock(hashtext(userId))`, so concurrent imports serialise.
+- Local time is `America/Cancun` (`src/utils/localTime.ts`); the year is inferred (`inferOccurredAt`). The budget is derived from the date by `budgetPeriodOf` (0–11 months), never sent by the client; `budgetId` stays null when that month has no budget.
+- `Transaction.occurredAt` (timestamptz) is the movement's real instant. It's nullable for now (expand step); every write path sets it. `fingerprint` is never recomputed on update, so it keeps identifying what the screenshot showed.
+- `normDescriptor`/`fingerprintOf` are duplicated in SQL by the backfill in migration `20261030120000_screenshot_import_idempotency`; keep them in sync.
+- One-off data cleanup (duplicates, test rows, budget re-derivation): `yarn cleanup:screenshot-import --email <email>` is a dry run; `--apply --expect-duplicates N --expect-test-rows N` executes in one transaction. Take a `pg_dump` first.
+
 ### `transactionIncludes` pattern
 
 `src/repositories/transaction.repository.ts` exports a `transactionIncludes` constant used by both repo and service to keep Prisma `include:` clauses consistent across queries. Follow this pattern when other models start having similar relational fan-outs — don't inline `include:` blocks scattered everywhere.
@@ -118,7 +128,7 @@ For a "Foo" resource, add these files in lockstep:
 ### Personal API tokens (MCP server, scripts)
 
 - `fpat_` + 32 random bytes (`src/utils/apiToken.ts`). The raw token is returned **once** by `POST /api/users/tokens`; only its **SHA-256** is stored (`ApiToken.tokenHash`) — high-entropy tokens don't need bcrypt. Never log or return it again (the list shows `tokenPrefix` only). `.gitleaks.toml` has a rule for the format.
-- **Opt-in per route.** `authenticateJWT` is session-only and answers an API token with **403 `API_TOKEN_NOT_ALLOWED`**. Only routes that use `authenticateUserOrApiToken` accept tokens: accounts, transactions (not `/import/*`), budgets, `GET /users/profile`, `GET /auth/me`. Token management, login/logout, profile writes, imports and integrations stay session-only. **New endpoints default to `authenticateJWT`;** opening one to tokens is a deliberate decision, and `src/tests/apiTokens/routeExposure.test.ts` snapshots the allow-list so it can't widen silently.
+- **Opt-in per route.** `authenticateJWT` is session-only and answers an API token with **403 `API_TOKEN_NOT_ALLOWED`**. Only routes that use `authenticateUserOrApiToken` accept tokens: accounts, transactions (including the screenshot import, `POST /transactions/import/screenshots[/check]`, whose client is the MCP server; **not** the Excel import `/import/xlsx/*`), budgets, `GET /users/profile`, `GET /auth/me`. Token management, login/logout, profile writes, the Excel import and integrations stay session-only. **New endpoints default to `authenticateJWT`;** opening one to tokens is a deliberate decision, and `src/tests/apiTokens/routeExposure.test.ts` snapshots the allow-list so it can't widen silently.
 - **Scopes by HTTP method:** `read` → GET/HEAD; `write` (implies `read`) → everything else. Missing scope → 403 `INSUFFICIENT_SCOPE`.
 - Tokens **don't touch the web session** (no `sid` check, no `sessionLastActivityAt` write), so an MCP client never logs the user out or blocks their login. Web logout doesn't revoke tokens; `DELETE /api/users/tokens/:tokenId` does (immediately). Unknown/revoked/expired → the same 401 `INVALID_TOKEN`; the reason goes to logs only.
 - Expiry is mandatory: default 90 days, max 365. Max 10 active tokens per user (409 `API_TOKEN_LIMIT_REACHED`). `lastUsedAt` is updated at most once a minute.
