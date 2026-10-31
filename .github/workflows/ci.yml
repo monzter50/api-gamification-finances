@@ -38,8 +38,13 @@ jobs:
         with:
           node-version: 22
       # Runtime deps only — that's what ships in the Docker image (dev deps are
-      # pruned). Yarn 1 exits non-zero when advisories at/above --level exist.
-      - run: yarn audit --groups dependencies --level high
+      # pruned). Yarn 1's exit code is a bitmask of every severity found
+      # (1 info, 2 low, 4 moderate, 8 high, 16 critical) and ignores --level,
+      # so fail only on the high/critical bits.
+      - run: |
+          code=0
+          yarn audit --groups dependencies --level high || code=$?
+          if [ $((code & 24)) -ne 0 ]; then exit 1; fi
 
   secrets:
     runs-on: ubuntu-latest
