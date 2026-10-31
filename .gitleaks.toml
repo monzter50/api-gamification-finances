@@ -7,3 +7,9 @@ id = "finanzas-personal-api-token"
 description = "Finanzas personal API token (fpat_)"
 regex = '''fpat_[A-Za-z0-9_-]{43}'''
 keywords = ["fpat_"]
+
+# Placeholder in docs examples (`curl -H "Authorization: Bearer YOUR_TOKEN"`).
+[allowlist]
+description = "Documentation placeholders"
+regexTarget = "line"
+regexes = ['''Bearer YOUR_TOKEN''']
