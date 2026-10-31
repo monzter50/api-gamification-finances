@@ -1,17 +1,10 @@
+import { AppError } from './AppError';
+
 /**
- * Base class for authentication errors
+ * Base class for authentication errors. Kept for backwards compatibility —
+ * new domain errors should extend `AppError` directly (see DomainErrors.ts).
  */
-export class AuthError extends Error {
-  constructor (
-    message: string,
-    public statusCode: number,
-    public errorCode: string
-  ) {
-    super(message);
-    this.name = this.constructor.name;
-    Error.captureStackTrace(this, this.constructor);
-  }
-}
+export class AuthError extends AppError {}
 
 /**
  * Error thrown when user credentials are invalid
@@ -46,6 +39,25 @@ export class UserNotFoundError extends AuthError {
 export class UserAlreadyExistsError extends AuthError {
   constructor (message: string = 'User with this email already exists') {
     super(message, 409, 'USER_ALREADY_EXISTS');
+  }
+}
+
+/**
+ * Error thrown when the Authorization header is missing or malformed
+ */
+export class UnauthorizedError extends AuthError {
+  constructor (message: string = 'Unauthorized') {
+    super(message, 401, 'UNAUTHORIZED');
+  }
+}
+
+/**
+ * Error thrown when a valid token points at a user that no longer exists.
+ * 401 (not 404): from the client's point of view the credential is invalid.
+ */
+export class TokenUserNotFoundError extends AuthError {
+  constructor (message: string = 'User not found') {
+    super(message, 401, 'USER_NOT_FOUND');
   }
 }
 
@@ -87,5 +99,26 @@ export class SessionRevokedError extends AuthError {
 export class SessionAlreadyActiveError extends AuthError {
   constructor (message: string = 'You already have an active session on another device. Log out there or wait a few minutes, then try again.') {
     super(message, 409, 'SESSION_ALREADY_ACTIVE');
+  }
+}
+
+/**
+ * A personal API token was used on an endpoint that only accepts a signed-in
+ * app session (token management, logout, imports...). 403, not 401: the
+ * credential is valid, it just can't do this.
+ */
+export class ApiTokenNotAllowedError extends AuthError {
+  constructor (message: string = 'This endpoint can\'t be used with an API token. Sign in to the app instead.') {
+    super(message, 403, 'API_TOKEN_NOT_ALLOWED');
+  }
+}
+
+/**
+ * The API token is valid but lacks the scope for this request
+ * (e.g. a `read` token calling POST/PUT/PATCH/DELETE).
+ */
+export class InsufficientScopeError extends AuthError {
+  constructor (requiredScope: string) {
+    super(`This API token is missing the "${requiredScope}" scope.`, 403, 'INSUFFICIENT_SCOPE');
   }
 }

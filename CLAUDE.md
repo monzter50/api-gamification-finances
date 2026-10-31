@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 REST API for personal finance management. **Express 4 + TypeScript (strict) + Prisma 5 + PostgreSQL.** Auth via JWT with DB-backed blacklist. Dockerized for staging/prod, deployed to Railway with a managed Postgres (Prisma Cloud) external DB.
 
-Current Prisma models: `User`, `Account`, `Transaction`, `Budget`, `IncomeItem`, `ExpenseItem`, `BlacklistedToken`. An earlier "gamification" module was removed (see migration `20260119000139_remove_gamification_models`) — if you see leftover references to badges, achievements, levels, coins, or experience anywhere in the code, they're dead and safe to delete.
+Current Prisma models: `User`, `Account`, `Transaction`, `Budget`, `IncomeItem`, `ExpenseItem`, `BlacklistedToken`, `ApiToken`, `ImportBatch`, `ImportImage`. An earlier "gamification" module was removed (see migration `20260119000139_remove_gamification_models`) — if you see leftover references to badges, achievements, levels, coins, or experience anywhere in the code, they're dead and safe to delete.
 
 ## Common commands
 
@@ -79,12 +79,22 @@ For a "Foo" resource, add these files in lockstep:
 4. `src/dto/request/foo.dto.ts` and `src/dto/response/foo.dto.ts` — TypeScript types for inputs/outputs. **DTOs are barely adopted** — only `auth` and `user` have them; `account`, `budget`, `transaction` keep inline types in `src/types/<feature>.types.ts`. The DTO folder is the intended direction, but matching the existing per-feature `*.types.ts` pattern is also acceptable if you're extending an existing resource
 5. `src/validators/foo.validator.ts` — `express-validator` chains, one named export per endpoint
 6. `src/controllers/foo.controller.ts` — class with one method per route; bind in routes file
-7. `src/routes/foo.ts` — wire validators + `validate` middleware + `authenticateJWT` + controller methods
+7. `src/routes/foo.ts` — wire `authenticateJWT` (from `src/middleware/auth.ts`) + validators + `validate` middleware + controller methods
 8. `src/routes/index.ts` — mount `router.use('/foo', fooRoutes)`
 
 ### Base repository quirks
 
 `src/repositories/base.repository.ts` uses `prisma[modelName]` indexing with `@ts-expect-error`. **The `modelName` string MUST match the Prisma model name with a lowercase first letter** (e.g. `'user'`, `'transaction'`). Mismatch = silent runtime crash. The base class loses strong typing through this indirection — repositories that need typed queries should write them out longhand rather than relying on the base methods.
+
+### Screenshot import and idempotency
+
+`POST /api/transactions/import/screenshots` takes movements read from bank screenshots, grouped by image with each image's SHA-256. The OCR happens in the client (Claude via the `finances-mcp` server). Rules (`src/services/screenshotImport/`):
+- An image hash already in `ImportImage` (unique `userId, sha256`) is skipped whole; `/check` lets the client skip OCR for it.
+- `fingerprint` = sha256(user | account | local minute | cents | type | `normDescriptor`). Its index is **not unique**: two identical purchases in one minute are legitimate. Idempotency comes from **count reconciliation** (`planInsertions`): per fingerprint, `n` = max occurrences in a single image, insert `max(0, n − existing)`. Runs inside `$transaction` after `pg_advisory_xact_lock(hashtext(userId))`, so concurrent imports serialise.
+- Local time is `America/Cancun` (`src/utils/localTime.ts`); the year is inferred (`inferOccurredAt`). The budget is derived from the date by `budgetPeriodOf` (0–11 months), never sent by the client; `budgetId` stays null when that month has no budget.
+- `Transaction.occurredAt` (timestamptz) is the movement's real instant. It's nullable for now (expand step); every write path sets it. `fingerprint` is never recomputed on update, so it keeps identifying what the screenshot showed.
+- `normDescriptor`/`fingerprintOf` are duplicated in SQL by the backfill in migration `20261030120000_screenshot_import_idempotency`; keep them in sync.
+- One-off data cleanup (duplicates, test rows, budget re-derivation): `yarn cleanup:screenshot-import --email <email>` is a dry run; `--apply --expect-duplicates N --expect-test-rows N` executes in one transaction. Take a `pg_dump` first.
 
 ### `transactionIncludes` pattern
 
@@ -92,22 +102,41 @@ For a "Foo" resource, add these files in lockstep:
 
 ### Errors
 
-- Custom errors live in `src/errors/AuthErrors.ts` and extend a base `AuthError` that carries `statusCode` + `errorCode`. Despite the filename, the base class is generic — reuse it (or split into per-domain error files) when you need typed errors outside of auth.
-- The global `errorHandler` (`src/middleware/errorHandler.ts`) handles, in this order:
-  1. `AuthError` subclasses → uses their `statusCode` and `errorCode`
-  2. `Prisma.PrismaClientKnownRequestError` → maps known codes (`P2002` → 409, `P2003` → 400, `P2025` → 404, `P2000` → 400)
+- **All expected errors extend `AppError`** (`src/errors/AppError.ts`), which carries `statusCode` + a stable `errorCode`. Domain errors live in `src/errors/DomainErrors.ts` (accounts, budgets, items, transactions), auth errors in `src/errors/AuthErrors.ts` (`AuthError` is now just a subclass of `AppError`, kept for compatibility), import errors in `src/errors/XlsxImportErrors.ts`. Services throw these — **never `throw new Error('...')` for an expected outcome, and never string-match error messages in controllers.**
+- **Controllers forward every error with `catch (error) { next(error); }`** — Express 4 doesn't catch async rejections by itself. No controller builds its own error response.
+- The global `errorHandler` (`src/middleware/errorHandler.ts`) is the ONE place that renders errors, in this order:
+  1. `AppError` subclasses → their `statusCode` and `errorCode`
+  2. `Prisma.PrismaClientKnownRequestError` → `P2002` → 409, `P2003` → 400, `P2025` → 404, `P2000` → 400
   3. `Prisma.PrismaClientValidationError` → 400
-  4. JWT errors (`JsonWebTokenError`, `TokenExpiredError`) → 401
-  5. Anything else → 500, with the raw `err.message` **hidden in non-dev** environments
-- Many controllers ALSO do `if (error instanceof AuthError)` checks themselves and return early. Both paths produce the same response; new controllers can lean on the global handler instead of duplicating the check, but match the existing style if you're editing a file that already does it both ways.
+  4. Express/body-parser 4xx (malformed JSON, payload too large) → their status, message only if `expose`
+  5. Anything else → 500, message and stack **hidden outside development**
+- **Error envelope** (also documented as `components.schemas.Error` in `swagger.config.ts`):
+  `{ success: false, message, error, errorCode }` — `message` and `error` carry the same text (two keys for compatibility with older clients). Validation failures from `validate` add `errorCode: 'VALIDATION_ERROR'` and `errors: [{ field, message }]`.
+- **Ownership → 404**: a resource that belongs to another user is indistinguishable from a missing one (`BudgetNotFoundError`, …). An ID referenced in the request *body* that isn't the caller's → 400 `INVALID_ACCOUNT_REFERENCE` / `INVALID_BUDGET_ITEM_REFERENCE`. Check ownership **before** state rules (e.g. "account has transactions" → 409) so error codes can't be used as an existence oracle.
 - For 401 on auth flows: **`InvalidCredentialsError` is thrown both for "user not found" and "wrong password"** — intentional, don't leak which one to clients.
 
 ### Auth flow
 
-- JWT in `Authorization: Bearer <token>` header.
-- Middleware `authenticateJWT` is defined inline in `src/routes/auth.ts` (not in `src/middleware/`). It checks DB-backed blacklist via `isTokenBlacklisted` before verifying the JWT, so logout actually invalidates tokens.
-- Decoded JWT payload is stuffed on `req.user` and typed as `AuthenticatedRequest` from `src/types/index.ts`.
-- `JWT_SECRET` defaults to `'default_secret'` if env var is missing — **a fail-open default is risky**, treat changing this as a follow-up.
+- JWT in `Authorization: Bearer <token>` header, **HS256 only** (pinned on sign and verify via `JWT_ALGORITHM` in `src/config/env.ts`).
+- Middleware `authenticateJWT` lives in `src/middleware/auth.ts`. Order: header → DB-backed blacklist (`isTokenBlacklisted`, so logout invalidates tokens) → signature/expiry → user exists + active → token `sid` matches `User.sessionId` (single active session; mismatch → **440 `SESSION_REVOKED`**, a status reserved for this). Failures are forwarded as typed errors.
+- The caller is put on `req.user` as an `AuthUser` (`src/types/index.ts`, via `AuthenticatedRequest`): `authMethod: 'session'` (JWT, has `sid`) or `'api_token'` (has `apiTokenId`, `scopes`). Controllers only read `req.user.userId`.
+- **Secrets have no defaults.** `getJwtSecret()` throws if `JWT_SECRET` is unset, and `assertRequiredEnv()` (called first thing in `startServer`) refuses to boot without `JWT_SECRET` / `DATABASE_URL`. Never add `process.env.X ?? 'fallback'` for a secret.
+  - Gotcha when testing this locally: Prisma's client loads `.env` on import, so unsetting the var in your shell isn't enough — set it to an empty string (`JWT_SECRET= node dist/server.js`).
+- Passwords: bcrypt cost 12 for new hashes; register requires 8–72 bytes and **does not trim**. Login compares the raw password first and falls back to the trimmed one for accounts created under the old "trim" rule.
+- `/auth/login` and `/auth/register` have an extra `authRateLimiter` (`src/middleware/rateLimiters.ts`, 10 failed attempts / 15 min per IP by default) on top of the global `/api/` limiter.
+
+### Personal API tokens (MCP server, scripts)
+
+- `fpat_` + 32 random bytes (`src/utils/apiToken.ts`). The raw token is returned **once** by `POST /api/users/tokens`; only its **SHA-256** is stored (`ApiToken.tokenHash`) — high-entropy tokens don't need bcrypt. Never log or return it again (the list shows `tokenPrefix` only). `.gitleaks.toml` has a rule for the format.
+- **Opt-in per route.** `authenticateJWT` is session-only and answers an API token with **403 `API_TOKEN_NOT_ALLOWED`**. Only routes that use `authenticateUserOrApiToken` accept tokens: accounts, transactions (including the screenshot import, `POST /transactions/import/screenshots[/check]`, whose client is the MCP server; **not** the Excel import `/import/xlsx/*`), budgets, `GET /users/profile`, `GET /auth/me`. Token management, login/logout, profile writes, the Excel import and integrations stay session-only. **New endpoints default to `authenticateJWT`;** opening one to tokens is a deliberate decision, and `src/tests/apiTokens/routeExposure.test.ts` snapshots the allow-list so it can't widen silently.
+- **Scopes by HTTP method:** `read` → GET/HEAD; `write` (implies `read`) → everything else. Missing scope → 403 `INSUFFICIENT_SCOPE`.
+- Tokens **don't touch the web session** (no `sid` check, no `sessionLastActivityAt` write), so an MCP client never logs the user out or blocks their login. Web logout doesn't revoke tokens; `DELETE /api/users/tokens/:tokenId` does (immediately). Unknown/revoked/expired → the same 401 `INVALID_TOKEN`; the reason goes to logs only.
+- Expiry is mandatory: default 90 days, max 365. Max 10 active tokens per user (409 `API_TOKEN_LIMIT_REACHED`). `lastUsedAt` is updated at most once a minute.
+
+### HTTP hardening (in `server.ts`)
+
+- JSON body limit is `100kb` (`JSON_BODY_LIMIT`); only `/api/transactions/import/*` gets `10mb` (`IMPORT_JSON_BODY_LIMIT`). File uploads go through multer, not the JSON parser.
+- Swagger UI, `/api-docs.json`, `/api/schema.json` and `/api/docs` are served only when `isApiDocsEnabled()` — on by default outside production, **off in production** unless `ENABLE_API_DOCS=true`. If codegen points at staging and staging runs with `NODE_ENV=production`, set `ENABLE_API_DOCS=true` there.
 
 ## TypeScript strictness — known gotchas
 
@@ -121,6 +150,9 @@ For a "Foo" resource, add these files in lockstep:
    `yarn dev` (tsx) silently ignores these; `yarn build` / `yarn type-check` will fail. **Always run `yarn type-check` before committing.**
 
 2. **Path aliases** (`@/*`, `@/types/*`, etc.) are defined in `tsconfig.json` and mirrored in `vitest.config.ts` but **almost never used** — at the time of writing, exactly one file (`src/utils/response.ts`) imports via `@/`. Everything else uses relative imports like `../services/foo.service`. Stick with relative imports unless you're refactoring with intent.
+
+3. **ESLint 10 flat config (`eslint.config.mjs`)**: neostandard style with `semi: true` (2 spaces, single quotes, semicolons, no trailing commas) plus a few type-aware typescript-eslint rules (`return-await: always`, `await-thenable`). Type info comes from `tsconfig.eslint.json`, which extends `tsconfig.json` but also includes test files (the build tsconfig excludes `*.test.ts` so they never land in `dist/`). Generated `src/types/openapi.d.ts` is ignored.
+4. **Node 22 LTS** everywhere (`engines >=22.12.0`, `node:22-slim` image, CI). Node 20 is end-of-life; the dev toolchain (neostandard, Vitest 4) won't install on it.
 
 ## Database & migrations
 
@@ -166,4 +198,12 @@ Production secrets should live in the platform's secret manager (Railway dashboa
 2. `yarn lint` passes
 3. If schema changed: migration created, `yarn prisma generate` run, types updated in DTOs
 4. If API surface changed: OpenAPI schema regenerated (`yarn export:schema`) and `openapi-schema.json` committed
-5. New endpoints have a `validate` middleware + `authenticateJWT` (unless explicitly public like `/auth/login`)
+5. New endpoints have a `validate` middleware + `authenticateJWT` (unless explicitly public like `/auth/login`; use `authenticateUserOrApiToken` only if API tokens should reach it, and update the route-exposure snapshot); every `:id` is `isUUID()`-validated and list endpoints cap `limit` at 100
+6. `yarn test` passes; new business/ownership rules have tests (see `src/tests/security/` for the ownership, auth-middleware and error-handler patterns)
+7. `yarn audit --groups dependencies --level high` is clean (CI enforces it)
+
+CI (`.github/workflows/ci.yml`) runs type-check, lint, tests, build, the runtime-dependency audit and gitleaks on every push/PR.
+
+## Project skills
+
+`.claude/skills/` holds the project's rules as Claude Code skills — `backend-architecture` (layers, toolchain, decisions), `backend-api-design`, `backend-data-practices`, `backend-security`, `backend-new-resource` (scaffold + templates) and `backend-code-review` (checklist). Keep them in sync with this file when conventions change.

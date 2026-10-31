@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 
 // Use a singleton instance
 declare global {
-  // eslint-disable-next-line no-var
+
   var prisma: PrismaClient | undefined;
 }
 

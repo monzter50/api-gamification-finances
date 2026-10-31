@@ -1,6 +1,6 @@
 import express from 'express';
 import { accountController } from '../controllers/account.controller';
-import { authenticateJWT } from './auth';
+import { authenticateUserOrApiToken } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import {
   createAccountValidation,
@@ -13,14 +13,14 @@ const router = express.Router();
 // GET /api/accounts
 router.get(
   '/',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   accountController.getUserAccounts.bind(accountController)
 );
 
 // POST /api/accounts
 router.post(
   '/',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   createAccountValidation,
   validate,
   accountController.createAccount.bind(accountController)
@@ -29,7 +29,7 @@ router.post(
 // GET /api/accounts/:id
 router.get(
   '/:id',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   accountIdValidation,
   validate,
   accountController.getAccountById.bind(accountController)
@@ -38,7 +38,7 @@ router.get(
 // PUT /api/accounts/:id
 router.put(
   '/:id',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   accountIdValidation,
   updateAccountValidation,
   validate,
@@ -48,7 +48,7 @@ router.put(
 // DELETE /api/accounts/:id
 router.delete(
   '/:id',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   accountIdValidation,
   validate,
   accountController.deleteAccount.bind(accountController)

@@ -1,7 +1,7 @@
 import express from 'express';
 import { transactionController } from '../controllers/transaction.controller';
 import { xlsxImportController } from '../controllers/xlsxImport.controller';
-import { authenticateJWT } from './auth';
+import { authenticateJWT, authenticateUserOrApiToken } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { xlsxUpload } from '../middleware/xlsxUpload';
 import {
@@ -9,9 +9,12 @@ import {
   updateTransactionValidation,
   transactionIdValidation,
   transactionQueryValidation,
-  monthlySummaryValidation
+  monthlySummaryValidation,
+  budgetBalanceValidation
 } from '../validators/transaction.validator';
 import { confirmXlsxValidation } from '../validators/xlsxImport.validator';
+import { screenshotImportController } from '../controllers/screenshotImport.controller';
+import { checkScreenshotsValidation, importScreenshotsValidation } from '../validators/screenshotImport.validator';
 
 const router = express.Router();
 
@@ -23,14 +26,14 @@ const router = express.Router();
 // Get financial summary (must be before /:id)
 router.get(
   '/summary',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   transactionController.getFinancialSummary.bind(transactionController)
 );
 
 // Get monthly summary (must be before /:id)
 router.get(
   '/monthly/:year/:month',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   monthlySummaryValidation,
   validate,
   transactionController.getMonthlySummary.bind(transactionController)
@@ -39,14 +42,16 @@ router.get(
 // Get budget balance breakdown (must be before /:id)
 router.get(
   '/budget/:budgetId/balance',
-  authenticateJWT,
+  authenticateUserOrApiToken,
+  budgetBalanceValidation,
+  validate,
   transactionController.getBudgetBalance.bind(transactionController)
 );
 
 // Get all transactions (with optional filters & pagination)
 router.get(
   '/',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   transactionQueryValidation,
   validate,
   transactionController.getAllTransactions.bind(transactionController)
@@ -55,7 +60,7 @@ router.get(
 // Get transaction by ID
 router.get(
   '/:id',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   transactionIdValidation,
   validate,
   transactionController.getTransactionById.bind(transactionController)
@@ -133,6 +138,10 @@ router.get(
  *                           type: { type: string, enum: [Fixed, Variable] }
  *                     paymentSources:
  *                       type: array
+ *                       items: { type: string }
+ *                     unmatchedCategories:
+ *                       type: array
+ *                       description: Transaction categories with no matching row in the Expenses sheet. Show them in the review step.
  *                       items: { type: string }
  *                     counts:
  *                       type: object
@@ -245,18 +254,33 @@ router.post(
  *                         transactions: { type: integer }
  *                         incomeItems: { type: integer }
  *                         expenseItems: { type: integer }
+ *                     updatedCount:
+ *                       type: object
+ *                       description: Items that already existed in the budget (same name) and were updated in place.
+ *                       properties:
+ *                         incomeItems: { type: integer }
+ *                         expenseItems: { type: integer }
+ *                     skippedCount:
+ *                       type: object
+ *                       description: Rows not created because an identical row was already imported.
+ *                       properties:
+ *                         transactions: { type: integer }
+ *                     unmatchedCategories:
+ *                       type: array
+ *                       description: Categories that matched no expense item; their rows were created without expenseItemId.
+ *                       items: { type: string }
  *                     transactionIds:
  *                       type: array
+ *                       description: Transactions created by this call (skipped rows excluded).
  *                       items: { type: string, format: uuid }
- *       400: { $ref: '#/components/responses/BadRequestError' }
- *       401: { $ref: '#/components/responses/UnauthorizedError' }
- *       403:
- *         description: Budget or an account does not belong to the user
+ *       400:
+ *         description: Validation failed, or a referenced account does not exist / belong to the user (INVALID_ACCOUNT_REFERENCE)
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
+ *       401: { $ref: '#/components/responses/UnauthorizedError' }
  *       404:
- *         description: Budget not found
+ *         description: Budget not found (or belongs to another user)
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
@@ -269,10 +293,157 @@ router.post(
   xlsxImportController.confirm.bind(xlsxImportController)
 );
 
+/**
+ * Screenshot import. Unlike the Excel import these two routes accept personal
+ * API tokens (write scope): the client is Claude reading bank screenshots
+ * through the finances MCP server. Deliberate exception to "imports are
+ * session-only" — reviewed in src/tests/apiTokens/routeExposure.test.ts.
+ *
+ * @openapi
+ * /api/transactions/import/screenshots/check:
+ *   post:
+ *     tags: [Transactions]
+ *     summary: Which screenshot hashes were already imported
+ *     description: Lets the client skip OCR for images it has sent before.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [sha256s]
+ *             properties:
+ *               sha256s:
+ *                 type: array
+ *                 minItems: 1
+ *                 maxItems: 50
+ *                 items: { type: string, pattern: '^[a-fA-F0-9]{64}$' }
+ *     responses:
+ *       200:
+ *         description: Hashes already imported (subset of the request, lowercase)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     imported:
+ *                       type: array
+ *                       items: { type: string }
+ *       400:
+ *         description: Validation failed
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       401: { $ref: '#/components/responses/UnauthorizedError' }
+ */
+router.post(
+  '/import/screenshots/check',
+  authenticateUserOrApiToken,
+  checkScreenshotsValidation,
+  validate,
+  screenshotImportController.check.bind(screenshotImportController)
+);
+
+/**
+ * @openapi
+ * /api/transactions/import/screenshots:
+ *   post:
+ *     tags: [Transactions]
+ *     summary: Idempotent import of movements read from bank screenshots
+ *     description: |
+ *       Rows are grouped by the image they were read from. Re-importing the same
+ *       screenshots, or overlapping ones, inserts nothing new; two identical
+ *       purchases inside one screenshot stay two. An image whose SHA-256 was
+ *       imported before is skipped whole. The year is inferred (screenshots
+ *       don't show it), local time is America/Cancun, and each row's budget is
+ *       derived from its date (`budgetId` stays null when that month has no
+ *       budget). Atomic: all rows commit together with the account balance.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [accountId, images]
+ *             properties:
+ *               accountId: { type: string, format: uuid }
+ *               images:
+ *                 type: array
+ *                 minItems: 1
+ *                 maxItems: 50
+ *                 items:
+ *                   type: object
+ *                   required: [sha256, rows]
+ *                   properties:
+ *                     sha256: { type: string, pattern: '^[a-fA-F0-9]{64}$' }
+ *                     rows:
+ *                       type: array
+ *                       maxItems: 100
+ *                       items:
+ *                         type: object
+ *                         required: [day, month, time, rawDescriptor, amount, type]
+ *                         properties:
+ *                           day: { type: integer, minimum: 1, maximum: 31 }
+ *                           month: { type: integer, minimum: 1, maximum: 12, description: 'January = 1' }
+ *                           time: { type: string, example: '10:10', description: 'HH:mm, local time' }
+ *                           rawDescriptor: { type: string, example: 'Stripe *unicef mx' }
+ *                           amount: { type: number, example: 59 }
+ *                           type: { type: string, enum: [income, expense] }
+ *                           description: { type: string, description: 'Free-text note; never the category' }
+ *     responses:
+ *       201:
+ *         description: Batch recorded (possibly with 0 inserted)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     batchId: { type: string, format: uuid }
+ *                     inserted: { type: integer }
+ *                     skippedAsDuplicate: { type: integer }
+ *                     skippedImages: { type: integer }
+ *                     unbudgeted: { type: integer, description: 'Inserted rows whose month has no budget' }
+ *                     transactionIds:
+ *                       type: array
+ *                       items: { type: string, format: uuid }
+ *       400:
+ *         description: Validation failed, invalid date (INVALID_SCREENSHOT_ROW) or account not owned (INVALID_ACCOUNT_REFERENCE)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       401: { $ref: '#/components/responses/UnauthorizedError' }
+ *       403:
+ *         description: API token without the write scope (INSUFFICIENT_SCOPE)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
+router.post(
+  '/import/screenshots',
+  authenticateUserOrApiToken,
+  importScreenshotsValidation,
+  validate,
+  screenshotImportController.import.bind(screenshotImportController)
+);
+
 // Create new transaction
 router.post(
   '/',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   createTransactionValidation,
   validate,
   transactionController.createTransaction.bind(transactionController)
@@ -281,7 +452,7 @@ router.post(
 // Update transaction
 router.put(
   '/:id',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   updateTransactionValidation,
   validate,
   transactionController.updateTransaction.bind(transactionController)
@@ -290,7 +461,7 @@ router.put(
 // Delete transaction
 router.delete(
   '/:id',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   transactionIdValidation,
   validate,
   transactionController.deleteTransaction.bind(transactionController)

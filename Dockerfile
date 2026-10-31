@@ -11,7 +11,7 @@
 # =============================================================================
 
 # ---- Stage 1: install ALL deps (dev + prod) once ----
-FROM node:20-slim AS deps
+FROM node:22-slim AS deps
 WORKDIR /app
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
@@ -32,7 +32,7 @@ RUN yarn install --frozen-lockfile --production && \
     yarn cache clean
 
 # ---- Stage 4: production runtime — minimal image ----
-FROM node:20-slim AS production
+FROM node:22-slim AS production
 WORKDIR /app
 
 # wget for healthcheck, openssl + ca-certificates for Prisma + TLS to managed DBs

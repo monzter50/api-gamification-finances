@@ -1,8 +1,8 @@
 generator client {
   provider      = "prisma-client-js"
   // native                       = host architecture (local dev on macOS)
-  // debian-openssl-3.0.x         = node:20-slim on x86_64 hosts (CI, cloud Linux)
-  // linux-arm64-openssl-3.0.x    = node:20-slim on ARM64 (Apple Silicon, AWS Graviton)
+  // debian-openssl-3.0.x         = node:22-slim on x86_64 hosts (CI, cloud Linux)
+  // linux-arm64-openssl-3.0.x    = node:22-slim on ARM64 (Apple Silicon, AWS Graviton)
   binaryTargets = ["native", "debian-openssl-3.0.x", "linux-arm64-openssl-3.0.x"]
 }
 
@@ -31,22 +31,28 @@ model User {
   sessionId             String?
   sessionLastActivityAt DateTime?
 
-  transactions Transaction[]
-  budgets      Budget[]
-  accounts     Account[]
+  transactions  Transaction[]
+  budgets       Budget[]
+  accounts      Account[]
+  apiTokens     ApiToken[]
+  importBatches ImportBatch[]
+  importImages  ImportImage[]
 }
 
 model Account {
-  id           String        @id @default(uuid())
+  id           String   @id @default(uuid())
   userId       String
-  user         User          @relation(fields: [userId], references: [id])
+  user         User     @relation(fields: [userId], references: [id])
   name         String
-  type         String        // 'checking' | 'savings' | 'credit_card' | 'vales'
-  balance      Float         @default(0)
-  currency     String        @default("MXN")
-  isActive     Boolean       @default(true)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  type         String // 'checking' | 'savings' | 'credit_card' | 'vales'
+  balance      Float    @default(0)
+  // Money is migrating to integer cents (expand/contract). `balanceCents` is the
+  // source of truth; `balance` is kept in sync until the contract migration drops it.
+  balanceCents Int      @default(0)
+  currency     String   @default("MXN")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   transactions Transaction[]
   incomeItems  IncomeItem[]
@@ -55,31 +61,58 @@ model Account {
 }
 
 model Transaction {
-  id               String   @id @default(uuid())
-  userId           String
-  user             User     @relation(fields: [userId], references: [id])
-  accountId        String
-  account          Account  @relation(fields: [accountId], references: [id])
-  date             DateTime
-  amount           Float
-  vendor           String
-  description      String?
-  type             String   // 'income' | 'expense'
-  budgetId         String?
-  budget           Budget?  @relation(fields: [budgetId], references: [id])
-  incomeItemId     String?
-  incomeItem       IncomeItem?  @relation(fields: [incomeItemId], references: [id])
-  expenseItemId    String?
-  expenseItem      ExpenseItem? @relation(fields: [expenseItemId], references: [id])
-  
+  id            String       @id @default(uuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id])
+  accountId     String
+  account       Account      @relation(fields: [accountId], references: [id])
+  date          DateTime
+  amount        Float
+  amountCents   Int
+  vendor        String
+  description   String?
+  type          String // 'income' | 'expense'
+  budgetId      String?
+  budget        Budget?      @relation(fields: [budgetId], references: [id])
+  incomeItemId  String?
+  incomeItem    IncomeItem?  @relation(fields: [incomeItemId], references: [id])
+  expenseItemId String?
+  expenseItem   ExpenseItem? @relation(fields: [expenseItemId], references: [id])
+
   // Installment info flattened
-  installmentCurrent  Int?
-  installmentTotal    Int?
-  installmentOriginal Float?
+  installmentCurrent       Int?
+  installmentTotal         Int?
+  installmentOriginal      Float?
+  installmentOriginalCents Int?
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  // Set only for rows created by the Excel import. Unique per user so that
+  // re-importing the same workbook does not duplicate transactions.
+  importHash String?
 
+  // Screenshot import (idempotency plan, Oct 2026).
+  // `occurredAt` is the real instant of the movement (local time in
+  // America/Cancun, stored as UTC). EXPAND step: nullable so the previous app
+  // version keeps working during a rolling deploy; every write path sets it and
+  // the migration backfills it, a later CONTRACT migration makes it NOT NULL.
+  occurredAt     DateTime?    @db.Timestamptz(3)
+  // Merchant descriptor exactly as captured ("Stripe *unicef mx") and its
+  // normalised form ("stripeunicefmx"), the input of `fingerprint`.
+  rawDescriptor  String?
+  descriptorNorm String?
+  // sha256(user|account|local minute|cents|type|descriptorNorm). NOT unique:
+  // two identical purchases in the same minute are legitimate; the import
+  // reconciles counts per fingerprint instead (see screenshotImport service).
+  fingerprint    String?      @db.Char(64)
+  importBatchId  String?
+  importBatch    ImportBatch? @relation(fields: [importBatchId], references: [id])
+  source         String       @default("manual") // 'manual' | 'xlsx' | 'screenshot' | 'statement'
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, importHash])
+  @@index([userId, fingerprint])
+  @@index([importBatchId])
   @@index([userId, date])
   @@index([userId, type, date])
   @@index([budgetId])
@@ -89,18 +122,18 @@ model Transaction {
 }
 
 model Budget {
-  id           String   @id @default(uuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id])
-  year         Int
-  month        Int
-  
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+  year   Int
+  month  Int
+
   incomeItems  IncomeItem[]
   expenseItems ExpenseItem[]
   transactions Transaction[]
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, year, month])
   @@index([userId, year, month])
@@ -114,7 +147,8 @@ model IncomeItem {
   account      Account       @relation(fields: [accountId], references: [id])
   description  String
   amount       Float
-  type         String        // Enum handled as string: 'Debit Card', etc.
+  amountCents  Int
+  type         String // Enum handled as string: 'Debit Card', etc.
   transactions Transaction[]
 
   @@index([accountId])
@@ -126,7 +160,8 @@ model ExpenseItem {
   budget       Budget        @relation(fields: [budgetId], references: [id], onDelete: Cascade)
   description  String
   amount       Float
-  type         String        // Enum handled as string: 'Fixed', 'Variable'
+  amountCents  Int
+  type         String // Enum handled as string: 'Fixed', 'Variable'
   transactions Transaction[]
 }
 
@@ -143,3 +178,56 @@ model BlacklistedToken {
   @@index([expiresAt])
 }
 
+// Personal API tokens (for the MCP server, scripts, automations).
+// The raw token is shown once at creation; only its SHA-256 hash is stored.
+// They do NOT use the single-session `sid` — a token never logs the user out
+// of the web app, and logging in/out of the web app doesn't affect tokens.
+model ApiToken {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  tokenHash   String    @unique // sha256(raw token), hex
+  tokenPrefix String // first chars of the token, for display only ("fpat_AbCd…")
+  scopes      String[] // 'read' | 'write'
+  expiresAt   DateTime
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// One call to POST /api/transactions/import/screenshots. Traceability only:
+// which transactions a batch created and what it skipped.
+model ImportBatch {
+  id                 String   @id @default(uuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id])
+  accountId          String
+  source             String // 'screenshot'
+  inserted           Int
+  skippedAsDuplicate Int
+  skippedImages      Int
+  createdAt          DateTime @default(now())
+
+  transactions Transaction[]
+  images       ImportImage[]
+
+  @@index([userId, createdAt])
+}
+
+// A screenshot already imported, by content hash. Unique per user so the same
+// image is rejected before OCR (POST .../screenshots/check) and on import.
+model ImportImage {
+  id         String      @id @default(uuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id])
+  sha256     String      @db.Char(64)
+  batchId    String
+  batch      ImportBatch @relation(fields: [batchId], references: [id])
+  uploadedAt DateTime    @default(now())
+
+  @@unique([userId, sha256])
+  @@index([batchId])
+}

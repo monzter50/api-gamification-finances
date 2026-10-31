@@ -1,6 +1,6 @@
 import { type Request } from 'express';
 import { type IncomeItem, type ExpenseItem } from '@prisma/client';
-import { type JWTPayload } from './index';
+import { type AuthUser } from './index';
 import { type IncomeType, type ExpenseType } from '../constants/budget.constants';
 
 /**
@@ -70,7 +70,7 @@ export interface ExpenseItemInput {
  * @template T - The type of the request body
  */
 export interface BudgetRequest<T = any> extends Request {
-  user?: JWTPayload // Added by authentication middleware
+  user?: AuthUser // Added by authentication middleware
   body: T // Typed request body
 }
 
