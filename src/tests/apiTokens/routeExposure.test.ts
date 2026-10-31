@@ -31,8 +31,10 @@ function apiTokenRoutes (): string[] {
 describe('API token exposure', () => {
   const exposed = apiTokenRoutes();
 
-  it('never reaches token management, logout, login, profile writes or imports', () => {
-    for (const forbidden of ['/users/tokens', '/auth/logout', '/auth/login', '/auth/register', '/transactions/import']) {
+  it('never reaches token management, logout, login, profile writes or the Excel import', () => {
+    // The screenshot import IS open to tokens (write scope): its client is the
+    // MCP server. The Excel import stays session-only.
+    for (const forbidden of ['/users/tokens', '/auth/logout', '/auth/login', '/auth/register', '/transactions/import/xlsx']) {
       expect(exposed.filter((r) => r.includes(forbidden))).toEqual([]);
     }
     expect(exposed).not.toContain('PUT /users/profile');
@@ -68,6 +70,8 @@ describe('API token exposure', () => {
         "POST /budgets/:id/expense",
         "POST /budgets/:id/income",
         "POST /transactions/",
+        "POST /transactions/import/screenshots",
+        "POST /transactions/import/screenshots/check",
         "PUT /accounts/:id",
         "PUT /budgets/:id",
         "PUT /budgets/:id/expense/:expenseId",

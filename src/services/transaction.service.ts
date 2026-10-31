@@ -102,11 +102,13 @@ export class TransactionService {
       userId,
       budgetId: data.budgetId,
       date: new Date(data.date),
+      occurredAt: new Date(data.date),
       amount: fromCents(amountCents),
       amountCents,
       vendor: data.vendor,
       type: data.type,
-      accountId: data.accountId
+      accountId: data.accountId,
+      source: 'manual'
     };
     if (data.description !== undefined) txData.description = data.description;
     if (data.incomeItemId !== undefined) txData.incomeItemId = data.incomeItemId;
@@ -260,7 +262,13 @@ export class TransactionService {
     // (e.g. `category`, `owner`, `budgetId`) that aren't columns on
     // Transaction and would make Prisma reject the whole update.
     const updateData: Prisma.TransactionUncheckedUpdateInput = {};
-    if (data.date !== undefined) updateData.date = new Date(data.date);
+    if (data.date !== undefined) {
+      updateData.date = new Date(data.date);
+      updateData.occurredAt = new Date(data.date);
+    }
+    // `fingerprint` is deliberately NOT recomputed: it identifies what the
+    // screenshot showed, so re-importing that screenshot after a manual fix
+    // (e.g. a corrected OCR amount) still recognises the row.
     if (data.amount !== undefined) {
       updateData.amountCents = newAmountCents;
       updateData.amount = fromCents(newAmountCents);

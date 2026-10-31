@@ -144,6 +144,8 @@ export class XlsxImportService {
           userId,
           budgetId,
           date: new Date(row.date),
+          occurredAt: new Date(row.date),
+          source: 'xlsx',
           amount: fromCents(amountCents),
           amountCents,
           vendor: row.vendor,

@@ -17,6 +17,7 @@
     "docs": "echo 'OpenAPI docs: http://localhost:3000/api-docs'",
     "export:schema": "tsx src/scripts/exportOpenApi.ts",
     "generate:client": "yarn run tsx src/scripts/exportOpenApi.ts && yarn run openapi-typescript openapi-schema.json -o src/types/openapi.d.ts",
+    "cleanup:screenshot-import": "tsx src/scripts/cleanupScreenshotImport.ts",
     "clean:macos": "dot_clean -m . 2>/dev/null || true",
     "compose:dev": "yarn clean:macos && COPYFILE_DISABLE=1 docker compose up",
     "compose:dev:tools": "yarn clean:macos && COPYFILE_DISABLE=1 docker compose --profile tools up",
@@ -81,7 +82,7 @@
     "node": ">=22.12.0"
   },
   "resolutions": {
-    "fast-uri": "^3.1.8",
+    "fast-uri": "^3.1.9",
     "source-map-js": "^1.2.2",
     "uuid": "^11.1.1",
     "vite": "^7.3.7"
