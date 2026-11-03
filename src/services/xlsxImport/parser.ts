@@ -6,6 +6,7 @@ import {
   type ParsedIncomeItem,
   type ParsedTransaction
 } from './types';
+import { findUnmatchedCategories } from './dedupe';
 
 /**
  * Parser for the "TARJETAS Y GASTOS" budget workbook → three app entities:
@@ -61,7 +62,6 @@ const cellToDateISO = (v: CellValue): string => {
   return '';
 };
 
-
 /** "Budget track" → expense transactions. */
 const parseTransactions = (ws: ExcelJS.Worksheet): ParsedTransaction[] => {
   const rows: ParsedTransaction[] = [];
@@ -71,11 +71,11 @@ const parseTransactions = (ws: ExcelJS.Worksheet): ParsedTransaction[] => {
     if (amount === null || amount <= 0) { return; }
 
     const expense = cellToString(row.getCell(1).value); // A
-    const vendor = cellToString(row.getCell(2).value);  // B
+    const vendor = cellToString(row.getCell(2).value); // B
     const category = cellToString(row.getCell(3).value); // C
-    const date = cellToDateISO(row.getCell(5).value);   // E
-    const method = cellToString(row.getCell(6).value);  // F
-    const card = cellToString(row.getCell(7).value);    // G
+    const date = cellToDateISO(row.getCell(5).value); // E
+    const method = cellToString(row.getCell(6).value); // F
+    const card = cellToString(row.getCell(7).value); // G
     const paymentSource = [method, card].filter(Boolean).join(' / ');
 
     const parsed: ParsedTransaction = { date, amount, vendor, type: 'expense' };
@@ -133,11 +133,11 @@ const parseExpenseItems = (ws: ExcelJS.Worksheet): ParsedExpenseItem[] => {
       if (inVariables) { break; }
       continue;
     }
-    if (label === 'Category') { continue; }                       // header row, skip
+    if (label === 'Category') { continue; } // header row, skip
     if (label === 'Total' || label.includes('VALIDACIÓN')) { break; }
 
     const amount = cellToNumber(row.getCell(2).value); // B Expected Amount
-    if (amount === null || amount <= 0) { continue; }   // skip 0/blank-amount rows
+    if (amount === null || amount <= 0) { continue; } // skip 0/blank-amount rows
 
     items.push({ description: label, amount, type: currentType });
   }
@@ -165,6 +165,7 @@ export async function parseWorkbook (buffer: Buffer): Promise<ParseResult> {
     incomeItems,
     expenseItems,
     paymentSources,
+    unmatchedCategories: findUnmatchedCategories(transactions, expenseItems.map((e) => e.description)),
     counts: {
       transactions: transactions.length,
       incomeItems: incomeItems.length,

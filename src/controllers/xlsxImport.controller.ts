@@ -1,10 +1,8 @@
-import type { Response } from 'express';
+import type { Response, NextFunction } from 'express';
 import { type AuthenticatedRequest } from '../types';
 import { xlsxImportService } from '../services/xlsxImport/xlsxImport.service';
 import { type ConfirmXlsxPayload } from '../services/xlsxImport/types';
-import { AuthError } from '../errors/AuthErrors';
 import { NoFileUploadedError } from '../errors/XlsxImportErrors';
-import { logger } from '../config/logger';
 
 /**
  * Excel Import Controller
@@ -12,7 +10,7 @@ import { logger } from '../config/logger';
  * POST /api/transactions/import/xlsx/confirm  — bulk-create the reviewed batch
  */
 export class XlsxImportController {
-  async parse (req: AuthenticatedRequest, res: Response): Promise<void> {
+  async parse (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const file = req.file;
       if (!file) {
@@ -25,11 +23,11 @@ export class XlsxImportController {
         data: result
       });
     } catch (error) {
-      this.handleError(error, res, 'Error parsing workbook');
+      next(error);
     }
   }
 
-  async confirm (req: AuthenticatedRequest, res: Response): Promise<void> {
+  async confirm (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.userId;
       const payload = req.body as ConfirmXlsxPayload;
@@ -40,26 +38,8 @@ export class XlsxImportController {
         data: result
       });
     } catch (error) {
-      this.handleError(error, res, 'Error importing transactions');
+      next(error);
     }
-  }
-
-  private handleError (error: unknown, res: Response, fallback: string): void {
-    if (error instanceof AuthError) {
-      res.status(error.statusCode).json({ success: false, message: error.message, errorCode: error.errorCode });
-      return;
-    }
-    const message = error instanceof Error ? error.message : fallback;
-    if (message === 'Budget not found') {
-      res.status(404).json({ success: false, message, errorCode: 'BUDGET_NOT_FOUND' });
-      return;
-    }
-    if (message === 'Unauthorized access to budget' || message.includes('does not belong to user')) {
-      res.status(403).json({ success: false, message, errorCode: 'FORBIDDEN' });
-      return;
-    }
-    logger.error(`${fallback}:`, error);
-    res.status(500).json({ success: false, message: fallback, errorCode: 'INTERNAL_ERROR' });
   }
 }
 

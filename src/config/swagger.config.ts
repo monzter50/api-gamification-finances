@@ -27,8 +27,8 @@ const options: swaggerJsdoc.Options = {
         bearerAuth: {
           type: 'http',
           scheme: 'bearer',
-          bearerFormat: 'JWT',
-          description: 'Enter your JWT token in the format: Bearer <token>'
+          bearerFormat: 'JWT or fpat_ API token',
+          description: 'App session JWT, or a personal API token (`fpat_…`) on endpoints that accept one. Format: Bearer <token>'
         }
       },
       schemas: {
@@ -134,27 +134,21 @@ const options: swaggerJsdoc.Options = {
               type: 'object',
               properties: {
                 total: { type: 'number', example: 50000 },
-                count: { type: 'number', example: 5 },
-                experience: { type: 'number', example: 100 },
-                coins: { type: 'number', example: 50 }
+                count: { type: 'number', example: 5 }
               }
             },
             expense: {
               type: 'object',
               properties: {
                 total: { type: 'number', example: 30000 },
-                count: { type: 'number', example: 15 },
-                experience: { type: 'number', example: 75 },
-                coins: { type: 'number', example: 30 }
+                count: { type: 'number', example: 15 }
               }
             },
             savings: {
               type: 'object',
               properties: {
                 total: { type: 'number', example: 20000 },
-                count: { type: 'number', example: 3 },
-                experience: { type: 'number', example: 50 },
-                coins: { type: 'number', example: 20 }
+                count: { type: 'number', example: 3 }
               }
             },
             netWorth: {
@@ -171,28 +165,37 @@ const options: swaggerJsdoc.Options = {
         },
         Error: {
           type: 'object',
+          description: 'Standard error envelope produced by the global errorHandler. Branch on `errorCode` or the HTTP status, not on the text.',
+          required: ['success', 'message', 'errorCode'],
           properties: {
-            response: {
-              type: 'object',
-              properties: {
-                message: {
-                  type: 'string',
-                  example: 'An error occurred'
-                },
-                error: {
-                  type: 'string',
-                  example: 'Detailed error message'
+            success: { type: 'boolean', example: false },
+            message: { type: 'string', example: 'Budget not found' },
+            error: { type: 'string', description: 'Same text as `message` (kept for older clients)', example: 'Budget not found' },
+            errorCode: { type: 'string', example: 'BUDGET_NOT_FOUND' },
+            errors: {
+              type: 'array',
+              description: 'Per-field details, only on VALIDATION_ERROR',
+              items: {
+                type: 'object',
+                properties: {
+                  field: { type: 'string', example: 'amount' },
+                  message: { type: 'string', example: 'Amount must be a positive number' }
                 }
               }
-            },
-            status: {
-              type: 'string',
-              enum: ['error']
-            },
-            statusCode: {
-              type: 'number',
-              example: 400
             }
+          }
+        },
+        ApiToken: {
+          type: 'object',
+          description: 'A personal API token. The secret itself is only returned once, on creation.',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            name: { type: 'string', example: 'Claude MCP (laptop)' },
+            tokenPrefix: { type: 'string', description: 'First characters, to recognize the token', example: 'fpat_3q2K' },
+            scopes: { type: 'array', items: { type: 'string', enum: ['read', 'write'] } },
+            expiresAt: { type: 'string', format: 'date-time' },
+            lastUsedAt: { type: 'string', format: 'date-time', nullable: true },
+            createdAt: { type: 'string', format: 'date-time' }
           }
         },
         Pagination: {
@@ -227,7 +230,7 @@ const options: swaggerJsdoc.Options = {
             },
             type: {
               type: 'string',
-              enum: ['Debit Card', 'Credit Card', 'Cash', 'Vales', 'Transfer', 'Check', 'Other'],
+              enum: ['Debit Card', 'Cash', 'Vales', 'Transfer', 'Check', 'Other'],
               description: 'Payment/receipt method',
               example: 'Transfer'
             },
@@ -276,7 +279,7 @@ const options: swaggerJsdoc.Options = {
             amount: { type: 'number', format: 'float', minimum: 0.01, example: 25000 },
             type: {
               type: 'string',
-              enum: ['Debit Card', 'Credit Card', 'Cash', 'Vales', 'Transfer', 'Check', 'Other'],
+              enum: ['Debit Card', 'Cash', 'Vales', 'Transfer', 'Check', 'Other'],
               example: 'Transfer'
             },
             accountId: {
@@ -509,12 +512,10 @@ const options: swaggerJsdoc.Options = {
                 $ref: '#/components/schemas/Error'
               },
               example: {
-                response: {
-                  message: 'Unauthorized',
-                  error: 'No authentication token found'
-                },
-                status: 'error',
-                statusCode: 401
+                success: false,
+                message: 'Unauthorized',
+                error: 'Unauthorized',
+                errorCode: 'UNAUTHORIZED'
               }
             }
           }
@@ -527,12 +528,10 @@ const options: swaggerJsdoc.Options = {
                 $ref: '#/components/schemas/Error'
               },
               example: {
-                response: {
-                  message: 'Not Found',
-                  error: 'Transaction not found'
-                },
-                status: 'error',
-                statusCode: 404
+                success: false,
+                message: 'Transaction not found',
+                error: 'Transaction not found',
+                errorCode: 'TRANSACTION_NOT_FOUND'
               }
             }
           }
@@ -545,12 +544,11 @@ const options: swaggerJsdoc.Options = {
                 $ref: '#/components/schemas/Error'
               },
               example: {
-                response: {
-                  message: 'Bad Request',
-                  error: 'Amount must be greater than 0'
-                },
-                status: 'error',
-                statusCode: 400
+                success: false,
+                message: 'Validation failed',
+                error: 'Validation failed',
+                errorCode: 'VALIDATION_ERROR',
+                errors: [{ field: 'amount', message: 'Amount must be a positive number' }]
               }
             }
           }
@@ -558,6 +556,10 @@ const options: swaggerJsdoc.Options = {
       }
     },
     tags: [
+      {
+        name: 'API Tokens',
+        description: 'Personal API tokens for the MCP server, scripts and automations'
+      },
       {
         name: 'Transactions',
         description: 'Transaction management endpoints'

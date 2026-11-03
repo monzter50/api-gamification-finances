@@ -1,21 +1,17 @@
-import type { Request, Response } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { authService } from '../services/auth.service';
 import { userService } from '../services/user.service';
 import { type AuthenticatedRequest } from '../types';
-import { AuthError } from '../errors/AuthErrors';
 
 /**
- * Auth Controller
- * Handles HTTP requests/responses for authentication endpoints
+ * Auth controller. Errors are forwarded with `next(error)`; the global
+ * errorHandler renders typed errors (InvalidCredentialsError, ...) with their
+ * status + errorCode and hides internals on 500.
  */
 export class AuthController {
-  /**
-   * Register a new user
-   * POST /api/auth/register
-   */
-  async register (req: Request, res: Response): Promise<void> {
+  async register (req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { email, password, name } = req.body;
+      const { email, password, name } = req.body as { email: string, password: string, name: string };
       const result = await authService.register({ email, password, name });
 
       res.status(201).json({
@@ -24,29 +20,13 @@ export class AuthController {
         ...result
       });
     } catch (error) {
-      if (error instanceof AuthError) {
-        res.status(error.statusCode).json({
-          success: false,
-          message: error.message,
-          errorCode: error.errorCode
-        });
-      } else {
-        res.status(500).json({
-          success: false,
-          message: error instanceof Error ? error.message : 'Error registering user',
-          errorCode: 'INTERNAL_ERROR'
-        });
-      }
+      next(error);
     }
   }
 
-  /**
-   * Login user
-   * POST /api/auth/login
-   */
-  async login (req: Request, res: Response): Promise<void> {
+  async login (req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { email, password } = req.body;
+      const { email, password } = req.body as { email: string, password: string };
       const result = await authService.login({ email, password });
 
       res.status(200).json({
@@ -55,31 +35,15 @@ export class AuthController {
         ...result
       });
     } catch (error) {
-      if (error instanceof AuthError) {
-        res.status(error.statusCode).json({
-          success: false,
-          message: error.message,
-          errorCode: error.errorCode
-        });
-      } else {
-        res.status(500).json({
-          success: false,
-          message: error instanceof Error ? error.message : 'Error logging in',
-          errorCode: 'INTERNAL_ERROR'
-        });
-      }
+      next(error);
     }
   }
 
-  /**
-   * Logout user
-   * POST /api/auth/logout
-   */
-  async logout (req: AuthenticatedRequest, res: Response): Promise<void> {
+  async logout (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const authHeader = req.headers.authorization;
-      const token: string = authHeader!.split(' ')[1]!;
-      const userId = req.user!.id;
+      // authenticateJWT already guaranteed a well-formed Bearer header.
+      const token = (req.headers.authorization ?? '').slice('Bearer '.length).trim();
+      const userId = req.user!.userId;
 
       const result = await authService.logout(token, userId);
 
@@ -88,53 +52,20 @@ export class AuthController {
         message: result.message
       });
     } catch (error) {
-      if (error instanceof AuthError) {
-        res.status(error.statusCode).json({
-          success: false,
-          message: error.message,
-          errorCode: error.errorCode
-        });
-      } else {
-        res.status(500).json({
-          success: false,
-          message: error instanceof Error ? error.message : 'Error during logout',
-          errorCode: 'INTERNAL_ERROR'
-        });
-      }
+      next(error);
     }
   }
 
-  /**
-   * Get current authenticated user profile
-   * GET /api/auth/me
-   */
-  async getCurrentUser (req: AuthenticatedRequest, res: Response): Promise<void> {
+  async getCurrentUser (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const userId = req.user!.id;
-      const profile = await userService.getUserProfile(userId);
-      console.log('Fetched user profile:', profile);
+      const profile = await userService.getUserProfile(req.user!.userId);
 
       res.status(200).json({
         success: true,
         ...profile
       });
     } catch (error) {
-      if (error instanceof AuthError) {
-        res.status(error.statusCode).json({
-          success: false,
-          message: error.message,
-          errorCode: error.errorCode
-        });
-      } else {
-        const message = error instanceof Error ? error.message : 'Error getting profile';
-        const statusCode = message.includes('not found') ? 404 : 500;
-
-        res.status(statusCode).json({
-          success: false,
-          message,
-          errorCode: statusCode === 404 ? 'USER_NOT_FOUND' : 'INTERNAL_ERROR'
-        });
-      }
+      next(error);
     }
   }
 }

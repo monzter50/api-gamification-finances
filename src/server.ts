@@ -1,4 +1,4 @@
-import express, { type Application, type Request, type Response, NextFunction } from 'express';
+import express, { type Application, type Request, type Response, type NextFunction } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger.config';
 import cors from 'cors';
@@ -11,6 +11,7 @@ import { connectDB } from './config/database';
 import { errorHandler } from './middleware/errorHandler';
 import { routes } from './routes/index';
 import { logger } from './config/logger';
+import { assertRequiredEnv, isApiDocsEnabled } from './config/env';
 
 const app: Application = express();
 const PORT: number = parseInt(process.env.PORT || '3000', 10);
@@ -57,13 +58,30 @@ app.use(cors({
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'), // 15 minutes
   max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'), // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many requests from this IP, please try again later.',
+    error: 'Too many requests from this IP, please try again later.',
+    errorCode: 'RATE_LIMITED'
+  }
 });
 app.use('/api/', limiter);
 
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Body parsing middleware.
+// JSON endpoints only need small bodies; a 10 MB default lets any caller make
+// the server buffer and parse huge payloads. Only the bulk import confirm
+// endpoint (a reviewed workbook sent back as JSON) gets the large limit.
+// File uploads go through multer, not these parsers.
+const smallJson = express.json({ limit: process.env.JSON_BODY_LIMIT ?? '100kb' });
+const largeJson = express.json({ limit: process.env.IMPORT_JSON_BODY_LIMIT ?? '10mb' });
+const LARGE_BODY_PATHS = ['/api/transactions/import/'];
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const parser = LARGE_BODY_PATHS.some((prefix) => req.path.startsWith(prefix)) ? largeJson : smallJson;
+  parser(req, res, next);
+});
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
 // Compression middleware
 app.use(compression() as any);
@@ -94,15 +112,19 @@ const sendOpenApiSpec = (_req: Request, res: Response): void => {
   res.setHeader('Content-Type', 'application/json');
   res.send(swaggerSpec);
 };
-app.get('/api-docs.json', sendOpenApiSpec);
-app.get('/api/schema.json', sendOpenApiSpec);
+// Docs map the whole attack surface, so they're off in production unless
+// ENABLE_API_DOCS=true (see config/env.ts).
+if (isApiDocsEnabled()) {
+  app.get('/api-docs.json', sendOpenApiSpec);
+  app.get('/api/schema.json', sendOpenApiSpec);
 
-// Swagger UI
-app.use('/api-docs', swaggerUi.serve as any, swaggerUi.setup(swaggerSpec, {
-  explorer: true,
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'Gamification Finances API Docs'
-}) as any);
+  // Swagger UI
+  app.use('/api-docs', swaggerUi.serve as any, swaggerUi.setup(swaggerSpec, {
+    explorer: true,
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'Gamification Finances API Docs'
+  }) as any);
+}
 
 // API routes
 app.use('/api', routes);
@@ -112,6 +134,8 @@ app.use('*', (req: Request, res: Response) => {
   res.status(404).json({
     success: false,
     message: 'Ruta no encontrada',
+    error: 'Ruta no encontrada',
+    errorCode: 'ROUTE_NOT_FOUND',
     path: req.originalUrl
   });
 });
@@ -122,6 +146,9 @@ app.use(errorHandler);
 // Start server function
 async function startServer () {
   try {
+    // Fail fast on missing secrets/config before accepting any traffic
+    assertRequiredEnv();
+
     // Connect to database based on environment
     const environment = (process.env.NODE_ENV as 'development' | 'test' | 'production') || 'development';
     logger.info(`🔍 Entorno: ${environment}`);

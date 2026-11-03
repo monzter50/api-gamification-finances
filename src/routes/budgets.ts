@@ -2,7 +2,7 @@ import express from 'express';
 import { budgetController } from '../controllers/budget.controller';
 import { incomeController } from '../controllers/income.controller';
 import { expenseController } from '../controllers/expense.controller';
-import { authenticateJWT } from './auth';
+import { authenticateUserOrApiToken } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import {
   createBudgetValidation,
@@ -17,7 +17,8 @@ import {
   updateExpenseItemValidation,
   deleteIncomeItemValidation,
   deleteExpenseItemValidation,
-  duplicateBudgetValidation
+  duplicateBudgetValidation,
+  paginatedItemsValidation
 } from '../validators/budget.validator';
 
 const router = express.Router();
@@ -30,14 +31,14 @@ const router = express.Router();
 // Get budget statistics
 router.get(
   '/stats',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   budgetController.getUserStats.bind(budgetController)
 );
 
 // Get all budgets (with optional filters)
 router.get(
   '/',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   budgetQueryValidation,
   validate,
   budgetController.getAllBudgets.bind(budgetController)
@@ -46,7 +47,7 @@ router.get(
 // Get budget by ID
 router.get(
   '/:id',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   budgetIdValidation,
   validate,
   budgetController.getBudgetById.bind(budgetController)
@@ -55,7 +56,7 @@ router.get(
 // Create new budget
 router.post(
   '/',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   createBudgetValidation,
   validate,
   budgetController.createBudget.bind(budgetController)
@@ -114,7 +115,7 @@ router.post(
  */
 router.put(
   '/:id',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   updateBudgetValidation,
   validate,
   budgetController.updateBudget.bind(budgetController)
@@ -123,7 +124,7 @@ router.put(
 // Delete budget
 router.delete(
   '/:id',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   budgetIdValidation,
   validate,
   budgetController.deleteBudget.bind(budgetController)
@@ -146,8 +147,7 @@ router.delete(
  *       - `400` if the target month is out of range, or if any source income
  *         item references an account that no longer belongs to the user
  *         (error message lists the offending accountIds).
- *       - `403` if the source budget does not belong to the caller.
- *       - `404` if the source budget does not exist.
+ *       - `404` if the source budget does not exist or belongs to another user.
  *       - `409` if a budget already exists at the target `(year, month)`.
  *
  *       Items are NOT accepted in the body — pass only the target period.
@@ -186,8 +186,6 @@ router.delete(
  *                 message: { type: string, example: 'Budget duplicated successfully' }
  *       400: { $ref: '#/components/responses/BadRequestError' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
- *       403:
- *         description: Source budget does not belong to the caller
  *       404: { $ref: '#/components/responses/NotFoundError' }
  *       409:
  *         description: A budget already exists for the target period
@@ -196,12 +194,13 @@ router.delete(
  *             schema: { $ref: '#/components/schemas/Error' }
  *             example:
  *               success: false
+ *               message: 'Budget for 2026-7 already exists'
  *               error: 'Budget for 2026-7 already exists'
- *               statusCode: 409
+ *               errorCode: BUDGET_ALREADY_EXISTS
  */
 router.post(
   '/:id/duplicate',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   duplicateBudgetValidation,
   validate,
   budgetController.duplicateBudget.bind(budgetController)
@@ -244,8 +243,8 @@ router.post(
  */
 router.get(
   '/:id/income',
-  authenticateJWT,
-  budgetIdValidation,
+  authenticateUserOrApiToken,
+  paginatedItemsValidation,
   validate,
   incomeController.getIncomeItems.bind(incomeController)
 );
@@ -281,13 +280,11 @@ router.get(
  *             schema: { $ref: '#/components/schemas/IncomeItemMutationResponse' }
  *       400: { $ref: '#/components/responses/BadRequestError' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
- *       403:
- *         description: Unauthorized access to budget
  *       404: { $ref: '#/components/responses/NotFoundError' }
  */
 router.post(
   '/:id/income',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   addIncomeItemValidation,
   validate,
   incomeController.addIncomeItem.bind(incomeController)
@@ -320,13 +317,11 @@ router.post(
  *             schema: { $ref: '#/components/schemas/BudgetMutationResponse' }
  *       400: { $ref: '#/components/responses/BadRequestError' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
- *       403:
- *         description: Unauthorized access to budget
  *       404: { $ref: '#/components/responses/NotFoundError' }
  */
 router.patch(
   '/:id/income',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   updateIncomeItemsValidation,
   validate,
   incomeController.updateIncomeItems.bind(incomeController)
@@ -364,13 +359,11 @@ router.patch(
  *             schema: { $ref: '#/components/schemas/IncomeItemMutationResponse' }
  *       400: { $ref: '#/components/responses/BadRequestError' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
- *       403:
- *         description: Unauthorized access to budget
  *       404: { $ref: '#/components/responses/NotFoundError' }
  */
 router.put(
   '/:id/income/:incomeId',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   updateIncomeItemValidation,
   validate,
   incomeController.updateIncomeItem.bind(incomeController)
@@ -400,13 +393,11 @@ router.put(
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ItemRemovalResponse' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
- *       403:
- *         description: Unauthorized access to budget
  *       404: { $ref: '#/components/responses/NotFoundError' }
  */
 router.delete(
   '/:id/income/:incomeId',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   deleteIncomeItemValidation,
   validate,
   incomeController.deleteIncomeItem.bind(incomeController)
@@ -448,8 +439,8 @@ router.delete(
  */
 router.get(
   '/:id/expense',
-  authenticateJWT,
-  budgetIdValidation,
+  authenticateUserOrApiToken,
+  paginatedItemsValidation,
   validate,
   expenseController.getExpenseItems.bind(expenseController)
 );
@@ -484,13 +475,11 @@ router.get(
  *             schema: { $ref: '#/components/schemas/ExpenseItemMutationResponse' }
  *       400: { $ref: '#/components/responses/BadRequestError' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
- *       403:
- *         description: Unauthorized access to budget
  *       404: { $ref: '#/components/responses/NotFoundError' }
  */
 router.post(
   '/:id/expense',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   addExpenseItemValidation,
   validate,
   expenseController.addExpenseItem.bind(expenseController)
@@ -523,13 +512,11 @@ router.post(
  *             schema: { $ref: '#/components/schemas/BudgetMutationResponse' }
  *       400: { $ref: '#/components/responses/BadRequestError' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
- *       403:
- *         description: Unauthorized access to budget
  *       404: { $ref: '#/components/responses/NotFoundError' }
  */
 router.patch(
   '/:id/expense',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   updateExpenseItemsValidation,
   validate,
   expenseController.updateExpenseItems.bind(expenseController)
@@ -567,13 +554,11 @@ router.patch(
  *             schema: { $ref: '#/components/schemas/ExpenseItemMutationResponse' }
  *       400: { $ref: '#/components/responses/BadRequestError' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
- *       403:
- *         description: Unauthorized access to budget
  *       404: { $ref: '#/components/responses/NotFoundError' }
  */
 router.put(
   '/:id/expense/:expenseId',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   updateExpenseItemValidation,
   validate,
   expenseController.updateExpenseItem.bind(expenseController)
@@ -603,13 +588,11 @@ router.put(
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ItemRemovalResponse' }
  *       401: { $ref: '#/components/responses/UnauthorizedError' }
- *       403:
- *         description: Unauthorized access to budget
  *       404: { $ref: '#/components/responses/NotFoundError' }
  */
 router.delete(
   '/:id/expense/:expenseId',
-  authenticateJWT,
+  authenticateUserOrApiToken,
   deleteExpenseItemValidation,
   validate,
   expenseController.deleteExpenseItem.bind(expenseController)

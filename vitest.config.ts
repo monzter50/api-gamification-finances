@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 import { resolve } from 'path';
 
 export default defineConfig({
@@ -6,6 +6,8 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     setupFiles: ['./src/tests/setup.ts'],
+    // exFAT volumes get macOS `._*` AppleDouble sidecars; they are not tests.
+    exclude: [...configDefaults.exclude, '**/._*'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

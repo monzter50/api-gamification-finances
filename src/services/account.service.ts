@@ -1,20 +1,21 @@
 import { accountRepository } from '../repositories/account.repository';
 import { type Account } from '@prisma/client';
+import { AccountNotFoundError, AccountHasTransactionsError } from '../errors/DomainErrors';
 
 export class AccountService {
-  async getUserAccounts(userId: string): Promise<Account[]> {
-    return accountRepository.findByUser(userId);
+  async getUserAccounts (userId: string): Promise<Account[]> {
+    return await accountRepository.findByUser(userId);
   }
 
-  async getAccountById(id: string, userId: string): Promise<Account> {
+  async getAccountById (id: string, userId: string): Promise<Account> {
     const account = await accountRepository.findByIdAndUser(id, userId);
     if (!account) {
-      throw new Error('Account not found');
+      throw new AccountNotFoundError();
     }
     return account;
   }
 
-  async createAccount(
+  async createAccount (
     userId: string,
     data: {
       name: string;
@@ -24,30 +25,34 @@ export class AccountService {
       isActive?: boolean;
     }
   ): Promise<Account> {
-    return accountRepository.createAccount(userId, data);
+    return await accountRepository.createAccount(userId, data);
   }
 
-  async updateAccount(
+  async updateAccount (
     id: string,
     userId: string,
-    data: Partial<Omit<Account, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>
+    data: Partial<Omit<Account, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'balanceCents'>>
   ): Promise<Account> {
     const updated = await accountRepository.updateByIdAndUser(id, userId, data);
     if (!updated) {
-      throw new Error('Account not found');
+      throw new AccountNotFoundError();
     }
     return updated;
   }
 
-  async deleteAccount(id: string, userId: string): Promise<Account> {
+  async deleteAccount (id: string, userId: string): Promise<Account> {
+    // Ownership FIRST: checking "has transactions" before it would let a 409
+    // confirm that another user's account ID exists.
+    await this.getAccountById(id, userId);
+
     const hasTransactions = await accountRepository.hasTransactions(id);
     if (hasTransactions) {
-      throw new Error('Cannot delete account with existing transactions');
+      throw new AccountHasTransactionsError();
     }
 
     const deleted = await accountRepository.deleteByIdAndUser(id, userId);
     if (!deleted) {
-      throw new Error('Account not found');
+      throw new AccountNotFoundError();
     }
     return deleted;
   }
